@@ -189,6 +189,7 @@ class PlayBanTest {
         }
         assertTrue(trollSlot >= 0, "Troll is listed in the player picker");
         admin.simulateInventoryClick(trollSlot);
+        admin.simulateInventoryClick(51); // "custom PlayBan" in the category picker
         admin.simulateInventoryClick(11); // second duration preset: 1h
         admin.simulateInventoryClick(10); // first reason preset
         inv = admin.getOpenInventory().getTopInventory();
@@ -347,6 +348,10 @@ class PlayBanTest {
                     () -> plugin.adminMenus().allowedCommands(admin, 0),
                     () -> plugin.adminMenus().tasks(admin, 0),
                     () -> plugin.adminMenus().history(admin, "Troll"),
+                    () -> plugin.adminMenus().bans(admin, 0),
+                    () -> plugin.adminMenus().categories(admin, 0),
+                    () -> plugin.adminMenus().categoryEdit(admin, "cheating"),
+                    () -> plugin.adminMenus().punishPlayer(admin, bystander.getUniqueId(), "Bystander"),
                     () -> plugin.playerMenus().status(troll),
             };
             for (int i = 0; i < menus.length; i++) {
@@ -373,6 +378,139 @@ class PlayBanTest {
                 assertFalse(plain(line).matches(".*\\{[a-z-]+}.*"), code + ": unfilled placeholder in " + plain(line));
             }
         }
+    }
+
+    @Test
+    void categoryLadderEscalatesFromPlayBanToBan() {
+        // cheating: PlayBan 1d, PlayBan 3d, Ban 7d, permanent ban
+        assertTrue(admin.performCommand("playban apply Troll cheating"));
+        Punishment first = plugin.punishments().get(troll.getUniqueId());
+        assertNotNull(first);
+        assertEquals(86_400_000L, first.originalMs);
+        assertEquals("cheating", first.category);
+        assertEquals("Cheating", first.reason);
+
+        plugin.punishments().end(first, "SERVED", "");
+        admin.performCommand("playban apply Troll cheating");
+        Punishment second = plugin.punishments().get(troll.getUniqueId());
+        assertEquals(3 * 86_400_000L, second.originalMs, "second offense is the second step");
+
+        plugin.punishments().end(second, "SERVED", "");
+        assertTrue(troll.isOnline());
+        admin.performCommand("playban apply Troll cheating");
+        assertFalse(plugin.punishments().isPunished(troll.getUniqueId()), "third offense is a real ban, not a PlayBan");
+        Punishment ban = plugin.punishments().activeBan(troll.getUniqueId());
+        assertNotNull(ban, "third offense bans the player");
+        assertEquals(7 * 86_400_000L, ban.originalMs);
+        assertFalse(troll.isOnline(), "a banned player is kicked");
+
+        // other categories are counted on their own
+        assertEquals(0, plugin.punishments().countOffenses(troll.getUniqueId(), plugin.categories().get("spam")));
+        assertEquals(3, plugin.punishments().countOffenses(troll.getUniqueId(), plugin.categories().get("cheating")));
+    }
+
+    @Test
+    void liftedPunishmentsDoNotCountForTheLadder() {
+        admin.performCommand("playban apply Troll cheating");
+        admin.performCommand("playban pardon Troll");
+        admin.performCommand("playban apply Troll cheating");
+        assertEquals(86_400_000L, plugin.punishments().get(troll.getUniqueId()).originalMs,
+                "after a pardon the player starts at the first step again");
+    }
+
+    @Test
+    void oldOffensesExpire() {
+        var spam = plugin.categories().get("spam"); // warn, PlayBan 1h, PlayBan 12h; expires after 30d
+        admin.performCommand("playban apply Troll spam");
+        assertFalse(plugin.punishments().isPunished(troll.getUniqueId()), "first spam offense is only a warning");
+        assertEquals(1, plugin.punishments().countOffenses(troll.getUniqueId(), spam));
+        plugin.store().history.get(troll.getUniqueId()).get(0).createdAt -= 31L * 86_400_000L;
+        assertEquals(0, plugin.punishments().countOffenses(troll.getUniqueId(), spam), "the warning is older than 30 days");
+        admin.performCommand("playban apply Troll spam");
+        assertFalse(plugin.punishments().isPunished(troll.getUniqueId()), "so the player gets a warning again");
+    }
+
+    @Test
+    void bannedPlayerCannotLogInUntilUnbannedOrExpired() throws Exception {
+        admin.performCommand("playban ban Troll 1h Hacking");
+        assertFalse(troll.isOnline());
+        var listener = new dev.playban.listener.ConnectionListener(plugin);
+        var address = java.net.InetAddress.getByName("127.0.0.1");
+
+        var denied = new org.bukkit.event.player.AsyncPlayerPreLoginEvent("Troll", address, troll.getUniqueId());
+        listener.onPreLogin(denied);
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.KICK_BANNED, denied.getLoginResult());
+        assertTrue(plain(denied.kickMessage()).contains("Hacking"), "the ban screen shows the reason");
+
+        var other = new org.bukkit.event.player.AsyncPlayerPreLoginEvent("Bystander", address, bystander.getUniqueId());
+        listener.onPreLogin(other);
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED, other.getLoginResult());
+
+        // a second ban on top is refused
+        admin.performCommand("playban ban Troll perm again");
+        assertEquals(3_600_000L, plugin.store().bans.get(troll.getUniqueId()).originalMs);
+
+        admin.performCommand("playban unban Troll");
+        var allowed = new org.bukkit.event.player.AsyncPlayerPreLoginEvent("Troll", address, troll.getUniqueId());
+        listener.onPreLogin(allowed);
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED, allowed.getLoginResult());
+        assertEquals("PARDONED", plugin.store().history.get(troll.getUniqueId()).get(0).endReason);
+
+        // an expired ban lets the player in and is moved to the history
+        admin.performCommand("playban ban Troll 1h Hacking");
+        plugin.store().bans.get(troll.getUniqueId()).expiresAt = System.currentTimeMillis() - 1000;
+        var expired = new org.bukkit.event.player.AsyncPlayerPreLoginEvent("Troll", address, troll.getUniqueId());
+        listener.onPreLogin(expired);
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED, expired.getLoginResult());
+        server.getScheduler().performTicks(25);
+        assertTrue(plugin.store().bans.isEmpty());
+    }
+
+    @Test
+    void permanentBanAndBansSurviveARestart() {
+        admin.performCommand("playban ban Troll perm Hacking");
+        Punishment ban = plugin.store().bans.get(troll.getUniqueId());
+        assertEquals(0, ban.expiresAt);
+        server.getScheduler().performTicks(60);
+        assertNotNull(plugin.punishments().activeBan(troll.getUniqueId()), "a permanent ban never expires");
+        plugin.store().saveNow();
+        DataStore fresh = new DataStore(plugin);
+        fresh.load();
+        assertEquals("BAN", fresh.bans.get(troll.getUniqueId()).type);
+        assertEquals("Hacking", fresh.bans.get(troll.getUniqueId()).reason);
+    }
+
+    @Test
+    void categoryPickerPunishesThroughTheMenu() {
+        assertTrue(admin.performCommand("playban Troll"));
+        // the picker shows what would happen
+        int slot = slotOf(admin, Material.TNT); // griefing: PlayBan 1d first
+        ItemStack entry = admin.getOpenInventory().getTopInventory().getItem(slot);
+        assertTrue(entry.getItemMeta().lore().stream().anyMatch(l -> plain(l).contains("PlayBan (1d)")));
+        admin.simulateInventoryClick(slot);
+        admin.simulateInventoryClick(51); // nobody in particular
+        admin.simulateInventoryClick(slotOf(admin, Material.LIME_CONCRETE));
+        Punishment p = plugin.punishments().get(troll.getUniqueId());
+        assertNotNull(p);
+        assertEquals("griefing", p.category);
+        assertEquals(86_400_000L, p.originalMs);
+    }
+
+    @Test
+    void categoryEditorCreatesAndChangesSteps() {
+        var created = plugin.categories().create("Bug abuse");
+        assertEquals("bug-abuse", created.id);
+        plugin.adminMenus().categoryEdit(admin, created.id);
+        admin.simulateInventoryClick(28); // first step: WARN -> PLAYBAN
+        assertEquals("PLAYBAN", created.steps.get(0).type);
+        admin.simulateInventoryClick(30); // add a third step
+        assertEquals(3, created.steps.size());
+
+        CategoryRegistry fresh = new CategoryRegistry(plugin);
+        fresh.load();
+        assertEquals(3, fresh.get("bug-abuse").steps.size(), "changes are written to categories.yml");
+        assertEquals("Bug abuse", fresh.get("bug-abuse").name);
+        assertEquals(5 + 1, fresh.all().size());
     }
 
     @Test

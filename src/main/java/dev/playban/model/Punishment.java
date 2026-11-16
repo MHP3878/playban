@@ -15,6 +15,12 @@ public final class Punishment {
         }
     }
 
+    /** PLAYBAN, BAN or WARN */
+    public String type = "PLAYBAN";
+    /** Category id, or null for a custom punishment. */
+    public String category;
+    /** Bans only: when the ban ends, 0 = permanent. */
+    public long expiresAt;
     public UUID uuid;
     public String name;
     public String reason;

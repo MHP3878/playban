@@ -12,9 +12,42 @@ offline: "<gray>offline"
 reloaded: "<green>Einstellungen neu geladen."
 language-set: "<green>Sprache auf <white>{language}</white> gestellt."
 
+permanent: "für immer"
+never: "nie"
+custom: "frei gewählt"
+applied: "<gray><white>{player}</white>: <white>{n}.</white> Verstoß in <white>{category}</white> → <white>{punishment}"
+
+type:
+  WARN: "Verwarnung"
+  PLAYBAN: "PlayBan"
+  BAN: "Bann"
+
+warn:
+  title: "<yellow><bold>VERWARNUNG</bold></yellow>"
+  subtitle: "<gray>{reason}"
+  you: "<yellow>Du wurdest vom Serverteam verwarnt. Grund: <white>{reason}"
+  broadcast: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>verwarnt. Grund:</gray> <white>{reason}"
+
+ban:
+  screen: |-
+    <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>
+
+    <red>Du bist von diesem Server gebannt.
+
+    <gray>Grund: <white>{reason}
+    <gray>Restzeit: <white>{time}
+    <gray>Gebannt von: <white>{staff}
+  broadcast: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>gebannt. Dauer:</gray> <white>{time}</white><gray>. Grund:</gray> <white>{reason}"
+  broadcast-unbanned: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>entbannt."
+
 help: |-
   <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- Befehle
   <#ffc371>/playban menu <dark_gray>-</dark_gray> <gray>Hauptmenü öffnen
+  <#ffc371>/playban <Spieler> <dark_gray>-</dark_gray> <gray>Kategorie für einen Spieler wählen
+  <#ffc371>/playban apply <Spieler> <Kategorie> <dark_gray>-</dark_gray> <gray>nach Kategorie bestrafen
+  <#ffc371>/playban warn <Spieler> [Grund] <dark_gray>-</dark_gray> <gray>Spieler verwarnen
+  <#ffc371>/playban ban <Spieler> <Zeit|perm> [Grund] <dark_gray>-</dark_gray> <gray>echter Bann
+  <#ffc371>/playban unban <Spieler> <dark_gray>-</dark_gray> <gray>Bann aufheben
   <#ffc371>/playban punish <Spieler> <Zeit> [Grund] <dark_gray>-</dark_gray> <gray>Spieler bestrafen
   <#ffc371>/playban pardon <Spieler> <dark_gray>-</dark_gray> <gray>Strafe beenden
   <#ffc371>/playban addtime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verlängern
@@ -27,6 +60,10 @@ help: |-
   <gray>Zeiten schreibst du so: <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
+  apply: "<gray>Nutzung: <white>/playban apply <Spieler> <Kategorie>"
+  warn: "<gray>Nutzung: <white>/playban warn <Spieler> [Grund]"
+  ban: "<gray>Nutzung: <white>/playban ban <Spieler> <Zeit|perm> [Grund]"
+  unban: "<gray>Nutzung: <white>/playban unban <Spieler>"
   punish: "<gray>Nutzung: <white>/playban punish <Spieler> <Zeit> [Grund]"
   pardon: "<gray>Nutzung: <white>/playban pardon <Spieler>"
   addtime: "<gray>Nutzung: <white>/playban addtime <Spieler> <Zeit>"
@@ -37,6 +74,10 @@ usage:
   ticket: "<gray>Nutzung: <white>/ticket <deine Nachricht>"
 
 error:
+  already-banned: "<red><white>{player}</white> ist bereits gebannt."
+  not-banned: "<red><white>{player}</white> ist nicht gebannt."
+  unknown-category: "<red>Die Kategorie <white>{category}</white> gibt es nicht, oder sie hat keine Stufen."
+  bad-duration: "<red>Ein PlayBan braucht eine Dauer."
   no-permission: "<red>Das darfst du nicht."
   players-only: "<red>Das geht nur als Spieler."
   unknown-player: "<red>Der Spieler <white>{player}</white> war noch nie auf diesem Server."
@@ -99,6 +140,7 @@ list:
   entry: " <dark_gray>-</dark_gray> <white>{player}</white> <dark_gray>|</dark_gray> <white>{time}</white> <dark_gray>|</dark_gray> <gray>{reason}"
 
 history:
+  WARNED: "<yellow>Verwarnung"
   running: "<red>läuft noch"
   SERVED: "<green>abgesessen"
   PARDONED: "<yellow>vom Team vorzeitig beendet"
@@ -184,6 +226,10 @@ task:
       - "<gray>die du selbst schreibst."
 
 prompt:
+  category-name: "<#ffc371>Schreib den Namen der Kategorie, zum Beispiel <white>X-Ray</white>."
+  category-expire: "<#ffc371>Nach welcher Zeit zählen Verstöße nicht mehr? Beispiel: <white>90d</white>. Schreib <white>0</white> für nie."
+  step-duration: "<#ffc371>Schreib die Dauer für diese Stufe, zum Beispiel <white>1d</white>."
+  step-duration-ban: "<#ffc371>Schreib die Dauer für diese Stufe, zum Beispiel <white>7d</white>, oder <white>perm</white> für einen Bann für immer."
   cancel-hint: "<dark_gray>Schreib <gray>cancel</gray> zum Abbrechen."
   cancelled: "<gray>Abgebrochen."
   ticket: "<#ffc371>Schreib deine Nachricht an das Team in den Chat."
@@ -263,6 +309,12 @@ menu:
 
   main:
     title: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>"
+    bans:
+      name: "<#ffc371><bold>Gebannte Spieler</bold>"
+      lore: ["<gray>Aktuell: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]
+    categories:
+      name: "<#ffc371><bold>Kategorien</bold>"
+      lore: ["<gray>Kategorien: <white>{count}", "<gray>Wofür Spieler bestraft werden", "<gray>und was jedes Mal passiert.", "", "<#ffc371>Klicken zum Bearbeiten"]
     punish:
       name: "<gradient:#ff5f6d:#ffc371><bold>Spieler bestrafen</bold></gradient>"
       lore: ["<gray>Wähle Spieler, Dauer", "<gray>und Grund.", "", "<#ffc371>Klicken zum Starten"]
@@ -288,6 +340,65 @@ menu:
       name: "<#ffc371><bold>Sprache</bold>"
       lore: ["<gray>Aktuell: <white>{language}", "", "<#ffc371>Klicken zum Wechseln"]
 
+  category:
+    title: "<dark_gray>Was hat {player} getan?"
+    entry:
+      name: "<#ffc371><bold>{category}</bold>"
+      lore: ["<gray>Das wäre der <white>{n}.</white> Verstoß", "<gray>Strafe: <white>{punishment}", "", "<#ffc371>Klicken zum Auswählen"]
+    custom-playban:
+      name: "<#ffc371>Freier PlayBan"
+      lore: ["<gray>Dauer und Grund selbst wählen."]
+    custom-ban:
+      name: "<#ffc371>Freier Bann"
+      lore: ["<gray>Dauer und Grund selbst wählen."]
+    custom-warn:
+      name: "<#ffc371>Freie Verwarnung"
+      lore: ["<gray>Klicken und Grund schreiben."]
+
+  bans:
+    title: "<dark_gray>Gebannte Spieler"
+    empty:
+      name: "<green>Niemand ist gebannt"
+    entry:
+      name: "<white>{player}"
+      lore:
+        - "<gray>Noch: <white>{time}"
+        - "<gray>Grund: <white>{reason}"
+        - "<gray>Von: <white>{staff}</white> <dark_gray>{date}"
+        - ""
+        - "<red>Shift + Klick zum Entbannen"
+
+  categories:
+    title: "<dark_gray>Kategorien"
+    step: "<gray>{n}. Verstoß: <white>{punishment}"
+    step-last: "<gray>ab dem {n}. Verstoß: <white>{punishment}"
+    new:
+      name: "<green>Neue Kategorie"
+      lore: ["<gray>Klicken und Namen schreiben."]
+    entry:
+      lore: ["<gray>Verstöße verjähren: <white>{expire}", "", "<#ffc371>Klicken zum Bearbeiten"]
+
+  category-edit:
+    title: "<dark_gray>Kategorie: {category}"
+    name:
+      name: "<#ffc371>Name"
+      lore: ["<gray>Aktuell: <white>{value}", "", "<#ffc371>Klicken zum Ändern"]
+    icon:
+      name: "<#ffc371>Icon"
+      lore: ["<#ffc371>Item in die Hand nehmen und klicken"]
+    expire:
+      name: "<#ffc371>Verstöße verjähren nach"
+      lore: ["<gray>Aktuell: <white>{value}", "<gray>Ältere Verstöße zählen für", "<gray>die Stufen nicht mehr.", "", "<#ffc371>Klicken zum Ändern"]
+    delete:
+      name: "<red>Kategorie löschen"
+      lore: ["<gray>Shift + Klick zum Löschen."]
+    step:
+      name: "<#ffc371>{n}. Verstoß"
+      lore: ["<gray>Strafe: <white>{punishment}", "", "<#ffc371>Linksklick: Art ändern", "<#ffc371>Rechtsklick: Dauer ändern", "<red>Shift + Klick: entfernen"]
+    add-step:
+      name: "<green>Stufe hinzufügen"
+      lore: ["<gray>Startet als Kopie der letzten Stufe."]
+
   select-player:
     title: "<dark_gray>Wen willst du bestrafen?"
     entry:
@@ -306,6 +417,9 @@ menu:
       name: "<#ffc371>Andere Dauer"
       lore: ["<gray>Klicken und in den Chat schreiben."]
 
+    permanent:
+      name: "<red>Für immer"
+      lore: ["<#ffc371>Klicken zum Auswählen"]
   reason:
     title: "<dark_gray>Warum? <gray>({player})"
     preset:
@@ -328,7 +442,7 @@ menu:
     title: "<dark_gray>Jetzt bestrafen?"
     summary:
       name: "<white>{player}"
-      lore: ["<gray>Dauer: <white>{time}", "<gray>Grund: <white>{reason}", "<gray>Betroffen: <white>{victim}"]
+      lore: ["<gray>Strafe: <white>{punishment}", "<gray>Grund: <white>{reason}", "<gray>Betroffen: <white>{victim}"]
     accept:
       name: "<green><bold>Bestrafen</bold>"
     deny:
@@ -367,7 +481,8 @@ menu:
     entry:
       name: "<white>{date}"
       lore:
-        - "<gray>Dauer: <white>{original}"
+        - "<gray>Strafe: <white>{punishment}"
+        - "<gray>Kategorie: <white>{category}"
         - "<gray>Grund: <white>{reason}"
         - "<gray>Von: <white>{staff}"
         - "<gray>Aufgaben: <white>{done}/{total}"

@@ -12,6 +12,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class PlayBanPlugin extends JavaPlugin {
     private Lang lang;
     private TaskRegistry tasks;
+    private CategoryRegistry categories;
     private DataStore store;
     private PunishmentManager punishments;
     private ChatInput input;
@@ -27,6 +28,8 @@ public class PlayBanPlugin extends JavaPlugin {
         lang.load(getConfig().getString("language", "en"));
         tasks = new TaskRegistry(this);
         tasks.load();
+        categories = new CategoryRegistry(this);
+        categories.load();
         store = new DataStore(this);
         store.load();
         economy = new EconomyHook();
@@ -62,11 +65,13 @@ public class PlayBanPlugin extends JavaPlugin {
         reloadConfig();
         lang.load(getConfig().getString("language", "en"));
         tasks.load();
+        categories.load();
         punishments.refreshVisibility();
     }
 
     public Lang lang() { return lang; }
     public TaskRegistry tasks() { return tasks; }
+    public CategoryRegistry categories() { return categories; }
     public DataStore store() { return store; }
     public PunishmentManager punishments() { return punishments; }
     public ChatInput input() { return input; }

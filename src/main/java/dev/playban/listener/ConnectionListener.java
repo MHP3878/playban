@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -15,6 +16,12 @@ public final class ConnectionListener implements Listener {
 
     public ConnectionListener(PlayBanPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPreLogin(AsyncPlayerPreLoginEvent e) {
+        Punishment ban = plugin.punishments().activeBan(e.getUniqueId());
+        if (ban != null) e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, plugin.punishments().banScreen(ban));
     }
 
     @EventHandler(priority = EventPriority.HIGH)

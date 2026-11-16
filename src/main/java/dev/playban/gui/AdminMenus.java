@@ -3,7 +3,9 @@ package dev.playban.gui;
 import dev.playban.Lang;
 import dev.playban.PlayBanPlugin;
 import dev.playban.TaskActions;
+import dev.playban.CategoryRegistry;
 import dev.playban.TimeUtil;
+import dev.playban.model.Category;
 import dev.playban.model.Punishment;
 import dev.playban.model.Punishment.TaskProgress;
 import dev.playban.model.Review;
@@ -34,6 +36,8 @@ public final class AdminMenus {
     private static final class Draft {
         UUID target;
         String targetName;
+        String type = "PLAYBAN";
+        Category category;
         long ms;
         String reason;
         UUID victim;
@@ -96,12 +100,14 @@ public final class AdminMenus {
     public void main(Player p) {
         Menu m = new Menu(5, lang().msg("menu.main.title"));
         m.set(10, item(Material.ANVIL, "menu.main.punish"), e -> selectPlayer(p, 0));
-        m.set(12, item(Material.CLOCK, "menu.main.active", "count", plugin.store().active.size()), e -> active(p, 0));
+        m.set(11, item(Material.CLOCK, "menu.main.active", "count", plugin.store().active.size()), e -> active(p, 0));
+        m.set(12, item(Material.IRON_BARS, "menu.main.bans", "count", plugin.store().bans.size()), e -> bans(p, 0));
         m.set(14, item(Material.WRITABLE_BOOK, "menu.main.reviews", "count", plugin.store().reviews.size()), e -> reviews(p, 0));
-        m.set(16, item(Material.PAPER, "menu.main.tickets", "count", plugin.store().tickets.size()), e -> tickets(p, 0));
-        m.set(28, item(Material.BOOK, "menu.main.history"), e ->
+        m.set(15, item(Material.PAPER, "menu.main.tickets", "count", plugin.store().tickets.size()), e -> tickets(p, 0));
+        m.set(16, item(Material.BOOK, "menu.main.history"), e ->
                 plugin.input().ask(p, "prompt.history-name", name -> history(p, name), () -> main(p)));
         if (admin(p)) {
+            m.set(28, item(Material.LECTERN, "menu.main.categories", "count", plugin.categories().all().size()), e -> categories(p, 0));
             m.set(30, item(Material.BOOKSHELF, "menu.main.tasks", "count", plugin.tasks().all().size()), e -> tasks(p, 0));
             m.set(32, item(Material.COMPARATOR, "menu.main.settings"), e -> settings(p));
             m.set(34, item(Material.GLOBE_BANNER_PATTERN, "menu.main.language", "language", lang().code()), e -> {
@@ -135,7 +141,7 @@ public final class AdminMenus {
                     Draft d = new Draft();
                     d.target = c.getUniqueId();
                     d.targetName = c.getName();
-                    selectDuration(p, d);
+                    chooseCategory(p, d);
                 },
                 n -> selectPlayer(p, n), () -> main(p));
         m.set(51, item(Material.NAME_TAG, "menu.select-player.by-name"), e ->
@@ -143,10 +149,6 @@ public final class AdminMenus {
                     OfflinePlayer off = Bukkit.getOfflinePlayerIfCached(name);
                     if (off == null || off.getName() == null) {
                         lang().send(p, "error.unknown-player", "player", name);
-                        return;
-                    }
-                    if (plugin.punishments().isPunished(off.getUniqueId())) {
-                        lang().send(p, "error.already-punished", "player", off.getName());
                         return;
                     }
                     Player online = off.getPlayer();
@@ -157,8 +159,53 @@ public final class AdminMenus {
                     Draft d = new Draft();
                     d.target = off.getUniqueId();
                     d.targetName = off.getName();
-                    selectDuration(p, d);
+                    chooseCategory(p, d);
                 }, () -> selectPlayer(p, 0)));
+        m.open(p);
+    }
+
+    /** Entry point for /playban <player>. */
+    public void punishPlayer(Player p, UUID target, String targetName) {
+        Draft d = new Draft();
+        d.target = target;
+        d.targetName = targetName;
+        chooseCategory(p, d);
+    }
+
+    /** The staff member picks what the player did; the plugin works out the punishment. */
+    private void chooseCategory(Player p, Draft d) {
+        d.category = null;
+        d.type = "PLAYBAN";
+        Menu m = paged(lang().msg("menu.category.title", "player", d.targetName), plugin.categories().all(), 0, c -> {
+            Category.Step step = plugin.punishments().nextStep(d.target, c);
+            int n = plugin.punishments().countOffenses(d.target, c) + 1;
+            return Items.of(c.icon, lang().msg("menu.category.entry.name", "category", c.name),
+                    lang().lore("menu.category.entry.lore", "n", n,
+                            "punishment", step == null ? lang().raw("none") : plugin.punishments().describe(step.type, step.durationMs)));
+        }, (c, e) -> {
+            Category.Step step = plugin.punishments().nextStep(d.target, c);
+            if (step == null) return;
+            d.category = c;
+            d.type = step.type;
+            d.ms = step.durationMs;
+            d.reason = c.name;
+            if (step.type.equals("PLAYBAN")) selectVictim(p, d, 0);
+            else confirm(p, d);
+        }, n -> {}, () -> selectPlayer(p, 0));
+        m.set(51, item(Material.NAME_TAG, "menu.category.custom-playban"), e -> {
+            d.type = "PLAYBAN";
+            selectDuration(p, d);
+        });
+        m.set(52, item(Material.IRON_BARS, "menu.category.custom-ban"), e -> {
+            d.type = "BAN";
+            selectDuration(p, d);
+        });
+        m.set(53, item(Material.BELL, "menu.category.custom-warn"), e ->
+                plugin.input().ask(p, "prompt.reason", text -> {
+                    d.type = "WARN";
+                    d.reason = text;
+                    confirm(p, d);
+                }, () -> chooseCategory(p, d)));
         m.open(p);
     }
 
@@ -184,7 +231,13 @@ public final class AdminMenus {
                     d.ms = ms;
                     selectReason(p, d);
                 }, () -> selectDuration(p, d)));
-        m.set(31, item(Material.OAK_DOOR, "menu.back"), e -> selectPlayer(p, 0));
+        if (d.type.equals("BAN")) {
+            m.set(23, item(Material.BEDROCK, "menu.duration.permanent"), e -> {
+                d.ms = 0;
+                selectReason(p, d);
+            });
+        }
+        m.set(31, item(Material.OAK_DOOR, "menu.back"), e -> chooseCategory(p, d));
         m.fill().open(p);
     }
 
@@ -195,13 +248,15 @@ public final class AdminMenus {
             if (slot > 16) break;
             m.set(slot++, item(Material.PAPER, "menu.reason.preset", "reason", preset), e -> {
                 d.reason = preset;
-                selectVictim(p, d, 0);
+                if (d.type.equals("PLAYBAN")) selectVictim(p, d, 0);
+                else confirm(p, d);
             });
         }
         m.set(22, item(Material.NAME_TAG, "menu.reason.custom"), e ->
                 plugin.input().ask(p, "prompt.reason", text -> {
                     d.reason = text;
-                    selectVictim(p, d, 0);
+                    if (d.type.equals("PLAYBAN")) selectVictim(p, d, 0);
+                    else confirm(p, d);
                 }, () -> selectReason(p, d)));
         m.set(31, item(Material.OAK_DOOR, "menu.back"), e -> selectDuration(p, d));
         m.fill().open(p);
@@ -219,7 +274,10 @@ public final class AdminMenus {
                     d.victimName = c.getName();
                     confirm(p, d);
                 },
-                n -> selectVictim(p, d, n), () -> selectReason(p, d));
+                n -> selectVictim(p, d, n), () -> {
+                    if (d.category != null) chooseCategory(p, d);
+                    else selectReason(p, d);
+                });
         m.set(51, item(Material.BARRIER, "menu.victim.none"), e -> {
             d.victim = null;
             d.victimName = null;
@@ -232,15 +290,13 @@ public final class AdminMenus {
         Menu m = new Menu(3, lang().msg("menu.confirm.title"));
         OfflinePlayer target = Bukkit.getOfflinePlayer(d.target);
         m.set(13, Items.head(target, lang().msg("menu.confirm.summary.name", "player", d.targetName),
-                lang().lore("menu.confirm.summary.lore", "time", TimeUtil.format(d.ms), "reason", d.reason,
+                lang().lore("menu.confirm.summary.lore", "punishment", plugin.punishments().describe(d.type, d.ms), "reason", d.reason,
                         "victim", d.victimName == null ? lang().raw("none") : d.victimName)));
         m.set(11, item(Material.LIME_CONCRETE, "menu.confirm.accept"), e -> {
             p.closeInventory();
-            if (plugin.punishments().isPunished(d.target)) {
-                lang().send(p, "error.already-punished", "player", d.targetName);
-                return;
-            }
-            plugin.punishments().punish(d.target, d.targetName, d.ms, d.reason, p.getName(), d.victim, d.victimName);
+            String error = plugin.punishments().execute(d.target, d.targetName, d.type, d.ms, d.reason, p.getName(),
+                    d.category == null ? null : d.category.id, d.victim, d.victimName);
+            if (error != null) lang().send(p, error, "player", d.targetName);
         });
         m.set(15, item(Material.RED_CONCRETE, "menu.confirm.deny"), e -> main(p));
         m.fill().open(p);
@@ -315,6 +371,8 @@ public final class AdminMenus {
             for (Punishment pun : per) if (pun.name.equalsIgnoreCase(name)) list.add(pun);
         }
         for (Punishment pun : plugin.store().active.values()) if (pun.name.equalsIgnoreCase(name)) list.add(pun);
+        for (Punishment pun : plugin.store().bans.values()) if (pun.name.equalsIgnoreCase(name)) list.add(pun);
+        list.sort(java.util.Comparator.comparingLong((Punishment pun) -> pun.createdAt).reversed());
         if (list.isEmpty()) {
             lang().send(p, "error.no-history", "player", name);
             return;
@@ -322,10 +380,143 @@ public final class AdminMenus {
         paged(lang().msg("menu.history.title", "player", list.get(0).name), list, 0,
                 pun -> Items.of(pun.endedAt == 0 ? Material.RED_DYE : Material.PAPER,
                         lang().msg("menu.history.entry.name", "date", date(pun.createdAt)),
-                        lang().lore("menu.history.entry.lore", "original", TimeUtil.format(pun.originalMs),
+                        lang().lore("menu.history.entry.lore", "punishment", plugin.punishments().describe(pun.type, pun.originalMs),
+                                "category", categoryName(pun),
                                 "reason", pun.reason, "staff", pun.staff, "done", pun.tasksDone(), "total", pun.tasks.size(),
                                 "end", lang().msg(pun.endedAt == 0 ? "history.running" : "history." + pun.endReason))),
                 null, n -> {}, () -> main(p)).open(p);
+    }
+
+    private String categoryName(Punishment pun) {
+        Category c = plugin.categories().get(pun.category);
+        return c != null ? c.name : pun.category != null ? pun.category : lang().raw("custom");
+    }
+
+    public void bans(Player p, int page) {
+        List<Punishment> list = new ArrayList<>(plugin.store().bans.values());
+        Menu m = paged(lang().msg("menu.bans.title"), list, page,
+                ban -> Items.head(Bukkit.getOfflinePlayer(ban.uuid), lang().msg("menu.bans.entry.name", "player", ban.name),
+                        lang().lore("menu.bans.entry.lore",
+                                "time", ban.expiresAt <= 0 ? lang().raw("permanent") : TimeUtil.format(Math.max(1000, ban.expiresAt - System.currentTimeMillis())),
+                                "reason", ban.reason, "staff", ban.staff, "date", date(ban.createdAt))),
+                (ban, e) -> {
+                    if (!e.isShiftClick()) return;
+                    plugin.punishments().unban(ban, p.getName());
+                    bans(p, page);
+                }, n -> bans(p, n), () -> main(p));
+        if (list.isEmpty()) m.set(22, item(Material.LIME_DYE, "menu.bans.empty"));
+        m.open(p);
+    }
+
+    // ---------------------------------------------------------------- category editor
+
+    public void categories(Player p, int page) {
+        if (!admin(p)) return;
+        Menu m = paged(lang().msg("menu.categories.title"), plugin.categories().all(), page, c -> {
+            List<Component> lore = new ArrayList<>(stepLore(c));
+            lore.addAll(lang().lore("menu.categories.entry.lore",
+                    "expire", c.expireMs <= 0 ? lang().raw("never") : TimeUtil.format(c.expireMs)));
+            return Items.of(c.icon, lang().msg("menu.category.entry.name", "category", c.name), lore);
+        }, (c, e) -> categoryEdit(p, c.id), n -> categories(p, n), () -> main(p));
+        m.set(51, item(Material.NETHER_STAR, "menu.categories.new"), e ->
+                plugin.input().ask(p, "prompt.category-name", name -> categoryEdit(p, plugin.categories().create(name).id), () -> categories(p, 0)));
+        m.open(p);
+    }
+
+    private List<Component> stepLore(Category c) {
+        List<Component> lore = new ArrayList<>();
+        for (int i = 0; i < c.steps.size(); i++) {
+            Category.Step s = c.steps.get(i);
+            lore.add(lang().msg(i == c.steps.size() - 1 ? "menu.categories.step-last" : "menu.categories.step",
+                    "n", i + 1, "punishment", plugin.punishments().describe(s.type, s.durationMs)));
+        }
+        return lore;
+    }
+
+    public void categoryEdit(Player p, String id) {
+        Category c = plugin.categories().get(id);
+        if (c == null || !admin(p)) {
+            categories(p, 0);
+            return;
+        }
+        Menu m = new Menu(6, lang().msg("menu.category-edit.title", "category", c.name));
+        m.set(4, Items.of(c.icon, lang().msg("menu.category.entry.name", "category", c.name), stepLore(c)));
+        m.set(10, item(Material.NAME_TAG, "menu.category-edit.name", "value", c.name), e ->
+                plugin.input().ask(p, "prompt.category-name", text -> {
+                    c.name = text;
+                    plugin.categories().save();
+                    categoryEdit(p, id);
+                }, () -> categoryEdit(p, id)));
+        m.set(12, item(c.icon, "menu.category-edit.icon"), e -> {
+            Material hand = p.getInventory().getItemInMainHand().getType();
+            if (hand.isAir()) {
+                lang().send(p, "error.hold-item");
+                return;
+            }
+            c.icon = hand;
+            plugin.categories().save();
+            categoryEdit(p, id);
+        });
+        m.set(14, item(Material.CLOCK, "menu.category-edit.expire",
+                "value", c.expireMs <= 0 ? lang().raw("never") : TimeUtil.format(c.expireMs)), e ->
+                plugin.input().ask(p, "prompt.category-expire", text -> {
+                    long ms = text.trim().equals("0") ? 0 : TimeUtil.parse(text);
+                    if (ms < 0) lang().send(p, "error.bad-time", "input", text);
+                    else c.expireMs = ms;
+                    plugin.categories().save();
+                    categoryEdit(p, id);
+                }, () -> categoryEdit(p, id)));
+        m.set(16, item(Material.LAVA_BUCKET, "menu.category-edit.delete"), e -> {
+            if (!e.isShiftClick()) return;
+            plugin.categories().delete(id);
+            categories(p, 0);
+        });
+
+        int[] slots = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+        for (int i = 0; i < c.steps.size() && i < slots.length; i++) {
+            Category.Step step = c.steps.get(i);
+            int index = i;
+            Material icon = switch (step.type) {
+                case "WARN" -> Material.BELL;
+                case "BAN" -> Material.IRON_BARS;
+                default -> Material.CLOCK;
+            };
+            ItemStack stepItem = item(icon, "menu.category-edit.step", "n", i + 1,
+                    "punishment", plugin.punishments().describe(step.type, step.durationMs));
+            stepItem.setAmount(Math.min(64, i + 1));
+            m.set(slots[i], stepItem, e -> {
+                if (e.isShiftClick()) {
+                    c.steps.remove(index);
+                    plugin.categories().save();
+                    categoryEdit(p, id);
+                } else if (e.isRightClick()) {
+                    if (step.type.equals("WARN")) return;
+                    plugin.input().ask(p, step.type.equals("BAN") ? "prompt.step-duration-ban" : "prompt.step-duration", text -> {
+                        boolean permanent = step.type.equals("BAN") && CategoryRegistry.isPermanent(text);
+                        long ms = permanent ? 0 : TimeUtil.parse(text);
+                        if (!permanent && ms <= 0) lang().send(p, "error.bad-time", "input", text);
+                        else step.durationMs = ms;
+                        plugin.categories().save();
+                        categoryEdit(p, id);
+                    }, () -> categoryEdit(p, id));
+                } else {
+                    step.type = CategoryRegistry.TYPES.get((CategoryRegistry.TYPES.indexOf(step.type) + 1) % CategoryRegistry.TYPES.size());
+                    if (step.type.equals("PLAYBAN") && step.durationMs <= 0) step.durationMs = 86_400_000L;
+                    plugin.categories().save();
+                    categoryEdit(p, id);
+                }
+            });
+        }
+        if (c.steps.size() < slots.length) {
+            m.set(slots[c.steps.size()], item(Material.NETHER_STAR, "menu.category-edit.add-step"), e -> {
+                Category.Step last = c.steps.isEmpty() ? null : c.steps.get(c.steps.size() - 1);
+                c.steps.add(last == null ? new Category.Step("WARN", 0) : new Category.Step(last.type, last.durationMs));
+                plugin.categories().save();
+                categoryEdit(p, id);
+            });
+        }
+        m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> categories(p, 0));
+        m.fill().open(p);
     }
 
     // ---------------------------------------------------------------- reviews & tickets

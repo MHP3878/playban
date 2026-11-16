@@ -23,6 +23,8 @@ import java.util.UUID;
 public final class DataStore {
     private final PlayBanPlugin plugin;
     public final Map<UUID, Punishment> active = new LinkedHashMap<>();
+    /** Real bans. Read from the login thread, so this one is thread-safe. */
+    public final Map<UUID, Punishment> bans = new java.util.concurrent.ConcurrentHashMap<>();
     public final Map<UUID, List<Punishment>> history = new LinkedHashMap<>();
     public final Map<String, Review> reviews = new LinkedHashMap<>();
     public final Map<String, Ticket> tickets = new LinkedHashMap<>();
@@ -54,6 +56,11 @@ public final class DataStore {
         if (a != null) for (String k : a.getKeys(false)) {
             Punishment p = readPunishment(a.getConfigurationSection(k));
             if (p != null) active.put(p.uuid, p);
+        }
+        ConfigurationSection b = cfg.getConfigurationSection("bans");
+        if (b != null) for (String k : b.getKeys(false)) {
+            Punishment p = readPunishment(b.getConfigurationSection(k));
+            if (p != null) bans.put(p.uuid, p);
         }
         ConfigurationSection h = cfg.getConfigurationSection("history");
         if (h != null) for (String k : h.getKeys(false)) {
@@ -104,6 +111,9 @@ public final class DataStore {
             Punishment p = new Punishment();
             p.uuid = UUID.fromString(s.getString("uuid", ""));
             p.name = s.getString("name", "?");
+            p.type = s.getString("type", "PLAYBAN");
+            p.category = s.getString("category");
+            p.expiresAt = s.getLong("expires");
             p.reason = s.getString("reason", "");
             p.staff = s.getString("staff", "?");
             p.createdAt = s.getLong("created");
@@ -135,6 +145,9 @@ public final class DataStore {
     private void writePunishment(YamlConfiguration cfg, String path, Punishment p) {
         cfg.set(path + ".uuid", p.uuid.toString());
         cfg.set(path + ".name", p.name);
+        cfg.set(path + ".type", p.type);
+        if (p.category != null) cfg.set(path + ".category", p.category);
+        if (p.expiresAt > 0) cfg.set(path + ".expires", p.expiresAt);
         cfg.set(path + ".reason", p.reason);
         cfg.set(path + ".staff", p.staff);
         cfg.set(path + ".created", p.createdAt);
@@ -158,6 +171,7 @@ public final class DataStore {
     private String serialize() {
         YamlConfiguration cfg = new YamlConfiguration();
         for (Punishment p : active.values()) writePunishment(cfg, "active." + p.uuid, p);
+        for (Punishment p : bans.values()) writePunishment(cfg, "bans." + p.uuid, p);
         for (Map.Entry<UUID, List<Punishment>> e : history.entrySet()) {
             int i = 0;
             for (Punishment p : e.getValue()) writePunishment(cfg, "history." + e.getKey() + "." + (i++), p);

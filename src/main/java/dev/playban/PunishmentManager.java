@@ -1,5 +1,6 @@
 package dev.playban;
 
+import dev.playban.model.Category;
 import dev.playban.model.Punishment;
 import dev.playban.model.Punishment.TaskProgress;
 import dev.playban.model.Review;
@@ -70,8 +71,13 @@ public final class PunishmentManager {
     // ---------------------------------------------------------------- start / end
 
     public Punishment punish(UUID id, String name, long ms, String reason, String staff, UUID victim, String victimName) {
+        return punish(id, name, ms, reason, staff, victim, victimName, null);
+    }
+
+    public Punishment punish(UUID id, String name, long ms, String reason, String staff, UUID victim, String victimName, String category) {
         long now = System.currentTimeMillis();
         Punishment p = new Punishment();
+        p.category = category;
         p.uuid = id;
         p.name = name;
         p.reason = reason;
@@ -140,6 +146,119 @@ public final class PunishmentManager {
             lang().send(online, deltaMs > 0 ? "time.added-you" : "time.removed-you", "time", TimeUtil.format(Math.abs(deltaMs)));
             updateBar(online, p);
         }
+    }
+
+    // ---------------------------------------------------------------- categories, warnings and real bans
+
+    /** How often the player was already punished in this category (lifted punishments do not count). */
+    public int countOffenses(UUID id, Category category) {
+        long now = System.currentTimeMillis();
+        int n = 0;
+        List<Punishment> all = new ArrayList<>(store().history.getOrDefault(id, List.of()));
+        if (store().active.containsKey(id)) all.add(store().active.get(id));
+        if (store().bans.containsKey(id)) all.add(store().bans.get(id));
+        for (Punishment p : all) {
+            if (!category.id.equals(p.category) || "PARDONED".equals(p.endReason)) continue;
+            if (category.expireMs > 0 && now - p.createdAt > category.expireMs) continue;
+            n++;
+        }
+        return n;
+    }
+
+    /** The punishment the next offense in this category leads to, or null when the category has no steps. */
+    public Category.Step nextStep(UUID id, Category category) {
+        if (category.steps.isEmpty()) return null;
+        return category.steps.get(Math.min(countOffenses(id, category), category.steps.size() - 1));
+    }
+
+    public String describe(String type, long ms) {
+        String name = lang().raw("type." + type);
+        if (type.equals("WARN")) return name;
+        if (type.equals("BAN") && ms <= 0) return name + " (" + lang().raw("permanent") + ")";
+        return name + " (" + TimeUtil.format(ms) + ")";
+    }
+
+    /**
+     * Carries out any kind of punishment. Returns the key of an error text when it is not possible, otherwise null.
+     */
+    public String execute(UUID id, String name, String type, long ms, String reason, String staff,
+                          String category, UUID victim, String victimName) {
+        switch (type) {
+            case "WARN" -> warn(id, name, reason, staff, category);
+            case "BAN" -> {
+                if (store().bans.containsKey(id)) return "error.already-banned";
+                ban(id, name, ms, reason, staff, category);
+            }
+            default -> {
+                if (isPunished(id)) return "error.already-punished";
+                if (store().bans.containsKey(id)) return "error.already-banned";
+                if (ms <= 0) return "error.bad-duration";
+                punish(id, name, ms, reason, staff, victim, victimName, category);
+            }
+        }
+        return null;
+    }
+
+    private Punishment record(UUID id, String name, String type, String reason, String staff, String category) {
+        Punishment p = new Punishment();
+        p.type = type;
+        p.uuid = id;
+        p.name = name;
+        p.reason = reason;
+        p.staff = staff;
+        p.category = category;
+        p.createdAt = System.currentTimeMillis();
+        p.lastUpdate = p.createdAt;
+        return p;
+    }
+
+    public void warn(UUID id, String name, String reason, String staff, String category) {
+        Punishment p = record(id, name, "WARN", reason, staff, category);
+        p.endedAt = p.createdAt;
+        p.endReason = "WARNED";
+        store().history.computeIfAbsent(id, k -> new ArrayList<>()).add(p);
+        store().markDirty();
+        Player online = Bukkit.getPlayer(id);
+        if (online != null) {
+            online.showTitle(Title.title(lang().msg("warn.title"), lang().msg("warn.subtitle", "reason", reason)));
+            online.playSound(online.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 0.6f);
+        }
+        deliver(id, lang().prefixed("warn.you", "reason", reason));
+        notifyStaff(lang().prefixed("warn.broadcast", "player", name, "staff", staff, "reason", reason));
+    }
+
+    public void ban(UUID id, String name, long ms, String reason, String staff, String category) {
+        Punishment p = record(id, name, "BAN", reason, staff, category);
+        p.originalMs = Math.max(0, ms);
+        p.expiresAt = ms <= 0 ? 0 : p.createdAt + ms;
+        store().bans.put(id, p);
+        store().markDirty();
+        Player online = Bukkit.getPlayer(id);
+        if (online != null) online.kick(banScreen(p));
+        notifyStaff(lang().prefixed("ban.broadcast", "player", name, "staff", staff,
+                "time", ms <= 0 ? lang().raw("permanent") : TimeUtil.format(ms), "reason", reason));
+    }
+
+    public void unban(Punishment p, String by) {
+        if (store().bans.remove(p.uuid) == null) return;
+        p.endedAt = System.currentTimeMillis();
+        p.endReason = by == null ? "SERVED" : "PARDONED";
+        store().history.computeIfAbsent(p.uuid, k -> new ArrayList<>()).add(p);
+        store().markDirty();
+        if (by != null) notifyStaff(lang().prefixed("ban.broadcast-unbanned", "player", p.name, "staff", by));
+    }
+
+    /** The active ban of a player, or null. Safe to call from the login thread. */
+    public Punishment activeBan(UUID id) {
+        Punishment p = store().bans.get(id);
+        if (p == null) return null;
+        if (p.expiresAt > 0 && p.expiresAt <= System.currentTimeMillis()) return null;
+        return p;
+    }
+
+    public Component banScreen(Punishment p) {
+        String left = p.expiresAt <= 0 ? lang().raw("permanent") : TimeUtil.format(Math.max(1000, p.expiresAt - System.currentTimeMillis()));
+        return lang().msg("ban.screen", "reason", p.reason, "time", left, "staff", p.staff);
     }
 
     // ---------------------------------------------------------------- state on the player
@@ -229,6 +348,9 @@ public final class PunishmentManager {
             } else if (online != null) {
                 updateBar(online, p);
             }
+        }
+        for (Punishment ban : new ArrayList<>(store().bans.values())) {
+            if (ban.expiresAt > 0 && ban.expiresAt <= now) unban(ban, null);
         }
         if (++seconds % 30 == 0) store().saveIfDirty();
     }

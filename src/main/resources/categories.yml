@@ -1,0 +1,51 @@
+# Offense categories with their punishment ladder.
+# Easier to edit in-game: /playban menu -> Categories
+#
+# steps:        1st entry = first offense, 2nd entry = second offense, ...
+#               The last step is used for every further offense.
+# type:         WARN | PLAYBAN | BAN
+# duration:     e.g. "1d". For BAN you can also write "permanent".
+# expire-after: offenses older than this no longer count, e.g. "90d". "0" = they always count
+categories:
+  x-ray:
+    name: "X-Ray"
+    icon: DIAMOND_ORE
+    expire-after: "0"
+    steps:
+      - {type: PLAYBAN, duration: "3d"}
+      - {type: BAN, duration: "14d"}
+      - {type: BAN, duration: "permanent"}
+  cheating:
+    name: "Cheating"
+    icon: BLAZE_POWDER
+    expire-after: "0"
+    steps:
+      - {type: PLAYBAN, duration: "1d"}
+      - {type: PLAYBAN, duration: "3d"}
+      - {type: BAN, duration: "7d"}
+      - {type: BAN, duration: "permanent"}
+  disrespect:
+    name: "Disrespectful behavior"
+    icon: PUFFERFISH
+    expire-after: "90d"
+    steps:
+      - {type: WARN}
+      - {type: PLAYBAN, duration: "2h"}
+      - {type: PLAYBAN, duration: "1d"}
+      - {type: BAN, duration: "3d"}
+  griefing:
+    name: "Griefing"
+    icon: TNT
+    expire-after: "0"
+    steps:
+      - {type: PLAYBAN, duration: "1d"}
+      - {type: PLAYBAN, duration: "7d"}
+      - {type: BAN, duration: "30d"}
+  spam:
+    name: "Spam"
+    icon: PAPER
+    expire-after: "30d"
+    steps:
+      - {type: WARN}
+      - {type: PLAYBAN, duration: "1h"}
+      - {type: PLAYBAN, duration: "12h"}

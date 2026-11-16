@@ -1,0 +1,46 @@
+# Tasks a punished player can complete to shorten the punishment.
+# Easier to edit in-game: /playban menu -> Tasks
+#
+# type:        STAFF_MESSAGE | NICE_MESSAGE | GIFT_MONEY | DONATE_ITEMS | QUIZ
+# reduction:   time taken off, e.g. "30m" or "10%" (percent of the original duration)
+# time-limit:  time the player has for the task, e.g. "2h". "0" = no limit
+# target:      VICTIM (the player chosen when punishing) or ANY (punished player picks someone)
+# name:        optional custom name, leave empty for the default
+tasks:
+  apology:
+    type: STAFF_MESSAGE
+    enabled: true
+    reduction: "10%"
+    time-limit: "0"
+    min-length: 40
+  nice-message:
+    type: NICE_MESSAGE
+    enabled: true
+    target: VICTIM
+    reduction: "15%"
+    time-limit: "2h"
+    min-length: 30
+  rules-quiz:
+    type: QUIZ
+    enabled: true
+    reduction: "10%"
+    time-limit: "0"
+    questions:
+      - question: "Is griefing allowed on this server?"
+        answers: ["No", "Yes", "Only at night"]
+      - question: "What should you do when another player annoys you?"
+        answers: ["Report it to the team", "Insult them", "Destroy their base"]
+  donation:
+    type: DONATE_ITEMS
+    enabled: true
+    material: COBBLESTONE
+    amount: 64
+    reduction: "5%"
+    time-limit: "0"
+  gift:
+    type: GIFT_MONEY
+    enabled: true
+    target: VICTIM
+    amount: 500
+    reduction: "20%"
+    time-limit: "0"

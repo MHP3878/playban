@@ -1,0 +1,44 @@
+# PlayBan - everything in this file can also be changed in-game with /playban menu
+
+# Language of all texts. Bundled: en, de. Files are in the lang/ folder.
+language: en
+
+# true  = the punishment only runs down while the player is online (they have to play it off)
+# false = the punishment runs down in real time, like a normal temporary ban
+count-only-online-time: true
+
+# Staff with the permission playban.see can still see punished players
+staff-see-punished: true
+
+# true = nice messages and apologies are delivered without a staff review (not recommended)
+auto-approve-messages: false
+
+# What a punished player is NOT allowed to do
+restrictions:
+  hide-from-players: true
+  block-break: true
+  block-place: true
+  interact: true
+  damage: true
+  invulnerable: true
+  item-drop: true
+  item-pickup: true
+  chat: true
+  commands: true
+  mob-target: true
+
+# Commands a punished player may still use (without the slash).
+# /playban and /ticket always work.
+allowed-commands:
+  - rules
+  - help
+  - spawn
+
+# Quick-select buttons in the punish menu
+duration-presets: [30m, 1h, 6h, 1d, 3d, 7d]
+reason-presets:
+  - Griefing
+  - Insulting
+  - Spam
+  - Cheating
+  - Scamming

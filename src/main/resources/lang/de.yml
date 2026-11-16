@@ -1,0 +1,510 @@
+# PlayBan - deutsche Texte
+# Farben nutzen das MiniMessage-Format: https://docs.advntr.dev/minimessage/format.html
+# Wörter in {geschweiften Klammern} füllt das Plugin aus - bitte so stehen lassen.
+
+prefix: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <dark_gray>»</dark_gray> "
+none: "niemand"
+no-reason: "Kein Grund angegeben"
+no-limit: "keine Frist"
+staff-team: "das Serverteam"
+online: "<green>online"
+offline: "<gray>offline"
+reloaded: "<green>Einstellungen neu geladen."
+language-set: "<green>Sprache auf <white>{language}</white> gestellt."
+
+help: |-
+  <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- Befehle
+  <#ffc371>/playban menu <dark_gray>-</dark_gray> <gray>Hauptmenü öffnen
+  <#ffc371>/playban punish <Spieler> <Zeit> [Grund] <dark_gray>-</dark_gray> <gray>Spieler bestrafen
+  <#ffc371>/playban pardon <Spieler> <dark_gray>-</dark_gray> <gray>Strafe beenden
+  <#ffc371>/playban addtime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verlängern
+  <#ffc371>/playban removetime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verkürzen
+  <#ffc371>/playban info <Spieler> <dark_gray>-</dark_gray> <gray>Strafe anzeigen
+  <#ffc371>/playban list <dark_gray>-</dark_gray> <gray>alle bestraften Spieler
+  <#ffc371>/playban history <Spieler> <dark_gray>-</dark_gray> <gray>frühere Strafen
+  <#ffc371>/playban lang <Kürzel> <dark_gray>-</dark_gray> <gray>Sprache ändern
+  <#ffc371>/playban reload <dark_gray>-</dark_gray> <gray>Dateien neu laden
+  <gray>Zeiten schreibst du so: <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
+
+usage:
+  punish: "<gray>Nutzung: <white>/playban punish <Spieler> <Zeit> [Grund]"
+  pardon: "<gray>Nutzung: <white>/playban pardon <Spieler>"
+  addtime: "<gray>Nutzung: <white>/playban addtime <Spieler> <Zeit>"
+  removetime: "<gray>Nutzung: <white>/playban removetime <Spieler> <Zeit>"
+  info: "<gray>Nutzung: <white>/playban info <Spieler>"
+  history: "<gray>Nutzung: <white>/playban history <Spieler>"
+  lang: "<gray>Nutzung: <white>/playban lang <Kürzel></white> - verfügbar: <white>{list}"
+  ticket: "<gray>Nutzung: <white>/ticket <deine Nachricht>"
+
+error:
+  no-permission: "<red>Das darfst du nicht."
+  players-only: "<red>Das geht nur als Spieler."
+  unknown-player: "<red>Der Spieler <white>{player}</white> war noch nie auf diesem Server."
+  already-punished: "<red><white>{player}</white> ist bereits bestraft."
+  not-punished: "<red><white>{player}</white> ist nicht bestraft."
+  not-punished-self: "<gray>Du bist nicht bestraft. Hier gibt es nichts zu sehen."
+  exempt: "<red><white>{player}</white> kann nicht bestraft werden."
+  bad-time: "<red><white>{input}</white> ist keine Zeit. Beispiele: <white>30m</white>, <white>2h</white>, <white>1d 12h</white>."
+  bad-number: "<red><white>{input}</white> ist keine gültige Zahl."
+  bad-reduction: "<red><white>{input}</white> ist ungültig. Nimm eine Zeit wie <white>30m</white> oder einen Anteil wie <white>10%</white>."
+  bad-answers: "<red>Eine Frage braucht mindestens zwei Antworten, getrennt durch <white>|</white>."
+  hold-item: "<red>Nimm das gewünschte Item in die Haupthand und klicke noch einmal."
+  no-history: "<gray>Keine Strafen für <white>{player}</white> gefunden."
+
+punish:
+  title: "<gradient:#ff5f6d:#ffc371><bold>PLAYBAN</bold></gradient>"
+  subtitle: "<gray>Du bist für <white>{time}</white> eingeschränkt"
+  broadcast: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>für</gray> <white>{time}</white> <gray>bestraft. Grund:</gray> <white>{reason}"
+
+end:
+  title: "<green><bold>WIEDER FREI</bold></green>"
+  subtitle: "<gray>Deine Strafe ist vorbei. Spiel fair."
+  served: "<green>Deine Strafe ist vorbei. Willkommen zurück!"
+  pardoned: "<green>Das Serverteam hat deine Strafe vorzeitig beendet."
+  broadcast-served: "<gray>Die Strafe von <white>{player}</white> ist vorbei."
+  broadcast-pardoned: "<white>{staff}</white> <gray>hat die Strafe von</gray> <white>{player}</white> <gray>beendet."
+
+status:
+  line: "<gray>Du bist noch <white>{time}</white> bestraft. Grund: <white>{reason}"
+  online-only: "<gray>Die Zeit läuft nur, solange du <white>online</white> bist."
+  real-time: "<gray>Die Zeit läuft auch, wenn du offline bist."
+  hint: "<gray>Mit <#ffc371>/playban</#ffc371> siehst du Aufgaben, die deine Zeit verkürzen."
+  OPEN: "<yellow>● Offen"
+  PENDING: "<gold>● Wartet auf das Team"
+  DONE: "<green>✔ Erledigt"
+  EXPIRED: "<red>✘ Zu spät"
+
+mode:
+  online: "nur wenn du online bist"
+  real: "Echtzeit"
+
+bossbar: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <dark_gray>|</dark_gray> <gray>noch</gray> <white>{time}</white> <dark_gray>|</dark_gray> <gray>Aufgaben</gray> <white>{done}/{total}</white> <dark_gray>|</dark_gray> <#ffc371>/playban"
+
+blocked:
+  action: "<red>Das geht nicht, solange du bestraft bist."
+  chat: "<red>Du kannst nicht chatten, solange du bestraft bist. Mit <white>/ticket <Nachricht></white> erreichst du das Team."
+  command: "<red>Dieser Befehl ist gesperrt, solange du bestraft bist."
+
+time:
+  added-you: "<red>Deine Strafe wurde um <white>{time}</white> verlängert."
+  removed-you: "<green>Deine Strafe wurde um <white>{time}</white> verkürzt."
+  changed: "<gray><white>{player}</white> hat jetzt noch <white>{time}</white>."
+
+info:
+  line: "<white>{player}</white> <dark_gray>|</dark_gray> <gray>noch:</gray> <white>{time}</white> <dark_gray>|</dark_gray> <gray>Grund:</gray> <white>{reason}</white> <dark_gray>|</dark_gray> <gray>von:</gray> <white>{staff}</white> <dark_gray>|</dark_gray> <gray>Aufgaben:</gray> <white>{done}/{total}"
+
+list:
+  empty: "<gray>Gerade ist niemand bestraft."
+  header: "<gray>Bestrafte Spieler: <white>{count}"
+  entry: " <dark_gray>-</dark_gray> <white>{player}</white> <dark_gray>|</dark_gray> <white>{time}</white> <dark_gray>|</dark_gray> <gray>{reason}"
+
+history:
+  running: "<red>läuft noch"
+  SERVED: "<green>abgesessen"
+  PARDONED: "<yellow>vom Team vorzeitig beendet"
+
+staff:
+  pending: "<gray>Wartet auf das Team: <white>{reviews}</white> Nachrichten zum Prüfen, <white>{tickets}</white> Tickets. <#ffc371>/playban menu"
+
+review:
+  submitted: "<green>Deine Nachricht ging an das Team. Die Aufgabe zählt, sobald es sie freigibt."
+  new: "<gray><white>{player}</white> hat eine Nachricht geschrieben, die geprüft werden muss. <#ffc371>/playban menu"
+  approved: "<green>Nachricht von <white>{player}</white> freigegeben."
+  rejected: "<gray>Nachricht von <white>{player}</white> abgelehnt."
+  rejected-you: "<red>Das Team hat deine Nachricht abgelehnt. Du kannst die Aufgabe noch einmal versuchen."
+  delivered: "<gray>Eine Nachricht für dich von <white>{player}</white>:</gray> <white>{text}"
+
+ticket:
+  sent: "<green>Dein Ticket ging an das Team."
+  too-many: "<red>Du hast schon 3 offene Tickets. Bitte warte auf eine Antwort."
+  new: "<gray>Ticket von <white>{player}</white>:</gray> <white>{text}"
+  reply: "<gray>Antwort von <white>{staff}</white>:</gray> <white>{text}"
+  replied: "<green>Antwort an <white>{player}</white> gesendet."
+
+target:
+  VICTIM: "der betroffene Spieler"
+  ANY: "ein beliebiger Spieler"
+
+task:
+  any-player: "einen Spieler deiner Wahl"
+  done: "<green>Aufgabe erledigt: <white>{task}</white>. Deine Strafe ist <white>{time}</white> kürzer."
+  expired: "<red>Die Zeit für die Aufgabe <white>{task}</white> ist abgelaufen."
+  not-open: "<red>Diese Aufgabe ist nicht mehr offen."
+  too-short: "<red>Das ist zu kurz. Schreib mindestens <white>{min}</white> Zeichen."
+  not-yourself: "<red>Du kannst dich nicht selbst auswählen."
+  no-economy: "<red>Dieser Server hat kein Geldsystem."
+  not-enough-money: "<red>Dafür brauchst du <white>{amount}</white>."
+  payment-failed: "<red>Die Zahlung hat nicht geklappt. Es wurde nichts abgezogen."
+  gift-received: "<green><white>{player}</white> hat dir <white>{amount}</white> als Entschuldigung geschenkt."
+  not-enough-items: "<red>Du brauchst <white>{amount}x {item}</white> im Inventar."
+  quiz-wrong: "<red>Das war falsch. Öffne die Aufgabe noch einmal und versuch es erneut."
+  STAFF_MESSAGE:
+    name: "<#ffc371>Beim Team entschuldigen"
+    desc:
+      - "<gray>Schreib dem Serverteam eine"
+      - "<gray>ehrliche Nachricht."
+      - "<dark_gray>Mindestens {min} Zeichen"
+    about:
+      - "<gray>Der Spieler schreibt eine"
+      - "<gray>Entschuldigung, die das Team"
+      - "<gray>freigeben muss."
+  NICE_MESSAGE:
+    name: "<#ffc371>Etwas Nettes schreiben"
+    desc:
+      - "<gray>Schreib eine nette Nachricht an"
+      - "<white>{target}</white><gray>."
+      - "<dark_gray>Mindestens {min} Zeichen, das Team prüft sie"
+    about:
+      - "<gray>Der Spieler schreibt einem anderen"
+      - "<gray>Spieler eine nette Nachricht. Das"
+      - "<gray>Team prüft sie vor der Zustellung."
+  GIFT_MONEY:
+    name: "<#ffc371>Geld schenken"
+    desc:
+      - "<gray>Schenke <white>{amount}</white> an"
+      - "<white>{target}</white><gray>."
+    about:
+      - "<gray>Der Spieler schenkt einem anderen"
+      - "<gray>Spieler Geld. Braucht Vault."
+  DONATE_ITEMS:
+    name: "<#ffc371>Items spenden"
+    desc:
+      - "<gray>Gib <white>{amount}x {item}</white>"
+      - "<gray>aus deinem Inventar ab."
+    about:
+      - "<gray>Der Spieler gibt Items aus"
+      - "<gray>seinem Inventar ab."
+  QUIZ:
+    name: "<#ffc371>Regel-Quiz"
+    desc:
+      - "<gray>Beantworte <white>{count}</white> Fragen zu den"
+      - "<gray>Serverregeln richtig."
+    about:
+      - "<gray>Der Spieler beantwortet Fragen,"
+      - "<gray>die du selbst schreibst."
+
+prompt:
+  cancel-hint: "<dark_gray>Schreib <gray>cancel</gray> zum Abbrechen."
+  cancelled: "<gray>Abgebrochen."
+  ticket: "<#ffc371>Schreib deine Nachricht an das Team in den Chat."
+  staff-message: "<#ffc371>Schreib deine Entschuldigung an das Team in den Chat. <gray>(mindestens {min} Zeichen)"
+  nice-message: "<#ffc371>Schreib deine nette Nachricht an <white>{player}</white> in den Chat. <gray>(mindestens {min} Zeichen)"
+  target-name: "<#ffc371>Schreib den Namen des Spielers in den Chat."
+  player-name: "<#ffc371>Schreib den Namen des Spielers, den du bestrafen willst."
+  history-name: "<#ffc371>Schreib den Namen des Spielers, dessen Verlauf du sehen willst."
+  duration: "<#ffc371>Schreib die Dauer, zum Beispiel <white>45m</white>, <white>2h</white> oder <white>1d 12h</white>."
+  reason: "<#ffc371>Schreib den Grund in den Chat."
+  change-time: "<#ffc371>Schreib <white>+30m</white> zum Verlängern oder <white>-30m</white> zum Verkürzen."
+  ticket-reply: "<#ffc371>Schreib deine Antwort an <white>{player}</white> in den Chat."
+  command: "<#ffc371>Schreib den Befehl, den bestrafte Spieler nutzen dürfen, zum Beispiel <white>spawn</white>."
+  duration-presets: "<#ffc371>Schreib bis zu 7 Zeiten, getrennt durch Kommas. Beispiel: <white>30m, 1h, 6h, 1d"
+  reason-presets: "<#ffc371>Schreib bis zu 7 Gründe, getrennt durch Kommas. Beispiel: <white>Griefing, Spam"
+  task-reduction: "<#ffc371>Wie viel Zeit zieht diese Aufgabe ab? Eine Zeit wie <white>30m</white> oder ein Anteil wie <white>10%</white>."
+  task-limit: "<#ffc371>Wie lange hat der Spieler für diese Aufgabe? Beispiel: <white>2h</white>. Schreib <white>0</white> für keine Frist."
+  task-name: "<#ffc371>Schreib einen Namen für diese Aufgabe. Mit <white>-</white> gilt wieder der Standardname."
+  task-number: "<#ffc371>Schreib die neue Zahl in den Chat."
+  question: "<#ffc371>Schreib die Frage in den Chat."
+  answers: "<#ffc371>Schreib die Antworten, getrennt durch <white>|</white>. Die <white>erste</white> ist die richtige. Beispiel: <white>Nein | Ja | Manchmal"
+
+setting:
+  restrictions:
+    hide-from-players:
+      name: "<#ffc371>Für andere unsichtbar"
+      lore: ["<gray>Andere Spieler sehen den", "<gray>bestraften Spieler nicht."]
+    block-break:
+      name: "<#ffc371>Kein Abbauen"
+      lore: ["<gray>Der Spieler kann keine Blöcke abbauen."]
+    block-place:
+      name: "<#ffc371>Kein Platzieren"
+      lore: ["<gray>Der Spieler kann keine Blöcke setzen."]
+    interact:
+      name: "<#ffc371>Keine Interaktion"
+      lore: ["<gray>Keine Kisten, Türen, Knöpfe,", "<gray>Dorfbewohner, Fahrzeuge oder Essen."]
+    damage:
+      name: "<#ffc371>Kein Angreifen"
+      lore: ["<gray>Der Spieler kann weder Spieler", "<gray>noch Tiere verletzen."]
+    invulnerable:
+      name: "<#ffc371>Unverwundbar"
+      lore: ["<gray>Der Spieler bekommt keinen Schaden", "<gray>und wird nicht hungrig."]
+    item-drop:
+      name: "<#ffc371>Kein Wegwerfen"
+      lore: ["<gray>Der Spieler kann keine Items wegwerfen."]
+    item-pickup:
+      name: "<#ffc371>Kein Aufheben"
+      lore: ["<gray>Der Spieler kann keine Items aufheben."]
+    chat:
+      name: "<#ffc371>Kein Chat"
+      lore: ["<gray>Der Spieler kann nicht chatten.", "<gray>Tickets gehen weiterhin."]
+    commands:
+      name: "<#ffc371>Befehle gesperrt"
+      lore: ["<gray>Nur die erlaubten Befehle", "<gray>funktionieren."]
+    mob-target:
+      name: "<#ffc371>Monster ignorieren ihn"
+      lore: ["<gray>Monster greifen den Spieler", "<gray>nicht an."]
+  count-only-online-time:
+    name: "<#ffc371>Nur Online-Zeit zählt"
+    lore: ["<gray>An: Die Zeit läuft nur, solange", "<gray>der Spieler auf dem Server ist.", "<gray>Aus: Sie läuft wie bei einem Bann."]
+  staff-see-punished:
+    name: "<#ffc371>Team sieht Bestrafte"
+    lore: ["<gray>Das Team kann bestrafte", "<gray>Spieler weiterhin sehen."]
+  auto-approve-messages:
+    name: "<#ffc371>Nachrichten ohne Prüfung"
+    lore: ["<gray>An: Nachrichten werden zugestellt,", "<gray>ohne dass das Team sie prüft.", "<red>Nicht empfohlen."]
+
+menu:
+  back:
+    name: "<gray>« Zurück"
+  prev:
+    name: "<gray>« Vorherige Seite"
+  next:
+    name: "<gray>Nächste Seite »"
+  page: "<gray>Seite <white>{page}</white> von <white>{pages}"
+  text-line: "<white>{text}"
+
+  main:
+    title: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>"
+    punish:
+      name: "<gradient:#ff5f6d:#ffc371><bold>Spieler bestrafen</bold></gradient>"
+      lore: ["<gray>Wähle Spieler, Dauer", "<gray>und Grund.", "", "<#ffc371>Klicken zum Starten"]
+    active:
+      name: "<#ffc371><bold>Bestrafte Spieler</bold>"
+      lore: ["<gray>Aktuell: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]
+    reviews:
+      name: "<#ffc371><bold>Nachrichten prüfen</bold>"
+      lore: ["<gray>Wartend: <white>{count}", "<gray>Nachrichten von Bestraften,", "<gray>die du freigibst oder ablehnst.", "", "<#ffc371>Klicken zum Öffnen"]
+    tickets:
+      name: "<#ffc371><bold>Tickets</bold>"
+      lore: ["<gray>Offen: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]
+    history:
+      name: "<#ffc371><bold>Verlauf</bold>"
+      lore: ["<gray>Frühere Strafen eines Spielers.", "", "<#ffc371>Klicken und Namen schreiben"]
+    tasks:
+      name: "<#ffc371><bold>Aufgaben</bold>"
+      lore: ["<gray>Aufgaben: <white>{count}", "<gray>Was Bestrafte tun können,", "<gray>um ihre Zeit zu verkürzen.", "", "<#ffc371>Klicken zum Bearbeiten"]
+    settings:
+      name: "<#ffc371><bold>Einstellungen</bold>"
+      lore: ["<gray>Was Bestrafte dürfen und", "<gray>wie die Zeit gezählt wird.", "", "<#ffc371>Klicken zum Öffnen"]
+    language:
+      name: "<#ffc371><bold>Sprache</bold>"
+      lore: ["<gray>Aktuell: <white>{language}", "", "<#ffc371>Klicken zum Wechseln"]
+
+  select-player:
+    title: "<dark_gray>Wen willst du bestrafen?"
+    entry:
+      name: "<white>{player}"
+      lore: ["<#ffc371>Klicken zum Auswählen"]
+    by-name:
+      name: "<#ffc371>Spieler ist offline?"
+      lore: ["<gray>Klicken und Namen schreiben."]
+
+  duration:
+    title: "<dark_gray>Wie lange? <gray>({player})"
+    preset:
+      name: "<white>{time}"
+      lore: ["<#ffc371>Klicken zum Auswählen"]
+    custom:
+      name: "<#ffc371>Andere Dauer"
+      lore: ["<gray>Klicken und in den Chat schreiben."]
+
+  reason:
+    title: "<dark_gray>Warum? <gray>({player})"
+    preset:
+      name: "<white>{reason}"
+      lore: ["<#ffc371>Klicken zum Auswählen"]
+    custom:
+      name: "<#ffc371>Anderer Grund"
+      lore: ["<gray>Klicken und in den Chat schreiben."]
+
+  victim:
+    title: "<dark_gray>Wer war betroffen?"
+    entry:
+      name: "<white>{player}"
+      lore: ["<gray>Aufgaben wie die nette Nachricht", "<gray>oder das Geschenk gehen an", "<gray>diesen Spieler.", "", "<#ffc371>Klicken zum Auswählen"]
+    none:
+      name: "<#ffc371>Niemand Bestimmtes"
+      lore: ["<gray>Der Bestrafte sucht sich für", "<gray>diese Aufgaben selbst jemanden aus."]
+
+  confirm:
+    title: "<dark_gray>Jetzt bestrafen?"
+    summary:
+      name: "<white>{player}"
+      lore: ["<gray>Dauer: <white>{time}", "<gray>Grund: <white>{reason}", "<gray>Betroffen: <white>{victim}"]
+    accept:
+      name: "<green><bold>Bestrafen</bold>"
+    deny:
+      name: "<red><bold>Abbrechen</bold>"
+
+  active:
+    title: "<dark_gray>Bestrafte Spieler"
+    empty:
+      name: "<green>Niemand ist bestraft"
+    entry:
+      name: "<white>{player} <dark_gray>({online}<dark_gray>)"
+      lore:
+        - "<gray>Noch: <white>{time}</white> <dark_gray>von {original}"
+        - "<gray>Grund: <white>{reason}"
+        - "<gray>Von: <white>{staff}</white> <dark_gray>{date}"
+        - "<gray>Betroffen: <white>{victim}"
+        - "<gray>Aufgaben: <white>{done}/{total}"
+
+  detail:
+    title: "<dark_gray>{player}"
+    add:
+      name: "<red>+ {time}"
+      lore: ["<gray>Strafe verlängern."]
+    remove:
+      name: "<green>- {time}"
+      lore: ["<gray>Strafe verkürzen."]
+    custom:
+      name: "<#ffc371>Anderer Wert"
+      lore: ["<gray>Klicken und <white>+30m</white> oder <white>-30m</white> schreiben."]
+    pardon:
+      name: "<green><bold>Strafe beenden</bold>"
+      lore: ["<gray>Der Spieler ist sofort frei."]
+
+  history:
+    title: "<dark_gray>Verlauf: {player}"
+    entry:
+      name: "<white>{date}"
+      lore:
+        - "<gray>Dauer: <white>{original}"
+        - "<gray>Grund: <white>{reason}"
+        - "<gray>Von: <white>{staff}"
+        - "<gray>Aufgaben: <white>{done}/{total}"
+        - "<gray>Ende: {end}"
+
+  reviews:
+    title: "<dark_gray>Nachrichten prüfen"
+    empty:
+      name: "<green>Nichts zu prüfen"
+    entry:
+      name: "<white>{player}"
+      lore: ["<gray>An: <white>{target}</white> <dark_gray>{date}", ""]
+      actions: ["", "<green>Linksklick: freigeben", "<red>Rechtsklick: ablehnen"]
+
+  tickets:
+    title: "<dark_gray>Tickets"
+    empty:
+      name: "<green>Keine offenen Tickets"
+    entry:
+      name: "<white>{player}"
+      lore: ["<dark_gray>{date}", ""]
+      actions: ["", "<green>Linksklick: antworten", "<red>Rechtsklick: schließen"]
+
+  settings:
+    title: "<dark_gray>Einstellungen"
+    "on": "<green>● An"
+    "off": "<red>● Aus"
+    click: "<#ffc371>Klicken zum Umschalten"
+    commands:
+      name: "<#ffc371>Erlaubte Befehle"
+      lore: ["<gray>Befehle, die Bestrafte noch", "<gray>nutzen dürfen: <white>{count}", "", "<#ffc371>Klicken zum Bearbeiten"]
+    durations:
+      name: "<#ffc371>Dauer-Knöpfe"
+      lore: ["<gray>Im Straf-Menü angezeigt:", "<white>{list}", "", "<#ffc371>Klicken zum Ändern"]
+    reasons:
+      name: "<#ffc371>Grund-Knöpfe"
+      lore: ["<gray>Im Straf-Menü angezeigt:", "<white>{list}", "", "<#ffc371>Klicken zum Ändern"]
+
+  commands:
+    title: "<dark_gray>Erlaubte Befehle"
+    entry:
+      name: "<white>/{command}"
+      lore: ["<red>Klicken zum Entfernen"]
+    add:
+      name: "<green>Befehl hinzufügen"
+      lore: ["<gray>Klicken und in den Chat schreiben."]
+
+  tasks:
+    title: "<dark_gray>Aufgaben"
+    new-title: "<dark_gray>Welche Art von Aufgabe?"
+    new:
+      name: "<green>Neue Aufgabe"
+      lore: ["<gray>Klicken zum Anlegen."]
+    entry:
+      lore:
+        - "<gray>Art: {type}"
+        - "<gray>Zieht ab: <white>{reduction}"
+        - "<gray>Frist: <white>{limit}"
+        - "<gray>Status: {state}"
+        - ""
+        - "<#ffc371>Klicken zum Bearbeiten"
+
+  task-edit:
+    title: "<dark_gray>Aufgabe: {id}"
+    enabled:
+      name: "<#ffc371>Aktiv"
+      lore: ["{state}", "<gray>Nur aktive Aufgaben bekommen", "<gray>neu bestrafte Spieler.", "", "<#ffc371>Klicken zum Umschalten"]
+    reduction:
+      name: "<#ffc371>Abgezogene Zeit"
+      lore: ["<gray>Aktuell: <white>{value}", "", "<#ffc371>Klicken zum Ändern"]
+    limit:
+      name: "<#ffc371>Frist"
+      lore: ["<gray>Aktuell: <white>{value}", "<gray>So lange hat der Spieler", "<gray>für die Aufgabe Zeit.", "", "<#ffc371>Klicken zum Ändern"]
+    name:
+      name: "<#ffc371>Name"
+      lore: ["<gray>Gib der Aufgabe einen eigenen Namen.", "", "<#ffc371>Klicken zum Ändern"]
+    min-length:
+      name: "<#ffc371>Mindestlänge"
+      lore: ["<gray>Aktuell: <white>{value}</white> Zeichen", "", "<#ffc371>Klicken zum Ändern"]
+    amount:
+      name: "<#ffc371>Menge"
+      lore: ["<gray>Aktuell: <white>{value}", "", "<#ffc371>Klicken zum Ändern"]
+    material:
+      name: "<#ffc371>Item"
+      lore: ["<gray>Aktuell: <white>{value}", "", "<#ffc371>Item in die Hand nehmen und klicken"]
+    questions:
+      name: "<#ffc371>Fragen"
+      lore: ["<gray>Aktuell: <white>{count}", "", "<#ffc371>Klicken zum Bearbeiten"]
+    target:
+      name: "<#ffc371>Geht an"
+      lore: ["<gray>Aktuell: <white>{value}", "", "<#ffc371>Klicken zum Wechseln"]
+    no-economy:
+      name: "<red>Kein Geldsystem gefunden"
+      lore: ["<gray>Diese Aufgabe braucht Vault und", "<gray>ein Geld-Plugin. Ohne die beiden", "<gray>wird sie übersprungen."]
+    delete:
+      name: "<red>Aufgabe löschen"
+      lore: ["<gray>Shift + Klick zum Löschen."]
+
+  questions:
+    title: "<dark_gray>Quiz-Fragen"
+    entry: "<white>{text}"
+    correct: "<green>✔ {text}"
+    wrong: "<red>✘ {text}"
+    remove: ["", "<red>Klicken zum Entfernen"]
+    add:
+      name: "<green>Frage hinzufügen"
+      lore: ["<gray>Klicken und in den Chat schreiben."]
+
+  status:
+    title: "<gradient:#ff5f6d:#ffc371><bold>Deine Strafe</bold></gradient>"
+    info:
+      name: "<#ffc371><bold>Noch: <white>{time}</white></bold>"
+      lore:
+        - "<gray>Grund: <white>{reason}"
+        - "<gray>Von: <white>{staff}"
+        - "<gray>Zählt: <white>{mode}"
+        - ""
+        - "<gray>Erledige die Aufgaben unten,"
+        - "<gray>um deine Zeit zu verkürzen."
+    task:
+      reward: "<gray>Zieht ab: <green>{time}"
+      time-left: "<gray>Zeit für diese Aufgabe: <white>{time}"
+      click: "<#ffc371>Klicken zum Starten"
+    no-tasks:
+      name: "<gray>Keine Aufgaben"
+      lore: ["<gray>Hier hilft nur warten."]
+    ticket:
+      name: "<#ffc371>Dem Team schreiben"
+      lore: ["<gray>Etwas unklar oder unfair?", "", "<#ffc371>Klicken für ein Ticket"]
+    commands:
+      name: "<#ffc371>Befehle, die du nutzen kannst"
+      lore: []
+      entry: "<white>/{command}"
+
+  quiz:
+    title: "<dark_gray>Frage {n} von {total}"
+    question: "<#ffc371><bold>Frage</bold>"
+    question-line: "<white>{text}"
+    answer: "<white>{text}"
+    answer-lore: ["<#ffc371>Klicken zum Antworten"]

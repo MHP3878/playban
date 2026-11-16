@@ -1,0 +1,509 @@
+# PlayBan - English texts
+# Colors use the MiniMessage format: https://docs.advntr.dev/minimessage/format.html
+# Words in {curly brackets} are filled in by the plugin - keep them as they are.
+
+prefix: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <dark_gray>»</dark_gray> "
+none: "none"
+no-reason: "No reason given"
+no-limit: "no limit"
+staff-team: "the server team"
+online: "<green>online"
+offline: "<gray>offline"
+reloaded: "<green>Configuration reloaded."
+language-set: "<green>Language set to <white>{language}</white>."
+
+help: |-
+  <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- commands
+  <#ffc371>/playban menu <dark_gray>-</dark_gray> <gray>open the main menu
+  <#ffc371>/playban punish <player> <time> [reason] <dark_gray>-</dark_gray> <gray>punish a player
+  <#ffc371>/playban pardon <player> <dark_gray>-</dark_gray> <gray>end a punishment
+  <#ffc371>/playban addtime <player> <time> <dark_gray>-</dark_gray> <gray>make it longer
+  <#ffc371>/playban removetime <player> <time> <dark_gray>-</dark_gray> <gray>make it shorter
+  <#ffc371>/playban info <player> <dark_gray>-</dark_gray> <gray>show a punishment
+  <#ffc371>/playban list <dark_gray>-</dark_gray> <gray>all punished players
+  <#ffc371>/playban history <player> <dark_gray>-</dark_gray> <gray>earlier punishments
+  <#ffc371>/playban lang <code> <dark_gray>-</dark_gray> <gray>change the language
+  <#ffc371>/playban reload <dark_gray>-</dark_gray> <gray>reload the files
+  <gray>Times look like <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
+
+usage:
+  punish: "<gray>Usage: <white>/playban punish <player> <time> [reason]"
+  pardon: "<gray>Usage: <white>/playban pardon <player>"
+  addtime: "<gray>Usage: <white>/playban addtime <player> <time>"
+  removetime: "<gray>Usage: <white>/playban removetime <player> <time>"
+  info: "<gray>Usage: <white>/playban info <player>"
+  history: "<gray>Usage: <white>/playban history <player>"
+  lang: "<gray>Usage: <white>/playban lang <code></white> - available: <white>{list}"
+  ticket: "<gray>Usage: <white>/ticket <your message>"
+
+error:
+  no-permission: "<red>You are not allowed to do that."
+  players-only: "<red>Only players can use this."
+  unknown-player: "<red>The player <white>{player}</white> was never on this server."
+  already-punished: "<red><white>{player}</white> is already punished."
+  not-punished: "<red><white>{player}</white> is not punished."
+  not-punished-self: "<gray>You are not punished. Nothing to see here."
+  exempt: "<red><white>{player}</white> cannot be punished."
+  bad-time: "<red><white>{input}</white> is not a time. Examples: <white>30m</white>, <white>2h</white>, <white>1d 12h</white>."
+  bad-number: "<red><white>{input}</white> is not a valid number."
+  bad-reduction: "<red><white>{input}</white> is not valid. Use a time like <white>30m</white> or a share like <white>10%</white>."
+  bad-answers: "<red>A question needs at least two answers, separated by <white>|</white>."
+  hold-item: "<red>Hold the item you want in your main hand, then click again."
+  no-history: "<gray>No punishments found for <white>{player}</white>."
+
+punish:
+  title: "<gradient:#ff5f6d:#ffc371><bold>PLAYBAN</bold></gradient>"
+  subtitle: "<gray>You are restricted for <white>{time}</white>"
+  broadcast: "<white>{staff}</white> <gray>punished</gray> <white>{player}</white> <gray>for</gray> <white>{time}</white><gray>. Reason:</gray> <white>{reason}"
+
+end:
+  title: "<green><bold>FREE AGAIN</bold></green>"
+  subtitle: "<gray>Your punishment is over. Play fair."
+  served: "<green>Your punishment is over. Welcome back!"
+  pardoned: "<green>The server team ended your punishment early."
+  broadcast-served: "<gray>The punishment of <white>{player}</white> is over."
+  broadcast-pardoned: "<white>{staff}</white> <gray>ended the punishment of</gray> <white>{player}</white><gray>."
+
+status:
+  line: "<gray>You are punished for another <white>{time}</white>. Reason: <white>{reason}"
+  online-only: "<gray>The time only runs while you are <white>online</white>."
+  real-time: "<gray>The time also runs while you are offline."
+  hint: "<gray>Use <#ffc371>/playban</#ffc371> to see tasks that shorten your time."
+  OPEN: "<yellow>● Open"
+  PENDING: "<gold>● Waiting for the team"
+  DONE: "<green>✔ Done"
+  EXPIRED: "<red>✘ Too late"
+
+mode:
+  online: "only while online"
+  real: "real time"
+
+bossbar: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <dark_gray>|</dark_gray> <white>{time}</white> <gray>left</gray> <dark_gray>|</dark_gray> <gray>Tasks</gray> <white>{done}/{total}</white> <dark_gray>|</dark_gray> <#ffc371>/playban"
+
+blocked:
+  action: "<red>You cannot do that while you are punished."
+  chat: "<red>You cannot chat while you are punished. Use <white>/ticket <message></white> to reach the team."
+  command: "<red>This command is locked while you are punished."
+
+time:
+  added-you: "<red>Your punishment was extended by <white>{time}</white>."
+  removed-you: "<green>Your punishment was shortened by <white>{time}</white>."
+  changed: "<gray><white>{player}</white> now has <white>{time}</white> left."
+
+info:
+  line: "<white>{player}</white> <dark_gray>|</dark_gray> <gray>left:</gray> <white>{time}</white> <dark_gray>|</dark_gray> <gray>reason:</gray> <white>{reason}</white> <dark_gray>|</dark_gray> <gray>by:</gray> <white>{staff}</white> <dark_gray>|</dark_gray> <gray>tasks:</gray> <white>{done}/{total}"
+
+list:
+  empty: "<gray>Nobody is punished right now."
+  header: "<gray>Punished players: <white>{count}"
+  entry: " <dark_gray>-</dark_gray> <white>{player}</white> <dark_gray>|</dark_gray> <white>{time}</white> <dark_gray>|</dark_gray> <gray>{reason}"
+
+history:
+  running: "<red>still running"
+  SERVED: "<green>served"
+  PARDONED: "<yellow>ended early by the team"
+
+staff:
+  pending: "<gray>Waiting for the team: <white>{reviews}</white> messages to check, <white>{tickets}</white> tickets. <#ffc371>/playban menu"
+
+review:
+  submitted: "<green>Your message was sent to the team. The task counts once they approve it."
+  new: "<gray><white>{player}</white> wrote a message that needs a check. <#ffc371>/playban menu"
+  approved: "<green>Message from <white>{player}</white> approved."
+  rejected: "<gray>Message from <white>{player}</white> rejected."
+  rejected-you: "<red>The team rejected your message. You can try the task again."
+  delivered: "<gray>A message for you from <white>{player}</white>:</gray> <white>{text}"
+
+ticket:
+  sent: "<green>Your ticket was sent to the team."
+  too-many: "<red>You already have 3 open tickets. Please wait for an answer."
+  new: "<gray>Ticket from <white>{player}</white>:</gray> <white>{text}"
+  reply: "<gray>Answer from <white>{staff}</white>:</gray> <white>{text}"
+  replied: "<green>Answer sent to <white>{player}</white>."
+
+target:
+  VICTIM: "the affected player"
+  ANY: "any player"
+
+task:
+  any-player: "a player of your choice"
+  done: "<green>Task done: <white>{task}</white>. Your punishment is <white>{time}</white> shorter."
+  expired: "<red>Time is up for the task <white>{task}</white>."
+  not-open: "<red>This task is no longer open."
+  too-short: "<red>That is too short. Write at least <white>{min}</white> characters."
+  not-yourself: "<red>You cannot pick yourself."
+  no-economy: "<red>This server has no money system."
+  not-enough-money: "<red>You need <white>{amount}</white> for this."
+  payment-failed: "<red>The payment did not work. Nothing was taken."
+  gift-received: "<green><white>{player}</white> gave you <white>{amount}</white> as an apology."
+  not-enough-items: "<red>You need <white>{amount}x {item}</white> in your inventory."
+  quiz-wrong: "<red>That was wrong. Open the task again to retry."
+  STAFF_MESSAGE:
+    name: "<#ffc371>Apologize to the team"
+    desc:
+      - "<gray>Write an honest message to"
+      - "<gray>the server team."
+      - "<dark_gray>At least {min} characters"
+    about:
+      - "<gray>The player writes an apology"
+      - "<gray>that the team has to approve."
+  NICE_MESSAGE:
+    name: "<#ffc371>Write something nice"
+    desc:
+      - "<gray>Write a kind message to"
+      - "<white>{target}</white><gray>."
+      - "<dark_gray>At least {min} characters, checked by the team"
+    about:
+      - "<gray>The player writes a kind message"
+      - "<gray>to another player. The team checks"
+      - "<gray>it before it is delivered."
+  GIFT_MONEY:
+    name: "<#ffc371>Give money"
+    desc:
+      - "<gray>Give <white>{amount}</white> to"
+      - "<white>{target}</white><gray>."
+    about:
+      - "<gray>The player gives money to"
+      - "<gray>another player. Needs Vault."
+  DONATE_ITEMS:
+    name: "<#ffc371>Donate items"
+    desc:
+      - "<gray>Hand in <white>{amount}x {item}</white>"
+      - "<gray>from your inventory."
+    about:
+      - "<gray>The player hands in items"
+      - "<gray>from their inventory."
+  QUIZ:
+    name: "<#ffc371>Rules quiz"
+    desc:
+      - "<gray>Answer <white>{count}</white> questions about"
+      - "<gray>the server rules correctly."
+    about:
+      - "<gray>The player answers questions"
+      - "<gray>that you write yourself."
+
+prompt:
+  cancel-hint: "<dark_gray>Type <gray>cancel</gray> to stop."
+  cancelled: "<gray>Cancelled."
+  ticket: "<#ffc371>Type your message to the team into the chat."
+  staff-message: "<#ffc371>Type your apology to the team into the chat. <gray>(at least {min} characters)"
+  nice-message: "<#ffc371>Type your kind message to <white>{player}</white> into the chat. <gray>(at least {min} characters)"
+  target-name: "<#ffc371>Type the name of the player into the chat."
+  player-name: "<#ffc371>Type the name of the player you want to punish."
+  history-name: "<#ffc371>Type the name of the player whose history you want to see."
+  duration: "<#ffc371>Type the duration, for example <white>45m</white>, <white>2h</white> or <white>1d 12h</white>."
+  reason: "<#ffc371>Type the reason into the chat."
+  change-time: "<#ffc371>Type <white>+30m</white> to add or <white>-30m</white> to remove time."
+  ticket-reply: "<#ffc371>Type your answer to <white>{player}</white> into the chat."
+  command: "<#ffc371>Type the command that punished players may use, for example <white>spawn</white>."
+  duration-presets: "<#ffc371>Type up to 7 durations, separated by commas. Example: <white>30m, 1h, 6h, 1d"
+  reason-presets: "<#ffc371>Type up to 7 reasons, separated by commas. Example: <white>Griefing, Spam"
+  task-reduction: "<#ffc371>How much time does this task take off? A time like <white>30m</white> or a share like <white>10%</white>."
+  task-limit: "<#ffc371>How long does the player have for this task? Example: <white>2h</white>. Type <white>0</white> for no limit."
+  task-name: "<#ffc371>Type a name for this task. Type <white>-</white> to use the default name."
+  task-number: "<#ffc371>Type the new number into the chat."
+  question: "<#ffc371>Type the question into the chat."
+  answers: "<#ffc371>Type the answers, separated by <white>|</white>. The <white>first</white> one is the correct one. Example: <white>No | Yes | Sometimes"
+
+setting:
+  restrictions:
+    hide-from-players:
+      name: "<#ffc371>Invisible to others"
+      lore: ["<gray>Other players cannot see", "<gray>the punished player."]
+    block-break:
+      name: "<#ffc371>No breaking blocks"
+      lore: ["<gray>The player cannot break blocks."]
+    block-place:
+      name: "<#ffc371>No placing blocks"
+      lore: ["<gray>The player cannot place blocks."]
+    interact:
+      name: "<#ffc371>No interacting"
+      lore: ["<gray>No chests, doors, buttons,", "<gray>villagers, vehicles or eating."]
+    damage:
+      name: "<#ffc371>No attacking"
+      lore: ["<gray>The player cannot hurt players", "<gray>or animals."]
+    invulnerable:
+      name: "<#ffc371>Cannot be hurt"
+      lore: ["<gray>The player takes no damage", "<gray>and does not get hungry."]
+    item-drop:
+      name: "<#ffc371>No dropping items"
+      lore: ["<gray>The player cannot throw items away."]
+    item-pickup:
+      name: "<#ffc371>No picking up items"
+      lore: ["<gray>The player cannot pick up items."]
+    chat:
+      name: "<#ffc371>No chat"
+      lore: ["<gray>The player cannot write in chat.", "<gray>Tickets still work."]
+    commands:
+      name: "<#ffc371>Commands locked"
+      lore: ["<gray>Only the allowed commands", "<gray>can be used."]
+    mob-target:
+      name: "<#ffc371>Ignored by monsters"
+      lore: ["<gray>Monsters do not attack", "<gray>the player."]
+  count-only-online-time:
+    name: "<#ffc371>Only online time counts"
+    lore: ["<gray>On: the time only runs while", "<gray>the player is on the server.", "<gray>Off: it runs like a normal ban."]
+  staff-see-punished:
+    name: "<#ffc371>Team sees punished players"
+    lore: ["<gray>The team can still see", "<gray>punished players."]
+  auto-approve-messages:
+    name: "<#ffc371>Messages without a check"
+    lore: ["<gray>On: messages are delivered", "<gray>without the team checking them.", "<red>Not recommended."]
+
+menu:
+  back:
+    name: "<gray>« Back"
+  prev:
+    name: "<gray>« Previous page"
+  next:
+    name: "<gray>Next page »"
+  page: "<gray>Page <white>{page}</white> of <white>{pages}"
+  text-line: "<white>{text}"
+
+  main:
+    title: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>"
+    punish:
+      name: "<gradient:#ff5f6d:#ffc371><bold>Punish a player</bold></gradient>"
+      lore: ["<gray>Pick a player, a duration", "<gray>and a reason.", "", "<#ffc371>Click to start"]
+    active:
+      name: "<#ffc371><bold>Punished players</bold>"
+      lore: ["<gray>Currently: <white>{count}", "", "<#ffc371>Click to open"]
+    reviews:
+      name: "<#ffc371><bold>Check messages</bold>"
+      lore: ["<gray>Waiting: <white>{count}", "<gray>Messages from punished players", "<gray>that you approve or reject.", "", "<#ffc371>Click to open"]
+    tickets:
+      name: "<#ffc371><bold>Tickets</bold>"
+      lore: ["<gray>Open: <white>{count}", "", "<#ffc371>Click to open"]
+    history:
+      name: "<#ffc371><bold>History</bold>"
+      lore: ["<gray>Earlier punishments of a player.", "", "<#ffc371>Click and type a name"]
+    tasks:
+      name: "<#ffc371><bold>Tasks</bold>"
+      lore: ["<gray>Tasks: <white>{count}", "<gray>What punished players can do", "<gray>to shorten their time.", "", "<#ffc371>Click to edit"]
+    settings:
+      name: "<#ffc371><bold>Settings</bold>"
+      lore: ["<gray>What punished players may do", "<gray>and how the time is counted.", "", "<#ffc371>Click to open"]
+    language:
+      name: "<#ffc371><bold>Language</bold>"
+      lore: ["<gray>Current: <white>{language}", "", "<#ffc371>Click to switch"]
+
+  select-player:
+    title: "<dark_gray>Who do you want to punish?"
+    entry:
+      name: "<white>{player}"
+      lore: ["<#ffc371>Click to pick"]
+    by-name:
+      name: "<#ffc371>Player is offline?"
+      lore: ["<gray>Click and type the name."]
+
+  duration:
+    title: "<dark_gray>How long? <gray>({player})"
+    preset:
+      name: "<white>{time}"
+      lore: ["<#ffc371>Click to pick"]
+    custom:
+      name: "<#ffc371>Other duration"
+      lore: ["<gray>Click and type it into the chat."]
+
+  reason:
+    title: "<dark_gray>Why? <gray>({player})"
+    preset:
+      name: "<white>{reason}"
+      lore: ["<#ffc371>Click to pick"]
+    custom:
+      name: "<#ffc371>Other reason"
+      lore: ["<gray>Click and type it into the chat."]
+
+  victim:
+    title: "<dark_gray>Who was affected?"
+    entry:
+      name: "<white>{player}"
+      lore: ["<gray>Tasks like the kind message", "<gray>or the gift go to this player.", "", "<#ffc371>Click to pick"]
+    none:
+      name: "<#ffc371>Nobody in particular"
+      lore: ["<gray>The punished player picks", "<gray>someone for those tasks."]
+
+  confirm:
+    title: "<dark_gray>Punish now?"
+    summary:
+      name: "<white>{player}"
+      lore: ["<gray>Duration: <white>{time}", "<gray>Reason: <white>{reason}", "<gray>Affected: <white>{victim}"]
+    accept:
+      name: "<green><bold>Punish</bold>"
+    deny:
+      name: "<red><bold>Cancel</bold>"
+
+  active:
+    title: "<dark_gray>Punished players"
+    empty:
+      name: "<green>Nobody is punished"
+    entry:
+      name: "<white>{player} <dark_gray>({online}<dark_gray>)"
+      lore:
+        - "<gray>Left: <white>{time}</white> <dark_gray>of {original}"
+        - "<gray>Reason: <white>{reason}"
+        - "<gray>By: <white>{staff}</white> <dark_gray>{date}"
+        - "<gray>Affected: <white>{victim}"
+        - "<gray>Tasks: <white>{done}/{total}"
+
+  detail:
+    title: "<dark_gray>{player}"
+    add:
+      name: "<red>+ {time}"
+      lore: ["<gray>Make the punishment longer."]
+    remove:
+      name: "<green>- {time}"
+      lore: ["<gray>Make the punishment shorter."]
+    custom:
+      name: "<#ffc371>Other amount"
+      lore: ["<gray>Click and type <white>+30m</white> or <white>-30m</white>."]
+    pardon:
+      name: "<green><bold>End punishment</bold>"
+      lore: ["<gray>The player is free at once."]
+
+  history:
+    title: "<dark_gray>History: {player}"
+    entry:
+      name: "<white>{date}"
+      lore:
+        - "<gray>Duration: <white>{original}"
+        - "<gray>Reason: <white>{reason}"
+        - "<gray>By: <white>{staff}"
+        - "<gray>Tasks: <white>{done}/{total}"
+        - "<gray>End: {end}"
+
+  reviews:
+    title: "<dark_gray>Check messages"
+    empty:
+      name: "<green>Nothing to check"
+    entry:
+      name: "<white>{player}"
+      lore: ["<gray>To: <white>{target}</white> <dark_gray>{date}", ""]
+      actions: ["", "<green>Left click: approve", "<red>Right click: reject"]
+
+  tickets:
+    title: "<dark_gray>Tickets"
+    empty:
+      name: "<green>No open tickets"
+    entry:
+      name: "<white>{player}"
+      lore: ["<dark_gray>{date}", ""]
+      actions: ["", "<green>Left click: answer", "<red>Right click: close"]
+
+  settings:
+    title: "<dark_gray>Settings"
+    "on": "<green>● On"
+    "off": "<red>● Off"
+    click: "<#ffc371>Click to switch"
+    commands:
+      name: "<#ffc371>Allowed commands"
+      lore: ["<gray>Commands punished players", "<gray>may still use: <white>{count}", "", "<#ffc371>Click to edit"]
+    durations:
+      name: "<#ffc371>Duration buttons"
+      lore: ["<gray>Shown in the punish menu:", "<white>{list}", "", "<#ffc371>Click to change"]
+    reasons:
+      name: "<#ffc371>Reason buttons"
+      lore: ["<gray>Shown in the punish menu:", "<white>{list}", "", "<#ffc371>Click to change"]
+
+  commands:
+    title: "<dark_gray>Allowed commands"
+    entry:
+      name: "<white>/{command}"
+      lore: ["<red>Click to remove"]
+    add:
+      name: "<green>Add a command"
+      lore: ["<gray>Click and type it into the chat."]
+
+  tasks:
+    title: "<dark_gray>Tasks"
+    new-title: "<dark_gray>What kind of task?"
+    new:
+      name: "<green>New task"
+      lore: ["<gray>Click to create one."]
+    entry:
+      lore:
+        - "<gray>Type: {type}"
+        - "<gray>Takes off: <white>{reduction}"
+        - "<gray>Time limit: <white>{limit}"
+        - "<gray>Status: {state}"
+        - ""
+        - "<#ffc371>Click to edit"
+
+  task-edit:
+    title: "<dark_gray>Task: {id}"
+    enabled:
+      name: "<#ffc371>Active"
+      lore: ["{state}", "<gray>Only active tasks are given", "<gray>to newly punished players.", "", "<#ffc371>Click to switch"]
+    reduction:
+      name: "<#ffc371>Time taken off"
+      lore: ["<gray>Current: <white>{value}", "", "<#ffc371>Click to change"]
+    limit:
+      name: "<#ffc371>Time limit"
+      lore: ["<gray>Current: <white>{value}", "<gray>How long the player has", "<gray>to finish the task.", "", "<#ffc371>Click to change"]
+    name:
+      name: "<#ffc371>Name"
+      lore: ["<gray>Give the task your own name.", "", "<#ffc371>Click to change"]
+    min-length:
+      name: "<#ffc371>Minimum length"
+      lore: ["<gray>Current: <white>{value}</white> characters", "", "<#ffc371>Click to change"]
+    amount:
+      name: "<#ffc371>Amount"
+      lore: ["<gray>Current: <white>{value}", "", "<#ffc371>Click to change"]
+    material:
+      name: "<#ffc371>Item"
+      lore: ["<gray>Current: <white>{value}", "", "<#ffc371>Hold an item and click"]
+    questions:
+      name: "<#ffc371>Questions"
+      lore: ["<gray>Current: <white>{count}", "", "<#ffc371>Click to edit"]
+    target:
+      name: "<#ffc371>Goes to"
+      lore: ["<gray>Current: <white>{value}", "", "<#ffc371>Click to switch"]
+    no-economy:
+      name: "<red>No money system found"
+      lore: ["<gray>This task needs Vault and", "<gray>an economy plugin. Without them", "<gray>it is skipped."]
+    delete:
+      name: "<red>Delete task"
+      lore: ["<gray>Shift + click to delete."]
+
+  questions:
+    title: "<dark_gray>Quiz questions"
+    entry: "<white>{text}"
+    correct: "<green>✔ {text}"
+    wrong: "<red>✘ {text}"
+    remove: ["", "<red>Click to remove"]
+    add:
+      name: "<green>Add a question"
+      lore: ["<gray>Click and type it into the chat."]
+
+  status:
+    title: "<gradient:#ff5f6d:#ffc371><bold>Your punishment</bold></gradient>"
+    info:
+      name: "<#ffc371><bold>Time left: <white>{time}</white></bold>"
+      lore:
+        - "<gray>Reason: <white>{reason}"
+        - "<gray>By: <white>{staff}"
+        - "<gray>Counts: <white>{mode}"
+        - ""
+        - "<gray>Finish tasks below to"
+        - "<gray>shorten your time."
+    task:
+      reward: "<gray>Takes off: <green>{time}"
+      time-left: "<gray>Time for this task: <white>{time}"
+      click: "<#ffc371>Click to start"
+    no-tasks:
+      name: "<gray>No tasks"
+      lore: ["<gray>There is nothing to do", "<gray>except wait."]
+    ticket:
+      name: "<#ffc371>Write to the team"
+      lore: ["<gray>Something unclear or unfair?", "", "<#ffc371>Click to write a ticket"]
+    commands:
+      name: "<#ffc371>Commands you can use"
+      lore: []
+      entry: "<white>/{command}"
+
+  quiz:
+    title: "<dark_gray>Question {n} of {total}"
+    question: "<#ffc371><bold>Question</bold>"
+    question-line: "<white>{text}"
+    answer: "<white>{text}"
+    answer-lore: ["<#ffc371>Click to answer"]

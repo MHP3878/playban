@@ -1,0 +1,36 @@
+name: PlayBan
+version: '${project.version}'
+main: dev.playban.PlayBanPlugin
+api-version: '1.21'
+description: Punish players without banning them. They keep playing - hidden, restricted and with tasks to shorten their time.
+softdepend: [Vault]
+
+commands:
+  playban:
+    description: PlayBan main command
+    aliases: [pb]
+  ticket:
+    description: Send a ticket to the server team
+    aliases: [pbticket]
+
+permissions:
+  playban.admin:
+    description: Full access including settings and the task editor
+    default: op
+    children:
+      playban.staff: true
+  playban.staff:
+    description: Punish players, handle reviews and tickets
+    default: op
+    children:
+      playban.see: true
+      playban.notify: true
+  playban.see:
+    description: Can still see punished players
+    default: op
+  playban.notify:
+    description: Receives staff notifications
+    default: op
+  playban.exempt:
+    description: Cannot be punished
+    default: false

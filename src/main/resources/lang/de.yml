@@ -18,6 +18,7 @@ custom: "frei gewählt"
 applied: "<gray><white>{player}</white>: <white>{n}.</white> Verstoß in <white>{category}</white> → <white>{punishment}"
 
 type:
+  SPECBAN: "Zuschauer-Bann"
   WARN: "Verwarnung"
   PLAYBAN: "PlayBan"
   BAN: "Bann"
@@ -29,6 +30,8 @@ warn:
   broadcast: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>verwarnt. Grund:</gray> <white>{reason}"
 
 ban:
+  broadcast-spectator: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>einen Zuschauer-Bann gegeben. Dauer:</gray> <white>{time}</white><gray>. Grund:</gray> <white>{reason}"
+  discord-line: "<gray>Discord: <#ffc371>{discord}"
   screen: |-
     <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>
 
@@ -40,6 +43,24 @@ ban:
   broadcast: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>gebannt. Dauer:</gray> <white>{time}</white><gray>. Grund:</gray> <white>{reason}"
   broadcast-unbanned: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>entbannt."
 
+limbo:
+  title: "<red><bold>GEBANNT</bold></red>"
+  subtitle: "<gray>Restzeit: <white>{time}"
+  status: "<red>Du bist gebannt und kannst nur zuschauen. <gray>Restzeit: <white>{time}</white>. Grund: <white>{reason}"
+  hint: "<gray>Du willst Einspruch einlegen? Schreib <#ffc371>/ticket <deine Nachricht></#ffc371>."
+  discord: "<gray>Unser Discord: <click:open_url:'{discord}'><#ffc371><underlined>{discord}</underlined></#ffc371></click>"
+  bossbar: "<red><bold>GEBANNT</bold></red> <dark_gray>|</dark_gray> <gray>noch</gray> <white>{time}</white> <dark_gray>|</dark_gray> <#ffc371>/ticket <Nachricht>"
+  default-location: "Welt-Spawn"
+
+profile:
+  state:
+    free: "<green>nicht bestraft"
+    playban: "<gold>PlayBan läuft"
+    banned: "<red>gebannt"
+
+note:
+  added: "<green>Notiz zu <white>{player}</white> gespeichert."
+
 help: |-
   <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- Befehle
   <#ffc371>/playban menu <dark_gray>-</dark_gray> <gray>Hauptmenü öffnen
@@ -48,6 +69,9 @@ help: |-
   <#ffc371>/playban warn <Spieler> [Grund] <dark_gray>-</dark_gray> <gray>Spieler verwarnen
   <#ffc371>/playban ban <Spieler> <Zeit|perm> [Grund] <dark_gray>-</dark_gray> <gray>echter Bann
   <#ffc371>/playban unban <Spieler> <dark_gray>-</dark_gray> <gray>Bann aufheben
+  <#ffc371>/playban specban <Spieler> <Zeit|perm> [Grund] <dark_gray>-</dark_gray> <gray>Zuschauer-Bann
+  <#ffc371>/playban note <Spieler> <Text> <dark_gray>-</dark_gray> <gray>Notiz zu einem Spieler schreiben
+  <#ffc371>/playban profile <Spieler> <dark_gray>-</dark_gray> <gray>Notizen und Strafen eines Spielers
   <#ffc371>/playban punish <Spieler> <Zeit> [Grund] <dark_gray>-</dark_gray> <gray>Spieler bestrafen
   <#ffc371>/playban pardon <Spieler> <dark_gray>-</dark_gray> <gray>Strafe beenden
   <#ffc371>/playban addtime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verlängern
@@ -60,6 +84,9 @@ help: |-
   <gray>Zeiten schreibst du so: <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
+  specban: "<gray>Nutzung: <white>/playban specban <Spieler> <Zeit|perm> [Grund]"
+  note: "<gray>Nutzung: <white>/playban note <Spieler> <Text>"
+  profile: "<gray>Nutzung: <white>/playban profile <Spieler>"
   apply: "<gray>Nutzung: <white>/playban apply <Spieler> <Kategorie>"
   warn: "<gray>Nutzung: <white>/playban warn <Spieler> [Grund]"
   ban: "<gray>Nutzung: <white>/playban ban <Spieler> <Zeit|perm> [Grund]"
@@ -74,6 +101,7 @@ usage:
   ticket: "<gray>Nutzung: <white>/ticket <deine Nachricht>"
 
 error:
+  bad-link: "<red>Das ist kein gültiger Link. Er muss mit <white>https://</white> anfangen."
   already-banned: "<red><white>{player}</white> ist bereits gebannt."
   not-banned: "<red><white>{player}</white> ist nicht gebannt."
   unknown-category: "<red>Die Kategorie <white>{category}</white> gibt es nicht, oder sie hat keine Stufen."
@@ -226,6 +254,9 @@ task:
       - "<gray>die du selbst schreibst."
 
 prompt:
+  note: "<#ffc371>Schreib deine Notiz zu <white>{player}</white> in den Chat."
+  screen-line: "<#ffc371>Schreib den Text für diese Zeile. Farben wie <white>\\<red></white> funktionieren. Platzhalter: <white>{reason} {time} {staff} {discord}</white>. Schreib <white>-</white> für eine leere Zeile."
+  discord: "<#ffc371>Schreib den Einladungslink zu deinem Discord, zum Beispiel <white>https://discord.gg/abc</white>. Schreib <white>-</white> zum Entfernen."
   category-name: "<#ffc371>Schreib den Namen der Kategorie, zum Beispiel <white>X-Ray</white>."
   category-expire: "<#ffc371>Nach welcher Zeit zählen Verstöße nicht mehr? Beispiel: <white>90d</white>. Schreib <white>0</white> für nie."
   step-duration: "<#ffc371>Schreib die Dauer für diese Stufe, zum Beispiel <white>1d</white>."
@@ -237,7 +268,7 @@ prompt:
   nice-message: "<#ffc371>Schreib deine nette Nachricht an <white>{player}</white> in den Chat. <gray>(mindestens {min} Zeichen)"
   target-name: "<#ffc371>Schreib den Namen des Spielers in den Chat."
   player-name: "<#ffc371>Schreib den Namen des Spielers, den du bestrafen willst."
-  history-name: "<#ffc371>Schreib den Namen des Spielers, dessen Verlauf du sehen willst."
+  history-name: "<#ffc371>Schreib den Namen des Spielers, dessen Profil du sehen willst."
   duration: "<#ffc371>Schreib die Dauer, zum Beispiel <white>45m</white>, <white>2h</white> oder <white>1d 12h</white>."
   reason: "<#ffc371>Schreib den Grund in den Chat."
   change-time: "<#ffc371>Schreib <white>+30m</white> zum Verlängern oder <white>-30m</white> zum Verkürzen."
@@ -287,6 +318,13 @@ setting:
     mob-target:
       name: "<#ffc371>Monster ignorieren ihn"
       lore: ["<gray>Monster greifen den Spieler", "<gray>nicht an."]
+  limbo:
+    blind:
+      name: "<#ffc371>Zuschauer-Bann: blind"
+      lore: ["<gray>Spieler mit Zuschauer-Bann", "<gray>sehen fast nichts."]
+    hide-others:
+      name: "<#ffc371>Zuschauer-Bann: sieht niemanden"
+      lore: ["<gray>Spieler mit Zuschauer-Bann", "<gray>sehen keine anderen Spieler."]
   count-only-online-time:
     name: "<#ffc371>Nur Online-Zeit zählt"
     lore: ["<gray>An: Die Zeit läuft nur, solange", "<gray>der Spieler auf dem Server ist.", "<gray>Aus: Sie läuft wie bei einem Bann."]
@@ -328,8 +366,8 @@ menu:
       name: "<#ffc371><bold>Tickets</bold>"
       lore: ["<gray>Offen: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]
     history:
-      name: "<#ffc371><bold>Verlauf</bold>"
-      lore: ["<gray>Frühere Strafen eines Spielers.", "", "<#ffc371>Klicken und Namen schreiben"]
+      name: "<#ffc371><bold>Spieler-Profil</bold>"
+      lore: ["<gray>Notizen und frühere Strafen", "<gray>eines Spielers.", "", "<#ffc371>Klicken und Namen schreiben"]
     tasks:
       name: "<#ffc371><bold>Aufgaben</bold>"
       lore: ["<gray>Aufgaben: <white>{count}", "<gray>Was Bestrafte tun können,", "<gray>um ihre Zeit zu verkürzen.", "", "<#ffc371>Klicken zum Bearbeiten"]
@@ -348,6 +386,9 @@ menu:
     custom-playban:
       name: "<#ffc371>Freier PlayBan"
       lore: ["<gray>Dauer und Grund selbst wählen."]
+    custom-specban:
+      name: "<#ffc371>Freier Zuschauer-Bann"
+      lore: ["<gray>Der Spieler darf auf den Server,", "<gray>hängt aber als Zuschauer fest und", "<gray>kann nur Tickets schreiben."]
     custom-ban:
       name: "<#ffc371>Freier Bann"
       lore: ["<gray>Dauer und Grund selbst wählen."]
@@ -362,6 +403,7 @@ menu:
     entry:
       name: "<white>{player}"
       lore:
+        - "<gray>Art: <white>{type}"
         - "<gray>Noch: <white>{time}"
         - "<gray>Grund: <white>{reason}"
         - "<gray>Von: <white>{staff}</white> <dark_gray>{date}"
@@ -398,6 +440,49 @@ menu:
     add-step:
       name: "<green>Stufe hinzufügen"
       lore: ["<gray>Startet als Kopie der letzten Stufe."]
+
+  profile:
+    title: "<dark_gray>Profil: {player}"
+    summary:
+      name: "<white>{player} <dark_gray>({online}<dark_gray>)"
+      lore:
+        - "<gray>Status: {state}"
+        - "<gray>PlayBans: <white>{playbans}"
+        - "<gray>Banns: <white>{bans}"
+        - "<gray>Verwarnungen: <white>{warns}"
+        - "<gray>Notizen: <white>{notes}"
+    note:
+      name: "<#ffc371>{author} <dark_gray>{date}"
+      actions: ["", "<red>Shift + Klick zum Löschen"]
+    no-notes:
+      name: "<gray>Noch keine Notizen"
+    add-note:
+      name: "<green>Notiz schreiben"
+      lore: ["<gray>Klicken und in den Chat schreiben."]
+    history:
+      name: "<#ffc371>Strafen"
+      lore: ["<gray>Einträge: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]
+    punish:
+      name: "<gradient:#ff5f6d:#ffc371><bold>Bestrafen</bold></gradient>"
+      lore: ["<gray>Kategorie für diesen Spieler wählen."]
+
+  screen:
+    title: "<dark_gray>Bann-Bildschirm"
+    empty-line: "<dark_gray>(leere Zeile)"
+    sample-reason: "Beispielgrund"
+    line-actions: ["<dark_gray>Zeile {n}", "", "<#ffc371>Klicken zum Ändern", "<red>Shift + Klick zum Entfernen"]
+    preview:
+      name: "<#ffc371>Vorschau"
+      lore: ["<gray>Zeigt den Bildschirm in deinem Chat."]
+    discord:
+      name: "<#ffc371>Discord-Link"
+      lore: ["<gray>Aktuell: <white>{value}", "<gray>Steht auf dem Bann-Bildschirm und", "<gray>bei Spielern mit Zuschauer-Bann.", "", "<#ffc371>Klicken zum Ändern"]
+    add:
+      name: "<green>Zeile hinzufügen"
+      lore: ["<gray>Klicken und in den Chat schreiben."]
+    reset:
+      name: "<red>Zurück zum Standardtext"
+      lore: ["<gray>Shift + Klick zum Zurücksetzen."]
 
   select-player:
     title: "<dark_gray>Wen willst du bestrafen?"
@@ -463,6 +548,9 @@ menu:
 
   detail:
     title: "<dark_gray>{player}"
+    profile:
+      name: "<#ffc371>Spieler-Profil"
+      lore: ["<gray>Notizen und frühere Strafen."]
     add:
       name: "<red>+ {time}"
       lore: ["<gray>Strafe verlängern."]
@@ -511,6 +599,12 @@ menu:
     "on": "<green>● An"
     "off": "<red>● Aus"
     click: "<#ffc371>Klicken zum Umschalten"
+    ban-screen:
+      name: "<#ffc371>Bann-Bildschirm"
+      lore: ["<gray>Was ein gebannter Spieler sieht,", "<gray>und dein Discord-Link.", "", "<#ffc371>Klicken zum Bearbeiten"]
+    limbo-location:
+      name: "<#ffc371>Zuschauer-Bann: Ort"
+      lore: ["<gray>Hier hängen Spieler mit", "<gray>Zuschauer-Bann fest: <white>{value}", "", "<#ffc371>Klick: meinen jetzigen Standort nehmen", "<red>Shift + Klick: zurück zum Welt-Spawn"]
     commands:
       name: "<#ffc371>Erlaubte Befehle"
       lore: ["<gray>Befehle, die Bestrafte noch", "<gray>nutzen dürfen: <white>{count}", "", "<#ffc371>Klicken zum Bearbeiten"]

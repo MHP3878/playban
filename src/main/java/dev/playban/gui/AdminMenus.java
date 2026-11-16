@@ -6,6 +6,7 @@ import dev.playban.TaskActions;
 import dev.playban.CategoryRegistry;
 import dev.playban.TimeUtil;
 import dev.playban.model.Category;
+import dev.playban.model.Note;
 import dev.playban.model.Punishment;
 import dev.playban.model.Punishment.TaskProgress;
 import dev.playban.model.Review;
@@ -49,9 +50,10 @@ public final class AdminMenus {
             "restrictions.interact", "restrictions.damage", "restrictions.invulnerable",
             "restrictions.item-drop", "restrictions.item-pickup", "restrictions.chat",
             "restrictions.commands", "restrictions.mob-target",
-            "count-only-online-time", "staff-see-punished", "auto-approve-messages"
+            "count-only-online-time", "staff-see-punished", "auto-approve-messages",
+            "limbo.blind", "limbo.hide-others"
     };
-    private static final int[] TOGGLE_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 28, 29, 30};
+    private static final int[] TOGGLE_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 28, 29, 30, 24, 25};
 
     private final PlayBanPlugin plugin;
 
@@ -105,7 +107,7 @@ public final class AdminMenus {
         m.set(14, item(Material.WRITABLE_BOOK, "menu.main.reviews", "count", plugin.store().reviews.size()), e -> reviews(p, 0));
         m.set(15, item(Material.PAPER, "menu.main.tickets", "count", plugin.store().tickets.size()), e -> tickets(p, 0));
         m.set(16, item(Material.BOOK, "menu.main.history"), e ->
-                plugin.input().ask(p, "prompt.history-name", name -> history(p, name), () -> main(p)));
+                plugin.input().ask(p, "prompt.history-name", name -> profileByName(p, name), () -> main(p)));
         if (admin(p)) {
             m.set(28, item(Material.LECTERN, "menu.main.categories", "count", plugin.categories().all().size()), e -> categories(p, 0));
             m.set(30, item(Material.BOOKSHELF, "menu.main.tasks", "count", plugin.tasks().all().size()), e -> tasks(p, 0));
@@ -196,6 +198,10 @@ public final class AdminMenus {
             d.type = "PLAYBAN";
             selectDuration(p, d);
         });
+        m.set(50, item(Material.ENDER_EYE, "menu.category.custom-specban"), e -> {
+            d.type = "SPECBAN";
+            selectDuration(p, d);
+        });
         m.set(52, item(Material.IRON_BARS, "menu.category.custom-ban"), e -> {
             d.type = "BAN";
             selectDuration(p, d);
@@ -231,7 +237,7 @@ public final class AdminMenus {
                     d.ms = ms;
                     selectReason(p, d);
                 }, () -> selectDuration(p, d)));
-        if (d.type.equals("BAN")) {
+        if (d.type.equals("BAN") || d.type.equals("SPECBAN")) {
             m.set(23, item(Material.BEDROCK, "menu.duration.permanent"), e -> {
                 d.ms = 0;
                 selectReason(p, d);
@@ -361,7 +367,77 @@ public final class AdminMenus {
             plugin.punishments().end(pun, "PARDONED", p.getName());
             active(p, 0);
         });
+        m.set(49, item(Material.BOOK, "menu.detail.profile"), e -> profile(p, pun.uuid, pun.name));
         m.set(50, item(Material.OAK_DOOR, "menu.back"), e -> active(p, 0));
+        m.fill().open(p);
+    }
+
+    // ---------------------------------------------------------------- player profile & notes
+
+    public void profileByName(Player p, String name) {
+        for (Map.Entry<UUID, String> e : plugin.store().names.entrySet()) {
+            if (e.getValue().equalsIgnoreCase(name)) {
+                profile(p, e.getKey(), e.getValue());
+                return;
+            }
+        }
+        OfflinePlayer off = Bukkit.getPlayerExact(name);
+        if (off == null) off = Bukkit.getOfflinePlayerIfCached(name);
+        if (off == null || off.getName() == null) {
+            lang().send(p, "error.unknown-player", "player", name);
+            return;
+        }
+        profile(p, off.getUniqueId(), off.getName());
+    }
+
+    /** Everything the team knows about one player: notes, punishments and the way to punish them. */
+    public void profile(Player p, UUID id, String name) {
+        int playbans = 0, bans = 0, warns = 0;
+        List<Punishment> all = new ArrayList<>(plugin.store().history.getOrDefault(id, List.of()));
+        if (plugin.store().active.containsKey(id)) all.add(plugin.store().active.get(id));
+        if (plugin.store().bans.containsKey(id)) all.add(plugin.store().bans.get(id));
+        for (Punishment pun : all) {
+            switch (pun.type) {
+                case "WARN" -> warns++;
+                case "PLAYBAN" -> playbans++;
+                default -> bans++;
+            }
+        }
+        List<Note> notes = new ArrayList<>(plugin.store().notes.getOrDefault(id, List.of()));
+        String state = plugin.store().bans.containsKey(id) ? "profile.state.banned"
+                : plugin.punishments().isPunished(id) ? "profile.state.playban" : "profile.state.free";
+
+        Menu m = new Menu(6, lang().msg("menu.profile.title", "player", name));
+        m.set(4, Items.head(Bukkit.getOfflinePlayer(id), lang().msg("menu.profile.summary.name", "player", name),
+                lang().lore("menu.profile.summary.lore", "state", lang().msg(state), "playbans", playbans, "bans", bans,
+                        "warns", warns, "notes", notes.size(),
+                        "online", lang().msg(Bukkit.getPlayer(id) != null ? "online" : "offline"))));
+        int[] slots = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
+        java.util.Collections.reverse(notes);
+        for (int i = 0; i < notes.size() && i < slots.length; i++) {
+            Note note = notes.get(i);
+            List<Component> lore = new ArrayList<>(textLore(note.text));
+            lore.addAll(lang().lore("menu.profile.note.actions"));
+            m.set(slots[i], Items.of(Material.PAPER, lang().msg("menu.profile.note.name", "author", note.author, "date", date(note.createdAt)), lore), e -> {
+                if (!e.isShiftClick()) return;
+                if (!admin(p) && !note.author.equals(p.getName())) {
+                    lang().send(p, "error.no-permission");
+                    return;
+                }
+                plugin.punishments().removeNote(id, note);
+                profile(p, id, name);
+            });
+        }
+        if (notes.isEmpty()) m.set(22, item(Material.GRAY_DYE, "menu.profile.no-notes"));
+        m.set(46, item(Material.WRITABLE_BOOK, "menu.profile.add-note"), e ->
+                plugin.input().ask(p, "prompt.note", text -> {
+                    plugin.store().names.put(id, name);
+                    plugin.punishments().addNote(id, p.getName(), text);
+                    profile(p, id, name);
+                }, () -> profile(p, id, name), "player", name));
+        m.set(48, item(Material.BOOK, "menu.profile.history", "count", all.size()), e -> history(p, name));
+        m.set(50, item(Material.ANVIL, "menu.profile.punish"), e -> punishPlayer(p, id, name));
+        m.set(52, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
         m.fill().open(p);
     }
 
@@ -396,7 +472,7 @@ public final class AdminMenus {
         List<Punishment> list = new ArrayList<>(plugin.store().bans.values());
         Menu m = paged(lang().msg("menu.bans.title"), list, page,
                 ban -> Items.head(Bukkit.getOfflinePlayer(ban.uuid), lang().msg("menu.bans.entry.name", "player", ban.name),
-                        lang().lore("menu.bans.entry.lore",
+                        lang().lore("menu.bans.entry.lore", "type", lang().raw("type." + ban.type),
                                 "time", ban.expiresAt <= 0 ? lang().raw("permanent") : TimeUtil.format(Math.max(1000, ban.expiresAt - System.currentTimeMillis())),
                                 "reason", ban.reason, "staff", ban.staff, "date", date(ban.createdAt))),
                 (ban, e) -> {
@@ -479,6 +555,7 @@ public final class AdminMenus {
             Material icon = switch (step.type) {
                 case "WARN" -> Material.BELL;
                 case "BAN" -> Material.IRON_BARS;
+                case "SPECBAN" -> Material.ENDER_EYE;
                 default -> Material.CLOCK;
             };
             ItemStack stepItem = item(icon, "menu.category-edit.step", "n", i + 1,
@@ -491,8 +568,9 @@ public final class AdminMenus {
                     categoryEdit(p, id);
                 } else if (e.isRightClick()) {
                     if (step.type.equals("WARN")) return;
-                    plugin.input().ask(p, step.type.equals("BAN") ? "prompt.step-duration-ban" : "prompt.step-duration", text -> {
-                        boolean permanent = step.type.equals("BAN") && CategoryRegistry.isPermanent(text);
+                    boolean mayBePermanent = !step.type.equals("PLAYBAN");
+                    plugin.input().ask(p, mayBePermanent ? "prompt.step-duration-ban" : "prompt.step-duration", text -> {
+                        boolean permanent = mayBePermanent && CategoryRegistry.isPermanent(text);
                         long ms = permanent ? 0 : TimeUtil.parse(text);
                         if (!permanent && ms <= 0) lang().send(p, "error.bad-time", "input", text);
                         else step.durationMs = ms;
@@ -597,8 +675,97 @@ public final class AdminMenus {
                 e -> editList(p, "duration-presets", "prompt.duration-presets", true));
         m.set(34, item(Material.PAPER, "menu.settings.reasons", "list", String.join(", ", plugin.getConfig().getStringList("reason-presets"))),
                 e -> editList(p, "reason-presets", "prompt.reason-presets", false));
+        m.set(37, item(Material.PAINTING, "menu.settings.ban-screen"), e -> banScreen(p, 0));
+        String limbo = plugin.getConfig().getString("limbo.location.world");
+        m.set(38, item(Material.ENDER_EYE, "menu.settings.limbo-location", "value", limbo == null ? lang().raw("limbo.default-location")
+                : limbo + " " + (int) plugin.getConfig().getDouble("limbo.location.x") + " " + (int) plugin.getConfig().getDouble("limbo.location.y")
+                + " " + (int) plugin.getConfig().getDouble("limbo.location.z")), e -> {
+            if (e.isShiftClick()) {
+                plugin.getConfig().set("limbo.location", null);
+            } else {
+                org.bukkit.Location l = p.getLocation();
+                plugin.getConfig().set("limbo.location.world", l.getWorld().getName());
+                plugin.getConfig().set("limbo.location.x", l.getX());
+                plugin.getConfig().set("limbo.location.y", l.getY());
+                plugin.getConfig().set("limbo.location.z", l.getZ());
+                plugin.getConfig().set("limbo.location.yaw", (double) l.getYaw());
+                plugin.getConfig().set("limbo.location.pitch", (double) l.getPitch());
+            }
+            plugin.saveConfig();
+            settings(p);
+        });
         m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
         m.fill().open(p);
+    }
+
+    // ---------------------------------------------------------------- ban screen editor
+
+    private List<String> screenLines() {
+        List<String> custom = plugin.getConfig().getStringList("ban-screen.lines");
+        if (!custom.isEmpty()) return new ArrayList<>(custom);
+        return new ArrayList<>(List.of(lang().raw("ban.screen").split("\n", -1)));
+    }
+
+    private void saveScreen(List<String> lines) {
+        plugin.getConfig().set("ban-screen.lines", lines);
+        plugin.saveConfig();
+    }
+
+    public void banScreen(Player p, int page) {
+        if (!admin(p)) return;
+        List<String> lines = screenLines();
+        List<Integer> indexes = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) indexes.add(i);
+        Menu m = paged(lang().msg("menu.screen.title"), indexes, page, i -> {
+            String line = lines.get(i);
+            return Items.of(line.isBlank() ? Material.GRAY_STAINED_GLASS_PANE : Material.PAPER,
+                    line.isBlank() ? lang().msg("menu.screen.empty-line") : lang().parse(line), lang().lore("menu.screen.line-actions", "n", i + 1));
+        }, (i, e) -> {
+            if (e.isShiftClick()) {
+                lines.remove((int) i);
+                saveScreen(lines);
+                banScreen(p, page);
+            } else {
+                plugin.input().ask(p, "prompt.screen-line", text -> {
+                    lines.set(i, text.equals("-") ? "" : text);
+                    saveScreen(lines);
+                    banScreen(p, page);
+                }, () -> banScreen(p, page));
+            }
+        }, n -> banScreen(p, n), () -> settings(p));
+        m.set(46, item(Material.SPYGLASS, "menu.screen.preview"), e -> {
+            p.closeInventory();
+            Punishment sample = new Punishment();
+            sample.reason = lang().raw("menu.screen.sample-reason");
+            sample.staff = p.getName();
+            sample.expiresAt = System.currentTimeMillis() + 86_400_000L * 3;
+            p.sendMessage(plugin.punishments().banScreen(sample));
+        });
+        String discord = plugin.punishments().discord();
+        m.set(50, item(Material.BELL, "menu.screen.discord", "value", discord.isEmpty() ? lang().raw("none") : discord), e ->
+                plugin.input().ask(p, "prompt.discord", text -> {
+                    if (text.equals("-")) {
+                        plugin.getConfig().set("ban-screen.discord", "");
+                    } else if (text.startsWith("https://") && !text.contains("'") && !text.contains(" ")) {
+                        plugin.getConfig().set("ban-screen.discord", text);
+                    } else {
+                        lang().send(p, "error.bad-link");
+                    }
+                    plugin.saveConfig();
+                    banScreen(p, 0);
+                }, () -> banScreen(p, 0)));
+        m.set(51, item(Material.NETHER_STAR, "menu.screen.add"), e ->
+                plugin.input().ask(p, "prompt.screen-line", text -> {
+                    lines.add(text.equals("-") ? "" : text);
+                    saveScreen(lines);
+                    banScreen(p, 0);
+                }, () -> banScreen(p, 0)));
+        m.set(52, item(Material.LAVA_BUCKET, "menu.screen.reset"), e -> {
+            if (!e.isShiftClick()) return;
+            saveScreen(new ArrayList<>());
+            banScreen(p, 0);
+        });
+        m.open(p);
     }
 
     /** Replaces a config list with comma separated chat input. */

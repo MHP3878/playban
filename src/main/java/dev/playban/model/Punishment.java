@@ -21,6 +21,9 @@ public final class Punishment {
     public String category;
     /** Bans only: when the ban ends, 0 = permanent. */
     public long expiresAt;
+    /** Spectator bans only: game mode and place before the player was put on hold, kept so a crash cannot lose them. */
+    public String prevMode;
+    public String prevLocation;
     public UUID uuid;
     public String name;
     public String reason;

@@ -1,5 +1,6 @@
 package dev.playban;
 
+import dev.playban.model.Note;
 import dev.playban.model.Punishment;
 import dev.playban.model.Review;
 import dev.playban.model.TaskStatus;
@@ -30,6 +31,9 @@ public final class DataStore {
     public final Map<String, Ticket> tickets = new LinkedHashMap<>();
     /** Messages for players who were offline, as MiniMessage text. */
     public final Map<UUID, List<String>> mail = new LinkedHashMap<>();
+    public final Map<UUID, List<Note>> notes = new LinkedHashMap<>();
+    /** Last known name of every player PlayBan has dealt with, so profiles work while they are offline. */
+    public final Map<UUID, String> names = new LinkedHashMap<>();
     private boolean dirty;
     private long counter;
 
@@ -101,6 +105,23 @@ public final class DataStore {
             tk.createdAt = s.getLong("created");
             tickets.put(k, tk);
         }
+        ConfigurationSection ns = cfg.getConfigurationSection("notes");
+        if (ns != null) for (String k : ns.getKeys(false)) {
+            ConfigurationSection per = ns.getConfigurationSection(k);
+            if (per == null) continue;
+            List<Note> list = new ArrayList<>();
+            for (String id : per.getKeys(false)) {
+                Note n = new Note();
+                n.id = id;
+                n.author = per.getString(id + ".author", "?");
+                n.text = per.getString(id + ".text", "");
+                n.createdAt = per.getLong(id + ".created");
+                list.add(n);
+            }
+            notes.put(UUID.fromString(k), list);
+        }
+        ConfigurationSection nm = cfg.getConfigurationSection("names");
+        if (nm != null) for (String k : nm.getKeys(false)) names.put(UUID.fromString(k), nm.getString(k));
         ConfigurationSection m = cfg.getConfigurationSection("mail");
         if (m != null) for (String k : m.getKeys(false)) mail.put(UUID.fromString(k), new ArrayList<>(m.getStringList(k)));
     }
@@ -114,6 +135,8 @@ public final class DataStore {
             p.type = s.getString("type", "PLAYBAN");
             p.category = s.getString("category");
             p.expiresAt = s.getLong("expires");
+            p.prevMode = s.getString("prev-mode");
+            p.prevLocation = s.getString("prev-location");
             p.reason = s.getString("reason", "");
             p.staff = s.getString("staff", "?");
             p.createdAt = s.getLong("created");
@@ -148,6 +171,10 @@ public final class DataStore {
         cfg.set(path + ".type", p.type);
         if (p.category != null) cfg.set(path + ".category", p.category);
         if (p.expiresAt > 0) cfg.set(path + ".expires", p.expiresAt);
+        if (p.prevMode != null) {
+            cfg.set(path + ".prev-mode", p.prevMode);
+            cfg.set(path + ".prev-location", p.prevLocation);
+        }
         cfg.set(path + ".reason", p.reason);
         cfg.set(path + ".staff", p.staff);
         cfg.set(path + ".created", p.createdAt);
@@ -195,6 +222,15 @@ public final class DataStore {
             cfg.set(p + "text", t.text);
             cfg.set(p + "created", t.createdAt);
         }
+        for (Map.Entry<UUID, List<Note>> e : notes.entrySet()) {
+            for (Note n : e.getValue()) {
+                String p = "notes." + e.getKey() + "." + n.id + ".";
+                cfg.set(p + "author", n.author);
+                cfg.set(p + "text", n.text);
+                cfg.set(p + "created", n.createdAt);
+            }
+        }
+        for (Map.Entry<UUID, String> e : names.entrySet()) cfg.set("names." + e.getKey(), e.getValue());
         for (Map.Entry<UUID, List<String>> e : mail.entrySet()) {
             if (!e.getValue().isEmpty()) cfg.set("mail." + e.getKey(), e.getValue());
         }

@@ -24,6 +24,10 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import com.destroystokyo.paper.event.player.PlayerStartSpectatingEntityEvent;
+import org.bukkit.Location;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
@@ -54,6 +58,31 @@ public final class RestrictionListener implements Listener {
         if (last != null && now - last < 3000) return;
         lastHint.put(p.getUniqueId(), now);
         plugin.lang().send(p, key);
+    }
+
+    // ---- spectator ban: stuck in place, so nobody can use it to scout bases
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onMove(PlayerMoveEvent e) {
+        if (!plugin.punishments().inLimbo(e.getPlayer().getUniqueId())) return;
+        Location from = e.getFrom();
+        Location to = e.getTo();
+        if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) return;
+        Location stay = from.clone();
+        stay.setYaw(to.getYaw());
+        stay.setPitch(to.getPitch());
+        e.setTo(stay);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onTeleport(PlayerTeleportEvent e) {
+        if (e.getCause() == PlayerTeleportEvent.TeleportCause.SPECTATE
+                && plugin.punishments().inLimbo(e.getPlayer().getUniqueId())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onSpectate(PlayerStartSpectatingEntityEvent e) {
+        if (plugin.punishments().inLimbo(e.getPlayer().getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -169,8 +198,7 @@ public final class RestrictionListener implements Listener {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onChat(AsyncChatEvent e) {
         Player p = e.getPlayer();
-        if (!plugin.getConfig().getBoolean("restrictions.chat", true)) return;
-        if (!plugin.punishments().isPunished(p.getUniqueId())) return;
+        if (!blocked(p, "chat")) return;
         e.setCancelled(true);
         plugin.lang().send(p, "blocked.chat");
     }
@@ -182,8 +210,10 @@ public final class RestrictionListener implements Listener {
         String label = e.getMessage().substring(1).split(" ")[0].toLowerCase();
         if (label.contains(":")) label = label.substring(label.indexOf(':') + 1);
         if (label.equals("playban") || label.equals("pb") || label.equals("ticket") || label.equals("pbticket")) return;
-        List<String> allowed = plugin.getConfig().getStringList("allowed-commands");
-        for (String a : allowed) if (a.equalsIgnoreCase(label)) return;
+        if (!plugin.punishments().inLimbo(p.getUniqueId())) {
+            List<String> allowed = plugin.getConfig().getStringList("allowed-commands");
+            for (String a : allowed) if (a.equalsIgnoreCase(label)) return;
+        }
         e.setCancelled(true);
         plugin.lang().send(p, "blocked.command");
     }

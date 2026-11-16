@@ -335,6 +335,8 @@ class PlayBanTest {
     void everyMenuOpensInBothLanguagesWithoutMissingTexts() {
         punish("1h");
         troll.performCommand("ticket hello");
+        admin.performCommand("playban note Troll was rude in chat");
+        admin.performCommand("playban specban Bystander 2h Testing");
         for (String code : new String[]{"en", "de"}) {
             plugin.lang().load(code);
             Runnable[] menus = {
@@ -349,6 +351,8 @@ class PlayBanTest {
                     () -> plugin.adminMenus().tasks(admin, 0),
                     () -> plugin.adminMenus().history(admin, "Troll"),
                     () -> plugin.adminMenus().bans(admin, 0),
+                    () -> plugin.adminMenus().profile(admin, troll.getUniqueId(), "Troll"),
+                    () -> plugin.adminMenus().banScreen(admin, 0),
                     () -> plugin.adminMenus().categories(admin, 0),
                     () -> plugin.adminMenus().categoryEdit(admin, "cheating"),
                     () -> plugin.adminMenus().punishPlayer(admin, bystander.getUniqueId(), "Bystander"),
@@ -511,6 +515,128 @@ class PlayBanTest {
         assertEquals(3, fresh.get("bug-abuse").steps.size(), "changes are written to categories.yml");
         assertEquals("Bug abuse", fresh.get("bug-abuse").name);
         assertEquals(5 + 1, fresh.all().size());
+    }
+
+    @Test
+    void spectatorBanKeepsPlayerStuckAndRestoresEverythingAfterwards() {
+        var home = troll.getLocation().clone();
+        troll.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        admin.performCommand("playban specban Troll 1h Hacking");
+        assertTrue(troll.isOnline(), "a spectator ban does not kick");
+        assertTrue(plugin.punishments().inLimbo(troll.getUniqueId()));
+        assertEquals(org.bukkit.GameMode.SPECTATOR, troll.getGameMode());
+        assertFalse(bystander.canSee(troll), "nobody sees the banned spectator");
+        assertFalse(troll.canSee(bystander), "and they see nobody");
+        assertTrue(troll.hasPotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS));
+
+        // cannot move away, cannot jump to other players
+        var here = troll.getLocation();
+        var move = new org.bukkit.event.player.PlayerMoveEvent(troll, here.clone(), here.clone().add(5, 0, 5));
+        server.getPluginManager().callEvent(move);
+        assertEquals(here.getX(), move.getTo().getX());
+        assertEquals(here.getZ(), move.getTo().getZ());
+        var jump = new org.bukkit.event.player.PlayerTeleportEvent(troll, here, bystander.getLocation(),
+                org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.SPECTATE);
+        server.getPluginManager().callEvent(jump);
+        assertTrue(jump.isCancelled());
+
+        // no chat, no commands except tickets
+        PlayerCommandPreprocessEvent spawn = new PlayerCommandPreprocessEvent(troll, "/spawn");
+        server.getPluginManager().callEvent(spawn);
+        assertTrue(spawn.isCancelled(), "even the commands allowed for PlayBans are locked");
+        troll.performCommand("ticket please unban me");
+        assertEquals(1, plugin.store().tickets.size(), "writing a ticket still works");
+
+        // the login itself is allowed
+        var listener = new dev.playban.listener.ConnectionListener(plugin);
+        org.bukkit.event.player.AsyncPlayerPreLoginEvent login;
+        try {
+            login = new org.bukkit.event.player.AsyncPlayerPreLoginEvent("Troll", java.net.InetAddress.getByName("127.0.0.1"), troll.getUniqueId());
+        } catch (java.net.UnknownHostException e) {
+            throw new AssertionError(e);
+        }
+        listener.onPreLogin(login);
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED, login.getLoginResult());
+
+        // leaving the server puts the player back to normal, joining again puts them on hold again
+        troll.disconnect();
+        assertEquals(org.bukkit.GameMode.SURVIVAL, troll.getGameMode());
+        troll.reconnect();
+        server.getScheduler().performTicks(30);
+        assertEquals(org.bukkit.GameMode.SPECTATOR, troll.getGameMode());
+
+        admin.performCommand("playban unban Troll");
+        assertFalse(plugin.punishments().inLimbo(troll.getUniqueId()));
+        assertEquals(org.bukkit.GameMode.SURVIVAL, troll.getGameMode());
+        assertEquals(home.getX(), troll.getLocation().getX());
+        assertFalse(troll.hasPotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS));
+        assertTrue(bystander.canSee(troll));
+        assertTrue(troll.canSee(bystander));
+    }
+
+    @Test
+    void spectatorBanWorksAsACategoryStep() {
+        var cat = plugin.categories().create("Base scouting");
+        cat.steps.clear();
+        cat.steps.add(new dev.playban.model.Category.Step("SPECBAN", 3_600_000L));
+        admin.performCommand("playban apply Troll " + cat.id);
+        assertTrue(plugin.punishments().inLimbo(troll.getUniqueId()));
+        server.getScheduler().performTicks(40);
+        plugin.store().bans.get(troll.getUniqueId()).expiresAt = System.currentTimeMillis() - 1;
+        server.getScheduler().performTicks(25);
+        assertFalse(plugin.punishments().inLimbo(troll.getUniqueId()), "it ends on its own");
+        assertNotEquals(org.bukkit.GameMode.SPECTATOR, troll.getGameMode());
+    }
+
+    @Test
+    void banScreenCanBeCustomizedAndShowsDiscord() {
+        admin.performCommand("playban ban Troll 1h Hacking");
+        Punishment ban = plugin.store().bans.get(troll.getUniqueId());
+        String standard = plain(plugin.punishments().banScreen(ban));
+        assertTrue(standard.contains("Hacking"));
+        assertFalse(standard.contains("discord"));
+
+        plugin.getConfig().set("ban-screen.discord", "https://discord.gg/example");
+        assertTrue(plain(plugin.punishments().banScreen(ban)).contains("https://discord.gg/example"),
+                "the Discord link is added to the default screen");
+
+        plugin.getConfig().set("ban-screen.lines", java.util.List.of("<red>MyServer", "Banned for {reason} by {staff}", "Join {discord}"));
+        String custom = plain(plugin.punishments().banScreen(ban));
+        assertTrue(custom.contains("MyServer"));
+        assertTrue(custom.contains("Banned for Hacking by Admin"));
+        assertTrue(custom.contains("Join https://discord.gg/example"));
+        assertEquals(1, custom.split("discord.gg", -1).length - 1, "the link is not added twice");
+
+        // editing through the menu: reset to the default text
+        plugin.adminMenus().banScreen(admin, 0);
+        admin.simulateInventoryClick(admin.getOpenInventory(), org.bukkit.event.inventory.ClickType.SHIFT_LEFT, 52);
+        assertTrue(plugin.getConfig().getStringList("ban-screen.lines").isEmpty());
+    }
+
+    @Test
+    void notesAreKeptPerPlayerAndShownInTheProfile() {
+        admin.performCommand("playban note Troll was rude in chat");
+        admin.performCommand("playban note Troll apologized later");
+        assertEquals(2, plugin.store().notes.get(troll.getUniqueId()).size());
+        assertEquals("Admin", plugin.store().notes.get(troll.getUniqueId()).get(0).author);
+
+        bystander.performCommand("playban note Troll I should not be able to do this");
+        assertEquals(2, plugin.store().notes.get(troll.getUniqueId()).size(), "only the team can write notes");
+
+        assertTrue(admin.performCommand("playban profile troll"));
+        var inv = admin.getOpenInventory().getTopInventory();
+        // newest note first
+        assertTrue(inv.getItem(19).getItemMeta().lore().stream().anyMatch(l -> plain(l).contains("apologized later")));
+        assertTrue(inv.getItem(20).getItemMeta().lore().stream().anyMatch(l -> plain(l).contains("was rude in chat")));
+
+        plugin.store().saveNow();
+        DataStore fresh = new DataStore(plugin);
+        fresh.load();
+        assertEquals(2, fresh.notes.get(troll.getUniqueId()).size(), "notes survive a restart");
+        assertEquals("Troll", fresh.names.get(troll.getUniqueId()));
+
+        admin.simulateInventoryClick(admin.getOpenInventory(), org.bukkit.event.inventory.ClickType.SHIFT_LEFT, 19);
+        assertEquals(1, plugin.store().notes.get(troll.getUniqueId()).size());
     }
 
     @Test

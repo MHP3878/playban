@@ -1,6 +1,7 @@
 package dev.playban;
 
 import dev.playban.model.Category;
+import dev.playban.model.Note;
 import dev.playban.model.Punishment;
 import dev.playban.model.Punishment.TaskProgress;
 import dev.playban.model.Review;
@@ -13,7 +14,12 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -27,6 +33,7 @@ import java.util.UUID;
 public final class PunishmentManager {
     private final PlayBanPlugin plugin;
     private final Map<UUID, BossBar> bars = new HashMap<>();
+
     private BukkitTask ticker;
     private int seconds;
 
@@ -44,12 +51,19 @@ public final class PunishmentManager {
 
     public void start() {
         ticker = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
-        for (Player p : Bukkit.getOnlinePlayers()) if (isPunished(p.getUniqueId())) applyState(p);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (isPunished(p.getUniqueId())) applyState(p);
+            if (inLimbo(p.getUniqueId())) enterLimbo(p);
+        }
     }
 
     public void shutdown() {
         if (ticker != null) ticker.cancel();
-        for (Player p : Bukkit.getOnlinePlayers()) if (isPunished(p.getUniqueId())) clearState(p);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (isPunished(p.getUniqueId())) clearState(p);
+            Punishment ban = store().bans.get(p.getUniqueId());
+            if (ban != null && ban.prevMode != null) leaveLimbo(p, ban);
+        }
     }
 
     public Punishment get(UUID id) {
@@ -60,7 +74,19 @@ public final class PunishmentManager {
         return store().active.containsKey(id);
     }
 
+    /** Spectator ban: the player may join, but is stuck in spectator mode. */
+    public boolean inLimbo(UUID id) {
+        Punishment p = store().bans.get(id);
+        return p != null && "SPECBAN".equals(p.type) && !(p.expiresAt > 0 && p.expiresAt <= System.currentTimeMillis());
+    }
+
+    /** PlayBan or spectator ban: either way the player is cut off from normal play. */
+    public boolean limited(UUID id) {
+        return isPunished(id) || inLimbo(id);
+    }
+
     public boolean restricted(Player p, String key) {
+        if (inLimbo(p.getUniqueId())) return true;
         return isPunished(p.getUniqueId()) && plugin.getConfig().getBoolean("restrictions." + key, true);
     }
 
@@ -95,6 +121,7 @@ public final class PunishmentManager {
             p.tasks.put(def.id, new TaskProgress(TaskStatus.OPEN, def.timeLimitMs));
         }
         store().active.put(id, p);
+        store().names.put(id, name);
         store().markDirty();
 
         Player online = Bukkit.getPlayer(id);
@@ -174,7 +201,7 @@ public final class PunishmentManager {
     public String describe(String type, long ms) {
         String name = lang().raw("type." + type);
         if (type.equals("WARN")) return name;
-        if (type.equals("BAN") && ms <= 0) return name + " (" + lang().raw("permanent") + ")";
+        if (!type.equals("PLAYBAN") && ms <= 0) return name + " (" + lang().raw("permanent") + ")";
         return name + " (" + TimeUtil.format(ms) + ")";
     }
 
@@ -185,9 +212,9 @@ public final class PunishmentManager {
                           String category, UUID victim, String victimName) {
         switch (type) {
             case "WARN" -> warn(id, name, reason, staff, category);
-            case "BAN" -> {
+            case "BAN", "SPECBAN" -> {
                 if (store().bans.containsKey(id)) return "error.already-banned";
-                ban(id, name, ms, reason, staff, category);
+                ban(id, name, type, ms, reason, staff, category);
             }
             default -> {
                 if (isPunished(id)) return "error.already-punished";
@@ -200,6 +227,7 @@ public final class PunishmentManager {
     }
 
     private Punishment record(UUID id, String name, String type, String reason, String staff, String category) {
+        store().names.put(id, name);
         Punishment p = new Punishment();
         p.type = type;
         p.uuid = id;
@@ -227,15 +255,18 @@ public final class PunishmentManager {
         notifyStaff(lang().prefixed("warn.broadcast", "player", name, "staff", staff, "reason", reason));
     }
 
-    public void ban(UUID id, String name, long ms, String reason, String staff, String category) {
-        Punishment p = record(id, name, "BAN", reason, staff, category);
+    public void ban(UUID id, String name, String type, long ms, String reason, String staff, String category) {
+        Punishment p = record(id, name, type, reason, staff, category);
         p.originalMs = Math.max(0, ms);
         p.expiresAt = ms <= 0 ? 0 : p.createdAt + ms;
         store().bans.put(id, p);
         store().markDirty();
         Player online = Bukkit.getPlayer(id);
-        if (online != null) online.kick(banScreen(p));
-        notifyStaff(lang().prefixed("ban.broadcast", "player", name, "staff", staff,
+        if (online != null) {
+            if (type.equals("SPECBAN")) enterLimbo(online);
+            else online.kick(banScreen(p));
+        }
+        notifyStaff(lang().prefixed(type.equals("SPECBAN") ? "ban.broadcast-spectator" : "ban.broadcast", "player", name, "staff", staff,
                 "time", ms <= 0 ? lang().raw("permanent") : TimeUtil.format(ms), "reason", reason));
     }
 
@@ -245,20 +276,131 @@ public final class PunishmentManager {
         p.endReason = by == null ? "SERVED" : "PARDONED";
         store().history.computeIfAbsent(p.uuid, k -> new ArrayList<>()).add(p);
         store().markDirty();
+        Player online = Bukkit.getPlayer(p.uuid);
+        if (online != null && p.prevMode != null) {
+            leaveLimbo(online, p);
+            online.showTitle(Title.title(lang().msg("end.title"), lang().msg("end.subtitle")));
+            lang().send(online, by == null ? "end.served" : "end.pardoned");
+        }
         if (by != null) notifyStaff(lang().prefixed("ban.broadcast-unbanned", "player", p.name, "staff", by));
     }
 
-    /** The active ban of a player, or null. Safe to call from the login thread. */
+    /** The active real ban of a player, or null. Safe to call from the login thread. */
     public Punishment activeBan(UUID id) {
         Punishment p = store().bans.get(id);
-        if (p == null) return null;
+        if (p == null || !"BAN".equals(p.type)) return null;
         if (p.expiresAt > 0 && p.expiresAt <= System.currentTimeMillis()) return null;
         return p;
     }
 
+    public String timeLeft(Punishment ban) {
+        return ban.expiresAt <= 0 ? lang().raw("permanent") : TimeUtil.format(Math.max(1000, ban.expiresAt - System.currentTimeMillis()));
+    }
+
+    public String discord() {
+        return plugin.getConfig().getString("ban-screen.discord", "");
+    }
+
+    /** The text a banned player sees: the server's own lines if set, otherwise the default from the language file. */
     public Component banScreen(Punishment p) {
-        String left = p.expiresAt <= 0 ? lang().raw("permanent") : TimeUtil.format(Math.max(1000, p.expiresAt - System.currentTimeMillis()));
-        return lang().msg("ban.screen", "reason", p.reason, "time", left, "staff", p.staff);
+        List<String> custom = plugin.getConfig().getStringList("ban-screen.lines");
+        String template = custom.isEmpty() ? lang().raw("ban.screen") : String.join("\n", custom);
+        if (!discord().isEmpty() && !template.contains("{discord}")) template += "\n\n" + lang().raw("ban.discord-line");
+        return lang().format(template, "reason", p.reason, "time", timeLeft(p), "staff", p.staff, "discord", discord());
+    }
+
+    // ---------------------------------------------------------------- spectator ban
+
+    private Location limboLocation(Player player) {
+        String world = plugin.getConfig().getString("limbo.location.world");
+        World w = world == null ? null : Bukkit.getWorld(world);
+        if (w == null) return player.getWorld().getSpawnLocation();
+        return new Location(w, plugin.getConfig().getDouble("limbo.location.x"), plugin.getConfig().getDouble("limbo.location.y"),
+                plugin.getConfig().getDouble("limbo.location.z"), (float) plugin.getConfig().getDouble("limbo.location.yaw"),
+                (float) plugin.getConfig().getDouble("limbo.location.pitch"));
+    }
+
+    public void enterLimbo(Player player) {
+        Punishment ban = store().bans.get(player.getUniqueId());
+        if (ban == null) return;
+        if (ban.prevMode == null) {
+            Location l = player.getLocation();
+            ban.prevMode = player.getGameMode().name();
+            ban.prevLocation = l.getWorld().getName() + ";" + l.getX() + ";" + l.getY() + ";" + l.getZ() + ";" + l.getYaw() + ";" + l.getPitch();
+            store().markDirty();
+        }
+        player.closeInventory();
+        player.setGameMode(GameMode.SPECTATOR);
+        player.teleport(limboLocation(player));
+        if (plugin.getConfig().getBoolean("limbo.blind", true)) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, PotionEffect.INFINITE_DURATION, 0, false, false, false));
+        }
+        refreshVisibility();
+        updateLimboBar(player, ban);
+        player.showTitle(Title.title(lang().msg("limbo.title"), lang().msg("limbo.subtitle", "time", timeLeft(ban))));
+        sendLimboStatus(player);
+    }
+
+    public void leaveLimbo(Player player, Punishment ban) {
+        player.removePotionEffect(PotionEffectType.BLINDNESS);
+        if (ban.prevMode != null) {
+            try {
+                player.setGameMode(GameMode.valueOf(ban.prevMode));
+                String[] l = ban.prevLocation.split(";");
+                World w = Bukkit.getWorld(l[0]);
+                if (w != null) {
+                    player.teleport(new Location(w, Double.parseDouble(l[1]), Double.parseDouble(l[2]), Double.parseDouble(l[3]),
+                            Float.parseFloat(l[4]), Float.parseFloat(l[5])));
+                }
+            } catch (RuntimeException e) {
+                player.setGameMode(Bukkit.getDefaultGameMode());
+            }
+            ban.prevMode = null;
+            ban.prevLocation = null;
+            store().markDirty();
+        }
+        removeBar(player);
+        refreshVisibility();
+    }
+
+    public void sendLimboStatus(Player player) {
+        Punishment ban = store().bans.get(player.getUniqueId());
+        if (ban == null) return;
+        lang().send(player, "limbo.status", "time", timeLeft(ban), "reason", ban.reason);
+        lang().send(player, "limbo.hint");
+        if (!discord().isEmpty()) lang().send(player, "limbo.discord", "discord", discord());
+    }
+
+    private void updateLimboBar(Player player, Punishment ban) {
+        float progress = ban.expiresAt <= 0 || ban.originalMs <= 0 ? 1f
+                : Math.max(0f, Math.min(1f, (float) (ban.expiresAt - System.currentTimeMillis()) / ban.originalMs));
+        Component text = lang().msg("limbo.bossbar", "time", timeLeft(ban));
+        BossBar bar = bars.get(player.getUniqueId());
+        if (bar == null) {
+            bar = BossBar.bossBar(text, progress, BossBar.Color.RED, BossBar.Overlay.PROGRESS);
+            bars.put(player.getUniqueId(), bar);
+            player.showBossBar(bar);
+        } else {
+            bar.name(text);
+            bar.progress(progress);
+        }
+    }
+
+    // ---------------------------------------------------------------- notes
+
+    public void addNote(UUID id, String author, String text) {
+        Note n = new Note();
+        n.id = store().nextId();
+        n.author = author;
+        n.text = text;
+        n.createdAt = System.currentTimeMillis();
+        store().notes.computeIfAbsent(id, k -> new ArrayList<>()).add(n);
+        store().markDirty();
+    }
+
+    public void removeNote(UUID id, Note note) {
+        List<Note> list = store().notes.get(id);
+        if (list != null && list.remove(note)) store().markDirty();
     }
 
     // ---------------------------------------------------------------- state on the player
@@ -285,12 +427,16 @@ public final class PunishmentManager {
     /** Re-applies who can see whom. Called on joins, punishments and setting changes. */
     public void refreshVisibility() {
         boolean hide = plugin.getConfig().getBoolean("restrictions.hide-from-players", true);
-        for (Player punished : Bukkit.getOnlinePlayers()) {
-            if (!isPunished(punished.getUniqueId())) continue;
+        boolean limboSeesNobody = plugin.getConfig().getBoolean("limbo.hide-others", true);
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            boolean punished = isPunished(target.getUniqueId());
+            boolean limbo = inLimbo(target.getUniqueId());
             for (Player viewer : Bukkit.getOnlinePlayers()) {
-                if (viewer.equals(punished)) continue;
-                if (hide && !maySee(viewer)) viewer.hidePlayer(plugin, punished);
-                else viewer.showPlayer(plugin, punished);
+                if (viewer.equals(target)) continue;
+                boolean hidden = ((punished && hide) || limbo) && !maySee(viewer);
+                if (limboSeesNobody && inLimbo(viewer.getUniqueId())) hidden = true;
+                if (hidden) viewer.hidePlayer(plugin, target);
+                else viewer.showPlayer(plugin, target);
             }
         }
     }
@@ -350,7 +496,12 @@ public final class PunishmentManager {
             }
         }
         for (Punishment ban : new ArrayList<>(store().bans.values())) {
-            if (ban.expiresAt > 0 && ban.expiresAt <= now) unban(ban, null);
+            if (ban.expiresAt > 0 && ban.expiresAt <= now) {
+                unban(ban, null);
+            } else if ("SPECBAN".equals(ban.type)) {
+                Player online = Bukkit.getPlayer(ban.uuid);
+                if (online != null) updateLimboBar(online, ban);
+            }
         }
         if (++seconds % 30 == 0) store().saveIfDirty();
     }

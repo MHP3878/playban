@@ -42,3 +42,20 @@ reason-presets:
   - Spam
   - Cheating
   - Scamming
+
+# What a banned player sees.
+ban-screen:
+  # Invite link to your Discord, shown on the ban screen and to spectator-banned players. Empty = not shown.
+  discord: ""
+  # Your own lines for the ban screen (MiniMessage colors). Empty = the default text from the language file.
+  # Placeholders: {reason} {time} {staff} {discord}
+  lines: []
+
+# Spectator ban: the player may join but is stuck in spectator mode and can only write tickets.
+limbo:
+  # The player sees almost nothing (blindness)
+  blind: true
+  # The player sees no other players
+  hide-others: true
+  # Where the player is held. Set it in the menu; without it the world spawn is used.
+  # location: {world: world, x: 0, y: 100, z: 0, yaw: 0, pitch: 0}

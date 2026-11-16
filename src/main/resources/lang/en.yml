@@ -18,6 +18,7 @@ custom: "custom"
 applied: "<gray><white>{player}</white>: offense no. <white>{n}</white> in <white>{category}</white> → <white>{punishment}"
 
 type:
+  SPECBAN: "Spectator ban"
   WARN: "Warning"
   PLAYBAN: "PlayBan"
   BAN: "Ban"
@@ -29,6 +30,8 @@ warn:
   broadcast: "<white>{staff}</white> <gray>warned</gray> <white>{player}</white><gray>. Reason:</gray> <white>{reason}"
 
 ban:
+  broadcast-spectator: "<white>{staff}</white> <gray>put</gray> <white>{player}</white> <gray>into a spectator ban. Duration:</gray> <white>{time}</white><gray>. Reason:</gray> <white>{reason}"
+  discord-line: "<gray>Discord: <#ffc371>{discord}"
   screen: |-
     <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>
 
@@ -40,6 +43,24 @@ ban:
   broadcast: "<white>{staff}</white> <gray>banned</gray> <white>{player}</white><gray>. Duration:</gray> <white>{time}</white><gray>. Reason:</gray> <white>{reason}"
   broadcast-unbanned: "<white>{staff}</white> <gray>unbanned</gray> <white>{player}</white><gray>."
 
+limbo:
+  title: "<red><bold>BANNED</bold></red>"
+  subtitle: "<gray>Time left: <white>{time}"
+  status: "<red>You are banned and can only watch. <gray>Time left: <white>{time}</white>. Reason: <white>{reason}"
+  hint: "<gray>Want to appeal? Write <#ffc371>/ticket <your message></#ffc371>."
+  discord: "<gray>Our Discord: <click:open_url:'{discord}'><#ffc371><underlined>{discord}</underlined></#ffc371></click>"
+  bossbar: "<red><bold>BANNED</bold></red> <dark_gray>|</dark_gray> <white>{time}</white> <gray>left</gray> <dark_gray>|</dark_gray> <#ffc371>/ticket <message>"
+  default-location: "world spawn"
+
+profile:
+  state:
+    free: "<green>not punished"
+    playban: "<gold>PlayBan running"
+    banned: "<red>banned"
+
+note:
+  added: "<green>Note saved for <white>{player}</white>."
+
 help: |-
   <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- commands
   <#ffc371>/playban menu <dark_gray>-</dark_gray> <gray>open the main menu
@@ -48,6 +69,9 @@ help: |-
   <#ffc371>/playban warn <player> [reason] <dark_gray>-</dark_gray> <gray>warn a player
   <#ffc371>/playban ban <player> <time|perm> [reason] <dark_gray>-</dark_gray> <gray>real ban
   <#ffc371>/playban unban <player> <dark_gray>-</dark_gray> <gray>lift a ban
+  <#ffc371>/playban specban <player> <time|perm> [reason] <dark_gray>-</dark_gray> <gray>spectator ban
+  <#ffc371>/playban note <player> <text> <dark_gray>-</dark_gray> <gray>write a note about a player
+  <#ffc371>/playban profile <player> <dark_gray>-</dark_gray> <gray>notes and punishments of a player
   <#ffc371>/playban punish <player> <time> [reason] <dark_gray>-</dark_gray> <gray>punish a player
   <#ffc371>/playban pardon <player> <dark_gray>-</dark_gray> <gray>end a punishment
   <#ffc371>/playban addtime <player> <time> <dark_gray>-</dark_gray> <gray>make it longer
@@ -60,6 +84,9 @@ help: |-
   <gray>Times look like <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
+  specban: "<gray>Usage: <white>/playban specban <player> <time|perm> [reason]"
+  note: "<gray>Usage: <white>/playban note <player> <text>"
+  profile: "<gray>Usage: <white>/playban profile <player>"
   apply: "<gray>Usage: <white>/playban apply <player> <category>"
   warn: "<gray>Usage: <white>/playban warn <player> [reason]"
   ban: "<gray>Usage: <white>/playban ban <player> <time|perm> [reason]"
@@ -74,6 +101,7 @@ usage:
   ticket: "<gray>Usage: <white>/ticket <your message>"
 
 error:
+  bad-link: "<red>That is not a valid link. It has to start with <white>https://</white>."
   already-banned: "<red><white>{player}</white> is already banned."
   not-banned: "<red><white>{player}</white> is not banned."
   unknown-category: "<red>There is no category <white>{category}</white>, or it has no steps."
@@ -225,6 +253,9 @@ task:
       - "<gray>that you write yourself."
 
 prompt:
+  note: "<#ffc371>Type your note about <white>{player}</white> into the chat."
+  screen-line: "<#ffc371>Type the text for this line. Colors like <white>\\<red></white> work. Placeholders: <white>{reason} {time} {staff} {discord}</white>. Type <white>-</white> for an empty line."
+  discord: "<#ffc371>Type the invite link to your Discord, for example <white>https://discord.gg/abc</white>. Type <white>-</white> to remove it."
   category-name: "<#ffc371>Type the name of the category, for example <white>X-Ray</white>."
   category-expire: "<#ffc371>After what time do offenses stop counting? Example: <white>90d</white>. Type <white>0</white> for never."
   step-duration: "<#ffc371>Type the duration for this step, for example <white>1d</white>."
@@ -236,7 +267,7 @@ prompt:
   nice-message: "<#ffc371>Type your kind message to <white>{player}</white> into the chat. <gray>(at least {min} characters)"
   target-name: "<#ffc371>Type the name of the player into the chat."
   player-name: "<#ffc371>Type the name of the player you want to punish."
-  history-name: "<#ffc371>Type the name of the player whose history you want to see."
+  history-name: "<#ffc371>Type the name of the player whose profile you want to see."
   duration: "<#ffc371>Type the duration, for example <white>45m</white>, <white>2h</white> or <white>1d 12h</white>."
   reason: "<#ffc371>Type the reason into the chat."
   change-time: "<#ffc371>Type <white>+30m</white> to add or <white>-30m</white> to remove time."
@@ -286,6 +317,13 @@ setting:
     mob-target:
       name: "<#ffc371>Ignored by monsters"
       lore: ["<gray>Monsters do not attack", "<gray>the player."]
+  limbo:
+    blind:
+      name: "<#ffc371>Spectator ban: blind"
+      lore: ["<gray>Spectator-banned players see", "<gray>almost nothing."]
+    hide-others:
+      name: "<#ffc371>Spectator ban: sees nobody"
+      lore: ["<gray>Spectator-banned players see", "<gray>no other players."]
   count-only-online-time:
     name: "<#ffc371>Only online time counts"
     lore: ["<gray>On: the time only runs while", "<gray>the player is on the server.", "<gray>Off: it runs like a normal ban."]
@@ -327,8 +365,8 @@ menu:
       name: "<#ffc371><bold>Tickets</bold>"
       lore: ["<gray>Open: <white>{count}", "", "<#ffc371>Click to open"]
     history:
-      name: "<#ffc371><bold>History</bold>"
-      lore: ["<gray>Earlier punishments of a player.", "", "<#ffc371>Click and type a name"]
+      name: "<#ffc371><bold>Player profile</bold>"
+      lore: ["<gray>Notes and earlier punishments", "<gray>of a player.", "", "<#ffc371>Click and type a name"]
     tasks:
       name: "<#ffc371><bold>Tasks</bold>"
       lore: ["<gray>Tasks: <white>{count}", "<gray>What punished players can do", "<gray>to shorten their time.", "", "<#ffc371>Click to edit"]
@@ -347,6 +385,9 @@ menu:
     custom-playban:
       name: "<#ffc371>Custom PlayBan"
       lore: ["<gray>Pick duration and reason yourself."]
+    custom-specban:
+      name: "<#ffc371>Custom spectator ban"
+      lore: ["<gray>The player may join, but is stuck", "<gray>as a spectator and can only", "<gray>write tickets."]
     custom-ban:
       name: "<#ffc371>Custom ban"
       lore: ["<gray>Pick duration and reason yourself."]
@@ -361,6 +402,7 @@ menu:
     entry:
       name: "<white>{player}"
       lore:
+        - "<gray>Kind: <white>{type}"
         - "<gray>Left: <white>{time}"
         - "<gray>Reason: <white>{reason}"
         - "<gray>By: <white>{staff}</white> <dark_gray>{date}"
@@ -397,6 +439,49 @@ menu:
     add-step:
       name: "<green>Add a step"
       lore: ["<gray>Starts as a copy of the last step."]
+
+  profile:
+    title: "<dark_gray>Profile: {player}"
+    summary:
+      name: "<white>{player} <dark_gray>({online}<dark_gray>)"
+      lore:
+        - "<gray>Status: {state}"
+        - "<gray>PlayBans: <white>{playbans}"
+        - "<gray>Bans: <white>{bans}"
+        - "<gray>Warnings: <white>{warns}"
+        - "<gray>Notes: <white>{notes}"
+    note:
+      name: "<#ffc371>{author} <dark_gray>{date}"
+      actions: ["", "<red>Shift + click to delete"]
+    no-notes:
+      name: "<gray>No notes yet"
+    add-note:
+      name: "<green>Write a note"
+      lore: ["<gray>Click and type it into the chat."]
+    history:
+      name: "<#ffc371>Punishments"
+      lore: ["<gray>Entries: <white>{count}", "", "<#ffc371>Click to open"]
+    punish:
+      name: "<gradient:#ff5f6d:#ffc371><bold>Punish</bold></gradient>"
+      lore: ["<gray>Pick a category for this player."]
+
+  screen:
+    title: "<dark_gray>Ban screen"
+    empty-line: "<dark_gray>(empty line)"
+    sample-reason: "Example reason"
+    line-actions: ["<dark_gray>Line {n}", "", "<#ffc371>Click to change", "<red>Shift + click to remove"]
+    preview:
+      name: "<#ffc371>Preview"
+      lore: ["<gray>Shows the screen in your chat."]
+    discord:
+      name: "<#ffc371>Discord link"
+      lore: ["<gray>Current: <white>{value}", "<gray>Shown on the ban screen and to", "<gray>spectator-banned players.", "", "<#ffc371>Click to change"]
+    add:
+      name: "<green>Add a line"
+      lore: ["<gray>Click and type it into the chat."]
+    reset:
+      name: "<red>Back to the default text"
+      lore: ["<gray>Shift + click to reset."]
 
   select-player:
     title: "<dark_gray>Who do you want to punish?"
@@ -463,6 +548,9 @@ menu:
 
   detail:
     title: "<dark_gray>{player}"
+    profile:
+      name: "<#ffc371>Player profile"
+      lore: ["<gray>Notes and earlier punishments."]
     add:
       name: "<red>+ {time}"
       lore: ["<gray>Make the punishment longer."]
@@ -511,6 +599,12 @@ menu:
     "on": "<green>● On"
     "off": "<red>● Off"
     click: "<#ffc371>Click to switch"
+    ban-screen:
+      name: "<#ffc371>Ban screen"
+      lore: ["<gray>What a banned player sees,", "<gray>and your Discord link.", "", "<#ffc371>Click to edit"]
+    limbo-location:
+      name: "<#ffc371>Spectator ban: place"
+      lore: ["<gray>Where spectator-banned players", "<gray>are held: <white>{value}", "", "<#ffc371>Click: use where I stand now", "<red>Shift + click: back to world spawn"]
     commands:
       name: "<#ffc371>Allowed commands"
       lore: ["<gray>Commands punished players", "<gray>may still use: <white>{count}", "", "<#ffc371>Click to edit"]

@@ -31,7 +31,10 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 | `/playban punish <player> <time> [reason]` | PlayBan with a duration of your choice | `playban.staff` |
 | `/playban warn <player> [reason]` | Warn a player | `playban.staff` |
 | `/playban ban <player> <time or perm> [reason]` | Real ban | `playban.staff` |
-| `/playban unban <player>` | Lift a ban | `playban.staff` |
+| `/playban specban <player> <time or perm> [reason]` | Spectator ban: may join, but is stuck and can only write tickets | `playban.staff` |
+| `/playban unban <player>` | Lift a ban or spectator ban | `playban.staff` |
+| `/playban note <player> <text>` | Write a note about a player | `playban.staff` |
+| `/playban profile <player>` | Notes and punishments of a player | `playban.staff` |
 | `/playban pardon <player>` | End a PlayBan | `playban.staff` |
 | `/playban addtime` / `removetime <player> <time>` | Change the remaining time | `playban.staff` |
 | `/playban info <player>`, `list`, `history <player>` | Look things up | `playban.staff` |
@@ -60,11 +63,16 @@ Each category has a list of steps. The first step is used for the first offense,
 |---|---|
 | `WARN` | The player gets a warning |
 | `PLAYBAN` | The player keeps playing, hidden and restricted, for the given time |
+| `SPECBAN` | The player may join but is held in spectator mode at a fixed place and can only write tickets |
 | `BAN` | The player cannot join for the given time, or permanently |
 
 Only offenses in the same category count. Punishments the team lifted do not count, and a category can let old offenses expire.
 
 Anti-cheat plugins can run `playban apply <player> <category>` from the console.
+
+## Ban screen and Discord
+
+Under Settings -> Ban screen you can write your own lines for the screen a banned player sees and set your Discord invite link. The link is also shown to spectator-banned players.
 
 ## Tasks
 

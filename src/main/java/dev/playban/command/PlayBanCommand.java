@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class PlayBanCommand implements TabExecutor {
-    private static final List<String> STAFF_SUBS = List.of("menu", "punish", "apply", "warn", "ban", "unban", "pardon", "addtime", "removetime", "info", "list", "history", "help");
+    private static final List<String> STAFF_SUBS = List.of("menu", "punish", "apply", "warn", "ban", "specban", "unban", "note", "profile", "pardon", "addtime", "removetime", "info", "list", "history", "help");
     private static final List<String> ADMIN_SUBS = List.of("reload", "lang");
     private final PlayBanPlugin plugin;
 
@@ -37,7 +37,7 @@ public final class PlayBanCommand implements TabExecutor {
                 lang().send(sender, "error.players-only");
             } else if (args.length == 0) {
                 lang().send(sender, "usage.ticket");
-            } else if (!plugin.punishments().isPunished(player.getUniqueId())) {
+            } else if (!plugin.punishments().limited(player.getUniqueId())) {
                 lang().send(sender, "error.not-punished-self");
             } else {
                 plugin.punishments().createTicket(player, String.join(" ", args));
@@ -48,6 +48,11 @@ public final class PlayBanCommand implements TabExecutor {
         boolean staff = sender.hasPermission("playban.staff");
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
 
+        if (sender instanceof Player player && plugin.punishments().inLimbo(player.getUniqueId())
+                && (sub.isEmpty() || sub.equals("tasks") || sub.equals("status") || !staff)) {
+            plugin.punishments().sendLimboStatus(player);
+            return true;
+        }
         if (sender instanceof Player player && (sub.isEmpty() || sub.equals("tasks") || sub.equals("status"))) {
             if (plugin.punishments().isPunished(player.getUniqueId()) && (!staff || !sub.isEmpty())) {
                 plugin.playerMenus().status(player);
@@ -78,12 +83,32 @@ public final class PlayBanCommand implements TabExecutor {
                 String reason = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length)) : lang().raw("no-reason");
                 plugin.punishments().warn(target.getUniqueId(), target.getName(), reason, sender.getName(), null);
             }
-            case "ban" -> {
+            case "note" -> {
                 if (args.length < 3) {
-                    lang().send(sender, "usage.ban");
+                    lang().send(sender, "usage.note");
                     return true;
                 }
-                OfflinePlayer target = target(sender, args, "usage.ban");
+                OfflinePlayer target = target(sender, args, "usage.note");
+                if (target == null) return true;
+                plugin.store().names.put(target.getUniqueId(), target.getName());
+                plugin.punishments().addNote(target.getUniqueId(), sender.getName(), String.join(" ", Arrays.copyOfRange(args, 2, args.length)));
+                lang().send(sender, "note.added", "player", target.getName());
+            }
+            case "profile" -> {
+                if (!(sender instanceof Player player)) {
+                    lang().send(sender, "error.players-only");
+                } else if (args.length < 2) {
+                    lang().send(sender, "usage.profile");
+                } else {
+                    plugin.adminMenus().profileByName(player, args[1]);
+                }
+            }
+            case "ban", "specban" -> {
+                if (args.length < 3) {
+                    lang().send(sender, "usage." + sub);
+                    return true;
+                }
+                OfflinePlayer target = target(sender, args, "usage." + sub);
                 if (target == null) return true;
                 boolean permanent = CategoryRegistry.isPermanent(args[2]);
                 long ms = permanent ? 0 : TimeUtil.parse(args[2]);
@@ -92,7 +117,7 @@ public final class PlayBanCommand implements TabExecutor {
                     return true;
                 }
                 String reason = args.length > 3 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length)) : lang().raw("no-reason");
-                String error = plugin.punishments().execute(target.getUniqueId(), target.getName(), "BAN", ms, reason, sender.getName(), null, null, null);
+                String error = plugin.punishments().execute(target.getUniqueId(), target.getName(), sub.equals("ban") ? "BAN" : "SPECBAN", ms, reason, sender.getName(), null, null, null);
                 if (error != null) lang().send(sender, error, "player", target.getName());
             }
             case "unban" -> {
@@ -276,7 +301,7 @@ public final class PlayBanCommand implements TabExecutor {
             String sub = args[0].toLowerCase();
             if (sub.equals("unban")) {
                 for (Punishment b : plugin.store().bans.values()) if (b.name.toLowerCase().startsWith(last)) out.add(b.name);
-            } else if (List.of("punish", "apply", "warn", "ban").contains(sub)) {
+            } else if (List.of("punish", "apply", "warn", "ban", "specban", "note", "profile").contains(sub)) {
                 for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase().startsWith(last)) out.add(p.getName());
             } else if (sub.equals("lang")) {
                 for (String c : lang().available()) if (c.startsWith(last)) out.add(c);
@@ -285,7 +310,7 @@ public final class PlayBanCommand implements TabExecutor {
             }
         } else if (args.length == 3 && args[0].equalsIgnoreCase("apply")) {
             for (Category c : plugin.categories().all()) if (c.id.startsWith(last)) out.add(c.id);
-        } else if (args.length == 3 && List.of("punish", "ban", "addtime", "removetime").contains(args[0].toLowerCase())) {
+        } else if (args.length == 3 && List.of("punish", "ban", "specban", "addtime", "removetime").contains(args[0].toLowerCase())) {
             for (String s : plugin.getConfig().getStringList("duration-presets")) if (s.startsWith(last)) out.add(s);
         }
         return out;

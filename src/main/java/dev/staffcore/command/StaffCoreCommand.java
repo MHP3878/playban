@@ -19,7 +19,7 @@ import java.util.List;
 
 public final class StaffCoreCommand implements TabExecutor {
     private static final List<String> STAFF_SUBS = List.of("menu", "punish", "apply", "warn", "ban", "specban", "ipban", "mute", "unmute", "unban", "note", "profile", "pardon", "addtime", "removetime", "info", "list", "history", "guide", "vanish");
-    private static final List<String> ADMIN_SUBS = List.of("reload", "lang");
+    private static final List<String> ADMIN_SUBS = List.of("reload", "lang", "modules", "module");
     private final StaffCorePlugin plugin;
 
     public StaffCoreCommand(StaffCorePlugin plugin) {
@@ -248,6 +248,18 @@ public final class StaffCoreCommand implements TabExecutor {
                 if (args.length < 2) lang().send(sender, "usage.history");
                 else if (sender instanceof Player player) plugin.adminMenus().history(player, args[1]);
                 else lang().send(sender, "error.players-only");
+            }
+            case "modules", "module" -> {
+                if (!sender.hasPermission("staffcore.admin")) {
+                    lang().send(sender, "error.no-permission");
+                    return true;
+                }
+                if (args.length >= 3) {
+                    boolean on = args[2].equalsIgnoreCase("on");
+                    if (!plugin.modules().set(args[1], on, sender.getName())) lang().send(sender, "module.unknown", "module", args[1]);
+                    else lang().send(sender, on ? "module.switched-on" : "module.switched-off", "module", plugin.modules().name(args[1].toLowerCase()));
+                } else if (sender instanceof Player player) plugin.modules().menu(player);
+                else plugin.modules().list(sender);
             }
             case "reload" -> {
                 if (!sender.hasPermission("staffcore.admin")) {

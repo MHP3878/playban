@@ -98,6 +98,29 @@ Only offenses in the same category count. Punishments the team lifted do not cou
 
 Anti-cheat plugins can run `playban apply <player> <category>` from the console.
 
+## Modules
+
+`/sc modules` (or the beacon in the main menu) shows every bigger system in one place. **Left-click** switches a module on or off: its commands are registered or removed at once, no restart, and the name is free for another plugin while it is off. **Right-click** opens its settings. From the console: `/sc modules` lists them, `/sc module homes off` switches one.
+
+| Module | Commands | Settings |
+|---|---|---|
+| Homes | `/home [name]`, `/sethome [name]`, `/delhome <name>`, `/homes` (menu: click to go, shift-click to delete) | homes per player (`staffcore.homes.unlimited` has no limit), countdown, wait between uses |
+| Teleport requests | `/tpa`, `/tpahere`, `/tpaccept`, `/tpdeny`, `/tpacancel`, accept and deny are clickable | countdown, how long a request stays open, wait between requests |
+| Money | `/money [player]` (`/bal`), `/pay`, `/baltop`, `/eco give\|take\|set` | starting money, currency symbol, symbol before or after |
+| Spawn | `/spawn`, `/setspawn` | the spawn menu |
+| Ranks | `/rank` | the rank menu |
+| Admin ESP | `/esp [players\|chests\|all\|off]`, the ESP spyglass in staff mode | player range, chest range, most chests |
+| Block log | `/blocklog` | days kept, largest radius |
+| Admin commands | `/tpadmin`, `/freeze`, `/invsee`, `/fly`, `/heal`, `/god`, ... | - |
+| Short commands | `/ban`, `/mute`, `/warn`, `/vanish`, ... | - |
+| Prison, fake bases, trolls | `/prison`, `/fakebase`, `/troll` | prison key time; fake base minutes and maximum |
+
+Teleports from homes and requests count down while you stand still; moving cancels them. Frozen, cuffed, jailed or punished players cannot use them, and vanished staff cannot be found with `/tpa`.
+
+**Money** is kept in `money.yml`. With Vault installed and no other economy, StaffCore offers its balances to Vault, so shops and other plugins use them; if another economy is already there, StaffCore keeps out of its way. The gift tasks of a PlayBan use it as well.
+
+**Admin ESP** shows chests, barrels, shulker boxes and other containers as glowing outlines through walls (colored by kind), and every player with a name tag through walls with health, distance and the item in hand (vanished staff marked `[V]`). Only the team member who switched it on sees it, nobody else gets any of it. The spyglass in staff mode switches off, players, chests, both; leaving staff mode switches it off.
+
 ## Ranks
 
 Owner, Co-Owner, Admin, Dev, Mod, Supporter and Player come ready-made (`ranks.yml`, or `/rank menu`). Each rank has a level, a prefix shown in chat and the tab list, and permissions it gives (`staffcore.*` and `*` are expanded).
@@ -217,6 +240,7 @@ Messages are only delivered and only count after a team member approved them in 
 - `ranks.yml` - ranks, who has which, command levels
 - `prisons.yml`, `prisons-return.yml` - prison cells and items waiting for their owner
 - `blocklog.db` - block log and team protocol (SQLite)
+- `homes.yml`, `money.yml` - homes and balances
 - `fakebases.yml` - only while a fake base stands: the blocks to put back
 
 ## Build

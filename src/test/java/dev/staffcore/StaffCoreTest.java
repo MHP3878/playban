@@ -2832,4 +2832,156 @@ class StaffCoreTest {
             assertFalse(plain(plugin.lang().msg("fakebase.design.vault")).contains("missing"));
         }
     }
+
+    // ------------------------------------------------------------------ modules: homes, tpa, money, esp
+
+    @Test
+    void homesAreSavedUsedLimitedAndDeleted() {
+        plugin.getConfig().set("homes.warmup", 0);
+        plugin.getConfig().set("homes.max", 2);
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 10, 70, 10));
+        assertTrue(troll.performCommand("sethome base"));
+        troll.teleport(new org.bukkit.Location(w, 50, 70, 50));
+        troll.performCommand("sethome farm");
+        troll.teleport(new org.bukkit.Location(w, 90, 70, 90));
+        troll.performCommand("sethome third");
+        assertEquals(2, plugin.homes().of(troll.getUniqueId()).size(), "the limit holds");
+        troll.performCommand("home base");
+        assertEquals(10, troll.getLocation().getBlockX());
+        troll.performCommand("delhome base");
+        assertEquals(1, plugin.homes().of(troll.getUniqueId()).size());
+        // with one home left, /home goes there
+        troll.performCommand("home");
+        assertEquals(50, troll.getLocation().getBlockX());
+    }
+
+    @Test
+    void homeCountdownIsCancelledByMoving() {
+        plugin.getConfig().set("homes.warmup", 3);
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 10, 70, 10));
+        troll.performCommand("sethome base");
+        troll.teleport(new org.bukkit.Location(w, 100, 70, 100));
+        troll.performCommand("home base");
+        troll.teleport(new org.bukkit.Location(w, 105, 70, 100));
+        server.getScheduler().performTicks(100);
+        assertEquals(105, troll.getLocation().getBlockX(), "moving cancels the teleport");
+        troll.performCommand("home base");
+        server.getScheduler().performTicks(100);
+        assertEquals(10, troll.getLocation().getBlockX(), "standing still gets you home");
+    }
+
+    @Test
+    void teleportRequestsNeedAnAnswer() {
+        plugin.getConfig().set("tpa.warmup", 0);
+        plugin.getConfig().set("tpa.cooldown", 0);
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 0, 70, 0));
+        bystander.teleport(new org.bukkit.Location(w, 300, 70, 300));
+        assertTrue(troll.performCommand("tpa Bystander"));
+        assertEquals(0, troll.getLocation().getBlockX(), "nothing happens before the answer");
+        bystander.performCommand("tpdeny");
+        bystander.performCommand("tpaccept");
+        assertEquals(0, troll.getLocation().getBlockX(), "a denied request is gone");
+        troll.performCommand("tpa Bystander");
+        bystander.performCommand("tpaccept Troll");
+        assertEquals(300, troll.getLocation().getBlockX(), "accepted: Troll is at Bystander");
+        troll.teleport(new org.bukkit.Location(w, 0, 70, 0));
+        troll.performCommand("tpahere Bystander");
+        bystander.performCommand("tpaccept");
+        assertEquals(0, bystander.getLocation().getBlockX(), "tpahere brings the other one");
+        // frozen players cannot be asked to teleport
+        plugin.admin().setFrozen(bystander, true, "Admin");
+        troll.teleport(new org.bukkit.Location(w, 500, 70, 0));
+        troll.performCommand("tpa Bystander");
+        bystander.performCommand("tpaccept");
+        assertEquals(500, troll.getLocation().getBlockX());
+    }
+
+    @Test
+    void moneyCanBePaidButNotConjured() {
+        plugin.getConfig().set("money.start", 100);
+        assertEquals(100, plugin.money().balance(troll.getUniqueId()), 0.001);
+        assertTrue(troll.performCommand("pay Bystander 30"));
+        assertEquals(70, plugin.money().balance(troll.getUniqueId()), 0.001);
+        assertEquals(130, plugin.money().balance(bystander.getUniqueId()), 0.001);
+        troll.performCommand("pay Bystander 1000");
+        troll.performCommand("pay Bystander -50");
+        troll.performCommand("pay Bystander NaN");
+        troll.performCommand("pay Troll 10");
+        assertEquals(70, plugin.money().balance(troll.getUniqueId()), 0.001, "no money from nothing");
+        troll.performCommand("eco give Troll 1000");
+        assertEquals(70, plugin.money().balance(troll.getUniqueId()), 0.001, "players cannot use /eco");
+        admin.performCommand("eco give Troll 1000");
+        assertEquals(1070, plugin.money().balance(troll.getUniqueId()), 0.001);
+        admin.performCommand("eco set Troll 5");
+        assertEquals(5, plugin.money().balance(troll.getUniqueId()), 0.001);
+        assertTrue(plugin.economy().available(), "gift tasks can use StaffCore money without Vault");
+        assertTrue(plugin.economy().transfer(bystander, troll, 10));
+        assertEquals(15, plugin.money().balance(troll.getUniqueId()), 0.001);
+    }
+
+    @Test
+    void modulesSwitchTheirCommandsOnAndOff() {
+        assertNotNull(server.getCommandMap().getCommand("home"));
+        assertTrue(plugin.modules().set("homes", false, "Admin"));
+        assertFalse(plugin.modules().on("homes"));
+        assertNull(server.getCommandMap().getCommand("home"), "the command is gone");
+        assertNull(server.getCommandMap().getCommand("staffcore:sethome"));
+        assertFalse(plugin.getConfig().getBoolean("homes.enabled"));
+        plugin.modules().set("homes", true, "Admin");
+        assertNotNull(server.getCommandMap().getCommand("home"), "and back");
+        plugin.modules().set("money", false, "Admin");
+        assertFalse(plugin.economy().available(), "money off: no economy");
+        plugin.modules().set("money", true, "Admin");
+
+        // the menu: left-click switches, right-click opens the settings
+        plugin.modules().menu(admin);
+        int homesSlot = -1;
+        var top = admin.getOpenInventory().getTopInventory();
+        for (int i = 0; i < top.getSize(); i++) {
+            ItemStack it = top.getItem(i);
+            if (it != null && it.hasItemMeta() && it.getItemMeta().hasDisplayName() && plain(it.getItemMeta().displayName()).equals("Homes")) homesSlot = i;
+        }
+        assertTrue(homesSlot >= 0);
+        admin.simulateInventoryClick(admin.getOpenInventory(), org.bukkit.event.inventory.ClickType.LEFT, homesSlot);
+        assertFalse(plugin.modules().on("homes"), "left-click switched it off");
+        admin.simulateInventoryClick(admin.getOpenInventory(), org.bukkit.event.inventory.ClickType.RIGHT, homesSlot);
+        assertTrue(plain(admin.getOpenInventory().title()).contains("Homes"), "right-click opens the settings");
+        assertNoMissingTexts(admin, "en");
+        int before = plugin.getConfig().getInt("homes.max", 3);
+        admin.simulateInventoryClick(10);
+        assertNotEquals(before, plugin.getConfig().getInt("homes.max", 3), "a click changes the value");
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.modules().menu(admin);
+            assertNoMissingTexts(admin, code);
+            for (var m : plugin.modules().all()) {
+                plugin.modules().settings(admin, m);
+                assertNoMissingTexts(admin, code);
+            }
+        }
+    }
+
+    @Test
+    void espShowsThingsOnlyToTheStaffMember() {
+        Block chest = admin.getWorld().getBlockAt(admin.getLocation().getBlockX() + 3, admin.getLocation().getBlockY(), admin.getLocation().getBlockZ());
+        chest.setType(Material.CHEST);
+        int before = admin.getWorld().getEntities().size();
+        assertTrue(admin.performCommand("esp all"));
+        assertEquals(dev.staffcore.module.EspManager.Mode.ALL, plugin.esp().mode(admin.getUniqueId()));
+        server.getScheduler().performTicks(10);
+        // the test server cannot create text displays; on a real server tags and outlines appear here
+        admin.performCommand("esp off");
+        server.getScheduler().performTicks(4);
+        assertEquals(0, plugin.esp().shown(admin.getUniqueId()));
+        assertEquals(before, admin.getWorld().getEntities().size(), "nothing is left behind");
+        troll.performCommand("esp all");
+        assertEquals(dev.staffcore.module.EspManager.Mode.OFF, plugin.esp().mode(troll.getUniqueId()), "players have no ESP");
+        // the spyglass in staff mode cycles through the modes
+        admin.getInventory().setItemInMainHand(tool("esp"));
+        rightClickAir(admin);
+        assertEquals(dev.staffcore.module.EspManager.Mode.PLAYERS, plugin.esp().mode(admin.getUniqueId()));
+    }
 }

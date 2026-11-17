@@ -125,6 +125,20 @@ public final class RankManager implements Listener {
         return !loadFailed && cfg.getBoolean("enabled", true);
     }
 
+    /** Switches the whole rank system; off, nobody keeps rank permissions and command levels stop. */
+    public void setEnabled(boolean value) {
+        if (loadFailed) return;
+        cfg.set("enabled", value);
+        save();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (value) apply(p);
+            else {
+                unapply(p);
+                p.recalculatePermissions();
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- lookups
 
     public List<Rank> all() {

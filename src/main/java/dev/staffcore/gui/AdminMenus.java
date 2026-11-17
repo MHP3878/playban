@@ -113,7 +113,7 @@ public final class AdminMenus {
         if (p.hasPermission("staffcore.tools")) {
             m.set(24, item(Material.MACE, "menu.main.tools"), e -> plugin.tools().menu(p));
         }
-        if (p.hasPermission("staffcore.ranks") && plugin.ranks().enabled()) {
+        if (p.hasPermission("staffcore.ranks") && plugin.ranks().enabled() && plugin.modules().on("ranks")) {
             m.set(20, item(Material.GOLDEN_HELMET, "menu.main.ranks", "count", plugin.ranks().all().size()), e -> plugin.rankMenus().list(p));
         }
         if (plugin.voice().available() && p.hasPermission("staffcore.voice")) {
@@ -123,6 +123,8 @@ public final class AdminMenus {
             m.set(28, item(Material.LECTERN, "menu.main.categories", "count", plugin.categories().all().size()), e -> categories(p, 0));
             m.set(30, item(Material.BOOKSHELF, "menu.main.tasks", "count", plugin.tasks().all().size()), e -> tasks(p, 0));
             m.set(32, item(Material.COMPARATOR, "menu.main.settings"), e -> settings(p));
+            m.set(38, item(Material.BEACON, "menu.main.modules", "on", plugin.modules().all().stream().filter(x -> x.enabled()).count(),
+                    "count", plugin.modules().all().size()), e -> plugin.modules().menu(p));
             m.set(34, item(Material.GLOBE_BANNER_PATTERN, "menu.main.language", "language", lang().code()), e -> {
                 cycleLanguage();
                 main(p);
@@ -409,6 +411,12 @@ public final class AdminMenus {
             new GuideEntry("prison", "/prison <player> [time] [reason]", Material.BEDROCK, "staffcore.prison"),
             new GuideEntry("unprison", "/unprison <player>", Material.TRIPWIRE_HOOK, "staffcore.prison"),
             new GuideEntry("troll", "/troll <player> [joke]", Material.EGG, "staffcore.troll"),
+            new GuideEntry("modules", "/sc modules", Material.BEACON, "staffcore.admin"),
+            new GuideEntry("esp", "/esp [players|chests|all|off]", Material.SPYGLASS, "staffcore.esp"),
+            new GuideEntry("home", "/home [name], /sethome, /delhome, /homes", Material.RED_BED, "staffcore.home"),
+            new GuideEntry("tpa", "/tpa <player>, /tpahere, /tpaccept, /tpdeny", Material.ENDER_PEARL, "staffcore.tpa"),
+            new GuideEntry("money", "/money, /pay <player> <amount>, /baltop", Material.GOLD_INGOT, "staffcore.money"),
+            new GuideEntry("eco", "/eco <give|take|set> <player> <amount>", Material.GOLD_BLOCK, "staffcore.eco"),
             new GuideEntry("fakebase", "/fakebase [here|<player>] [1-8]", Material.CHEST, "staffcore.fakebase"),
             new GuideEntry("stafflog", "/stafflog [player]", Material.WRITABLE_BOOK, "staffcore.stafflog"),
             new GuideEntry("report", "/report <player> <reason>", Material.WRITABLE_BOOK, ""),
@@ -684,7 +692,7 @@ public final class AdminMenus {
 
     // ---------------------------------------------------------------- reviews & tickets
 
-    List<Component> textLore(String text) {
+    public List<Component> textLore(String text) {
         List<Component> lore = new ArrayList<>();
         for (String line : TimeUtil.wrap(text, 42)) lore.add(lang().msg("menu.text-line", "text", line));
         return lore;
@@ -725,7 +733,9 @@ public final class AdminMenus {
             lore.add(lang().msg(on ? "menu.settings.on" : "menu.settings.off"));
             lore.add(lang().msg("menu.settings.click"));
             m.set(TOGGLE_SLOTS[i], Items.of(on ? Material.LIME_DYE : Material.GRAY_DYE, lang().msg("setting." + key + ".name"), lore), e -> {
-                plugin.getConfig().set(key, !on);
+                // the short commands are a module: switching registers or removes the commands right away
+                if (key.equals("short-commands")) plugin.modules().toggle(plugin.modules().get("short"), p.getName());
+                else plugin.getConfig().set(key, !on);
                 plugin.saveConfig();
                 plugin.punishments().refreshVisibility();
                 settings(p);
@@ -818,8 +828,7 @@ public final class AdminMenus {
         });
         boolean on = plugin.spawn().enabled();
         m.set(13, item(on ? Material.LIME_DYE : Material.GRAY_DYE, "menu.spawn.enabled", "value", lang().msg(on ? "menu.settings.on" : "menu.settings.off")), e -> {
-            plugin.getConfig().set("spawn.enabled", !on);
-            plugin.saveConfig();
+            plugin.modules().toggle(plugin.modules().get("spawn"), p.getName());
             spawnSettings(p);
         });
         String join = plugin.getConfig().getString("spawn.on-join", "FIRST_JOIN").toUpperCase();
@@ -843,7 +852,7 @@ public final class AdminMenus {
             plugin.saveConfig();
             spawnSettings(p);
         });
-        m.set(31, item(Material.OAK_DOOR, "menu.back"), e -> settings(p));
+        m.set(31, item(Material.OAK_DOOR, "menu.back"), e -> plugin.modules().menu(p));
         m.fill().open(p);
     }
 

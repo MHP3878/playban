@@ -35,6 +35,8 @@ permissions:
       staffcore.ipban: true
       staffcore.lockdown: true
       staffcore.troll: true
+      staffcore.eco: true
+      staffcore.homes.unlimited: true
   staffcore.staff:
     description: Punish players, handle reviews and tickets
     default: op
@@ -71,6 +73,8 @@ permissions:
       staffcore.tool.spectate: true
       staffcore.tool.bait: true
       staffcore.fakebase: true
+      staffcore.esp: true
+      staffcore.money.others: true
   staffcore.see:
     description: Can still see punished players
     default: op
@@ -184,6 +188,30 @@ permissions:
     default: op
   staffcore.troll:
     description: "/troll - harmless jokes like chicken rain or a fake stash, troll wand"
+    default: op
+  staffcore.esp:
+    description: "/esp and the ESP spyglass - chests glow and players have name tags through walls, only for you"
+    default: op
+  staffcore.home:
+    description: "/home, /sethome, /delhome, /homes"
+    default: true
+  staffcore.homes.unlimited:
+    description: As many homes as you like
+    default: op
+  staffcore.tpa:
+    description: "/tpa, /tpahere, /tpaccept, /tpdeny, /tpacancel"
+    default: true
+  staffcore.money:
+    description: "/money and /baltop"
+    default: true
+  staffcore.pay:
+    description: "/pay - give money to other players"
+    default: true
+  staffcore.money.others:
+    description: "/money <player> - look at other players' money"
+    default: op
+  staffcore.eco:
+    description: "/eco give, take, set - change anybody's money"
     default: op
   staffcore.fakebase:
     description: "/fakebase - a bait base deep underground with chests and two fake players; catches ESP and x-ray"

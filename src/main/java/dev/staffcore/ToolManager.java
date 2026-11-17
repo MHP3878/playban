@@ -62,11 +62,12 @@ public final class ToolManager implements Listener, TabExecutor {
             new Tool("prisonkey", Material.TRIPWIRE_HOOK, "staffcore.prison"),
             new Tool("trollwand", Material.AMETHYST_SHARD, "staffcore.troll"),
             new Tool("bait", Material.TRAPPED_CHEST, "staffcore.tool.bait"),
+            new Tool("esp", Material.SPYGLASS, "staffcore.esp"),
             new Tool("exit", Material.BARRIER, "staffcore.staffmode"));
 
     /** Where each item goes in staff mode: the hotbar first, then the row above it. */
     private static final List<String> KIT = List.of("compass", "vanish", "inspector", "freeze", "handcuffs", "warnstick", "banhammer", "brush", "xray",
-            "invsee", "randomtp", "fly", "kbstick", "spectate", "prisonkey", "bait", "trollwand", "exit");
+            "invsee", "randomtp", "fly", "kbstick", "spectate", "prisonkey", "bait", "trollwand", "esp", "exit");
 
     private static final Map<Material, Color> ORES = new EnumMap<>(Material.class);
 
@@ -300,6 +301,10 @@ public final class ToolManager implements Listener, TabExecutor {
             }
             case "xray" -> xray(p);
             case "bait" -> lang().send(p, "tools.bait-how");
+            case "esp" -> {
+                if (plugin.modules().on("esp")) plugin.esp().cycle(p);
+                else lang().send(p, "module.is-off", "module", plugin.modules().name("esp"));
+            }
             case "compass" -> compass(p);
             case "vanish" -> plugin.punishments().setVanished(p, !plugin.punishments().isVanished(p.getUniqueId()));
             default -> {
@@ -392,6 +397,7 @@ public final class ToolManager implements Listener, TabExecutor {
         String saved = plugin.store().staffModeInventories.remove(p.getUniqueId());
         plugin.store().markDirty();
         stopSpectating(p);
+        plugin.esp().off(p);
         // things taken while in staff mode (from a chest or someone's inventory) are kept, only the admin items go
         List<ItemStack> gathered = new ArrayList<>();
         for (ItemStack item : p.getInventory().getContents()) {

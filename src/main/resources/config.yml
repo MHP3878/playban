@@ -206,3 +206,34 @@ fakebase:
   minutes: 30
   # at most this many at the same time
   max: 5
+
+# ---- Modules (/sc modules: left-click on or off, right-click for settings) ----
+homes:
+  enabled: true
+  max: 3
+  # seconds standing still before the teleport, and seconds between two uses
+  warmup: 3
+  cooldown: 0
+tpa:
+  enabled: true
+  warmup: 3
+  # seconds a request stays open
+  timeout: 60
+  cooldown: 10
+money:
+  enabled: true
+  # what every new player starts with
+  start: 100
+  symbol: "$"
+  # true: "100 $", false: "$100"
+  symbol-after: false
+esp:
+  enabled: true
+  # how far player tags reach, how many chunks around you chests are shown, and at most how many chests
+  player-range: 128
+  chest-chunks: 3
+  chest-limit: 400
+modules:
+  prison: true
+  fakebase: true
+  trolls: true

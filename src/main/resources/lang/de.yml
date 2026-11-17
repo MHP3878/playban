@@ -89,6 +89,12 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  modules: ["<gray>Alle Systeme in einem Menü: Homes,", "<gray>Teleport-Anfragen, Geld, Spawn,", "<gray>Ränge, ESP, Block-Protokoll und mehr.", "<gray>Linksklick: an oder aus.", "<gray>Rechtsklick: Einstellungen."]
+  esp: ["<gray>Kisten leuchten durch Wände, Spieler", "<gray>bekommen Namensschilder mit Leben,", "<gray>Entfernung und Item. Nur du siehst es.", "", "<dark_gray>Beispiel: /esp all"]
+  home: ["<gray>Orte speichern und zurück-", "<gray>teleportieren. /homes zeigt sie als Menü.", "", "<dark_gray>Beispiel: /sethome farm, /home farm"]
+  tpa: ["<gray>Einen Spieler fragen, ob du zu ihm", "<gray>(/tpa) oder er zu dir (/tpahere) darf.", "<gray>Er nimmt mit einem Klick an."]
+  money: ["<gray>Dein Geld, anderen Spielern Geld", "<gray>geben und die reichsten Spieler.", "", "<dark_gray>Beispiel: /pay Steve 50"]
+  eco: ["<gray>Geld von jedem geben, nehmen", "<gray>oder setzen.", "", "<dark_gray>Beispiel: /eco give Steve 500"]
   fakebase: ["<gray>Eine Köder-Base tief unter der Erde:", "<gray>Kisten, Öfen, Betten und zwei Fake-", "<gray>Spieler. Wer direkt hingräbt oder eine", "<gray>Kiste öffnet, wird gemeldet. Nichts ist", "<gray>abbaubar, nach 30 Minuten ist sie weg", "<gray>und alles sieht aus wie vorher.", "", "<dark_gray>Beispiel: /fakebase Steve"]
   prison: ["<gray>Mauert den Spieler in eine Grundstein-", "<gray>Zelle ein. Das Inventar wird zu grauen", "<gray>Schlössern: keine Items, kein Scrollen,", "<gray>keine Befehle. Danach kommt alles zurück.", "", "<dark_gray>Beispiel: /prison Steve 30m Griefing"]
   unprison: ["<gray>Lässt einen Spieler aus dem Gefängnis.", "<gray>Die Blöcke drumherum und die Items", "<gray>kommen zurück wie vorher."]
@@ -435,6 +441,9 @@ moderation:
   report-sent: "<green>Danke, deine Meldung über <white>{player}</white> ging an das Team."
 
 tools:
+  esp:
+    name: "<aqua><bold>ESP-Fernrohr</bold>"
+    lore: ["<gray>Rechtsklick: aus, Spieler, Kisten, beides.", "<gray>Kisten leuchten und Spieler haben", "<gray>Namensschilder durch Wände. Nur du siehst es."]
   xray-wait: "<gray>Die Röntgenbrille braucht einen Moment."
   kb-ok: "<gray><white>{player}</white> wurde <white>{blocks}</white> Blöcke weggestoßen. Sieht normal aus."
   kb-suspicious: "<red><white>{player}</white> wurde nur <white>{blocks}</white> Blöcke weggestoßen. Das könnte ein Anti-Knockback-Cheat sein: nochmal testen, am besten auf freier Fläche."
@@ -820,6 +829,9 @@ menu:
 
   main:
     title: "<gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>"
+    modules:
+      name: "<#ffc371><bold>Module</bold>"
+      lore: ["<gray>Homes, Teleport-Anfragen, Geld,", "<gray>Spawn, Ränge, ESP und mehr an einem", "<gray>Ort: <white>{on}</white> von <white>{count}</white> an.", "", "<#ffc371>Klick zum Öffnen"]
     tools:
       name: "<#ffc371><bold>Admin-Items</bold>"
       lore: ["<gray>Bannhammer, Freeze-Stab, Handschellen,", "<gray>X-Ray und mehr.", "", "<#ffc371>Klicken zum Öffnen"]
@@ -1637,3 +1649,182 @@ fakebase:
     storage: "Quarz-Lager"
     hall: "Tuff-Halle"
     stash: "Obsidian-Stash"
+
+teleport:
+  warmup: "<gray>Teleport in <white>{seconds}</white> Sekunden, nicht bewegen."
+  moved: "<red>Du hast dich bewegt, der Teleport wurde abgebrochen."
+  gone: "<red>Diesen Ort gibt es nicht mehr."
+  not-now: "<red>Das geht gerade nicht."
+  cooldown: "<gray>Warte noch <white>{time}</white>."
+
+home:
+  set: "<green>Home <white>{home}</white> hier gespeichert."
+  limit: "<red>Du hast schon <white>{max}</white> Homes. Lösch eins mit <white>/delhome</white>."
+  unknown: "<red>Du hast kein Home namens <white>{home}</white>."
+  deleted: "<gray>Home <white>{home}</white> gelöscht."
+  arrived: "<green>Willkommen zu Hause: <white>{home}</white>."
+  usage-del: "<gray>Benutzung: <white>/delhome <name></white>"
+  none-yet: "<gray>Du hast noch kein Home. <white>/sethome</white> speichert eins, wo du stehst."
+  menu-title: "<dark_gray>Deine Homes ({count}/{max})"
+  menu-entry: "<#ffc371><bold>{home}</bold>"
+  menu-lore: ["<gray>{world} {x} {y} {z}", "", "<#ffc371>Klick zum Hingehen", "<red>Shift-Klick zum Löschen"]
+  none: "<gray>Noch keine Homes"
+  none-lore: ["<gray>/sethome speichert eins, wo du stehst."]
+
+tpa:
+  usage: "<gray>Benutzung: <white>/tpa <spieler></white> oder <white>/tpahere <spieler></white>"
+  self: "<gray>Das bist du."
+  sent: "<gray>Anfrage an <white>{player}</white> geschickt. Sie gilt {seconds} Sekunden."
+  asked: "<white>{player}</white> <gray>möchte sich zu dir teleportieren."
+  asked-here: "<white>{player}</white> <gray>möchte, dass du dich zu ihm teleportierst."
+  accept-button: "<green><bold>[Annehmen]</bold>"
+  deny-button: "<red><bold>[Ablehnen]</bold>"
+  nothing: "<gray>Es gibt keine offene Anfrage."
+  accepted: "<green>Du hast die Anfrage von <white>{player}</white> angenommen."
+  accepted-you: "<green><white>{player}</white> hat deine Anfrage angenommen."
+  denied: "<gray>Du hast die Anfrage von <white>{player}</white> abgelehnt."
+  denied-you: "<red><white>{player}</white> hat deine Anfrage abgelehnt."
+  cancelled: "<gray>Deine Anfragen wurden zurückgenommen."
+
+money:
+  own: "<gray>Du hast <gold>{amount}</gold>."
+  other: "<white>{player}</white> <gray>hat <gold>{amount}</gold>."
+  unknown: "<red>Ein Spieler namens <white>{player}</white> war noch nie hier."
+  usage: "<gray>Benutzung: <white>/money [spieler]</white>"
+  usage-pay: "<gray>Benutzung: <white>/pay <spieler> <betrag></white>"
+  usage-eco: "<gray>Benutzung: <white>/eco <give|take|set> <spieler> <betrag></white>"
+  self: "<gray>Du kannst dir nicht selbst Geld geben."
+  not-enough: "<red>Du hast nur <gold>{amount}</gold>."
+  paid: "<green>Du hast <white>{player}</white> <gold>{amount}</gold> gegeben."
+  received: "<green><white>{player}</white> hat dir <gold>{amount}</gold> gegeben."
+  top-header: "<gradient:#ff5f6d:#ffc371>Reichste Spieler</gradient>"
+  top-line: "<gray>{rank}. <white>{player}</white> <gold>{amount}</gold>"
+  top-empty: "<gray>Noch niemand."
+
+esp:
+  mode: "<gray>ESP: <white>{mode}</white>"
+  usage: "<gray>Benutzung: <white>/esp [players|chests|all|off]</white>"
+  tag: "<white>{player}</white> <red>❤{health}</red> <gray>{distance}m</gray>\n<dark_gray>{item}"
+  tag-vanished: "<dark_gray>[V] <white>{player}</white> <red>❤{health}</red> <gray>{distance}m</gray>\n<dark_gray>{item}"
+  modes:
+    mode-off: "aus"
+    mode-players: "Spieler"
+    mode-chests: "Kisten"
+    mode-all: "Spieler und Kisten"
+
+module:
+  title: "<gradient:#ff5f6d:#ffc371><bold>Module</bold></gradient>"
+  commands: "Befehle:"
+  state-on: "<green>● An"
+  state-off: "<red>● Aus"
+  left: "<#ffc371>Linksklick: an oder aus"
+  right: "<#ffc371>Rechtsklick: Einstellungen"
+  right-none: "<dark_gray>Keine Einstellungen"
+  switched-on: "<green>{module} ist an. Die Befehle gehen sofort."
+  switched-off: "<gray>{module} ist aus. Die Befehle sind weg."
+  is-off: "<red>{module} ist ausgeschaltet. Ein Admin kann es in /sc modules anschalten."
+  settings-title: "<dark_gray>Einstellungen: {module}"
+  value: "<gray>Jetzt: <white>{value}"
+  click-cycle: "<#ffc371>Klick zum Ändern"
+  click-type: "<#ffc371>Klick und den neuen Wert in den Chat schreiben"
+  prompt: "<#ffc371>Schreib den neuen Wert in den Chat."
+  word-on: "an"
+  word-off: "aus"
+  line: "<gray>{module}: <white>{name}</white> - {state}"
+  unknown: "<red>Das Modul <white>{module}</white> gibt es nicht. <white>/sc modules</white> zeigt alle."
+  homes:
+    name: "<#ffc371><bold>Homes</bold>"
+    lore: ["<gray>Spieler speichern Orte und", "<gray>teleportieren zurück: /sethome, /home."]
+  tpa:
+    name: "<#ffc371><bold>Teleport-Anfragen</bold>"
+    lore: ["<gray>/tpa und /tpahere, Annehmen", "<gray>mit einem Klick."]
+  money:
+    name: "<#ffc371><bold>Geld</bold>"
+    lore: ["<gray>/money, /pay, /baltop, /eco.", "<gray>Mit Vault nutzen auch Shops es."]
+  spawn:
+    name: "<#ffc371><bold>Spawn</bold>"
+    lore: ["<gray>/spawn und /setspawn, neue Spieler", "<gray>und Gestorbene kommen zum Spawn."]
+  ranks:
+    name: "<#ffc371><bold>Ränge</bold>"
+    lore: ["<gray>Ränge in Chat und Tab-Liste,", "<gray>Befehls-Level, auch für OPs."]
+  esp:
+    name: "<#ffc371><bold>Admin-ESP</bold>"
+    lore: ["<gray>Kisten und Spieler durch Wände,", "<gray>nur für das Teammitglied selbst."]
+  blocklog:
+    name: "<#ffc371><bold>Block-Protokoll</bold>"
+    lore: ["<gray>Wer welchen Block oder welche Kiste", "<gray>verändert hat, Rollback und Replay."]
+  admin:
+    name: "<#ffc371><bold>Admin-Befehle</bold>"
+    lore: ["<gray>/tpadmin, /freeze, /invsee, /fly,", "<gray>/heal, /god, /teamchat und mehr."]
+  short:
+    name: "<#ffc371><bold>Kurzbefehle</bold>"
+    lore: ["<gray>/ban, /mute, /warn, /vanish usw.", "<gray>ohne /sc davor. Aus, wenn ein anderes", "<gray>Plugin diese Namen haben soll."]
+  prison:
+    name: "<#ffc371><bold>Gefängnis</bold>"
+    lore: ["<gray>/prison: Grundstein-Zelle,", "<gray>gesperrtes Inventar."]
+  fakebase:
+    name: "<#ffc371><bold>Fake-Basen</bold>"
+    lore: ["<gray>/fakebase: Köder-Basen unter der", "<gray>Erde gegen ESP und X-Ray."]
+  trolls:
+    name: "<#ffc371><bold>Trolls</bold>"
+    lore: ["<gray>/troll: harmlose Späße."]
+
+module-setting:
+  homes:
+    max:
+      name: "<white>Homes pro Spieler"
+      lore: ["<gray>Mit staffcore.homes.unlimited", "<gray>gibt es keine Grenze."]
+    warmup:
+      name: "<white>Countdown"
+      lore: ["<gray>Sekunden stillstehen vor", "<gray>dem Teleport."]
+    cooldown:
+      name: "<white>Wartezeit"
+      lore: ["<gray>Sekunden, bis /home wieder geht."]
+  tpa:
+    warmup:
+      name: "<white>Countdown"
+      lore: ["<gray>Sekunden stillstehen vor", "<gray>dem Teleport."]
+    timeout:
+      name: "<white>Anfrage gilt"
+      lore: ["<gray>Sekunden, bis eine Anfrage abläuft."]
+    cooldown:
+      name: "<white>Wartezeit"
+      lore: ["<gray>Sekunden bis zur nächsten /tpa."]
+  money:
+    start:
+      name: "<white>Startgeld"
+      lore: ["<gray>Was ein neuer Spieler hat."]
+    symbol:
+      name: "<white>Währungszeichen"
+      lore: ["<gray>Zum Beispiel $, €, Coins."]
+    symbol-after:
+      name: "<white>Zeichen hinter der Zahl"
+      lore: ["<gray>An: 100 Coins. Aus: $100."]
+  esp:
+    player-range:
+      name: "<white>Spieler-Reichweite"
+      lore: ["<gray>Blöcke, in denen Spieler", "<gray>ein Schild bekommen."]
+    chest-chunks:
+      name: "<white>Kisten-Reichweite"
+      lore: ["<gray>Chunks um dich herum, in denen", "<gray>Kisten leuchten."]
+    chest-limit:
+      name: "<white>Höchstens Kisten"
+      lore: ["<gray>Die nächsten werden gezeigt."]
+  block-log:
+    keep-days:
+      name: "<white>Tage aufheben"
+      lore: ["<gray>Ältere Einträge werden beim", "<gray>Start gelöscht."]
+    max-radius:
+      name: "<white>Größter Radius"
+      lore: ["<gray>Für Nachschlagen, Rollback und Replay."]
+  prison:
+    tool-time:
+      name: "<white>Zeit des Gefängnisschlüssels"
+      lore: ["<gray>So lange sperrt der Schlüssel", "<gray>einen Spieler ein."]
+  fakebase:
+    minutes:
+      name: "<white>Steht Minuten"
+      lore: ["<gray>Danach sieht alles aus", "<gray>wie vorher."]
+    max:
+      name: "<white>Höchstens gleichzeitig"
+      lore: ["<gray>Fake-Basen zur selben Zeit."]

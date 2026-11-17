@@ -35,6 +35,7 @@ permissions:
       staffcore.ipban: true
       staffcore.lockdown: true
       staffcore.troll: true
+      staffcore.announce: true
       staffcore.eco: true
       staffcore.homes.unlimited: true
   staffcore.staff:
@@ -77,6 +78,8 @@ permissions:
       staffcore.panel: true
       staffcore.ghost: true
       staffcore.anticheat: true
+      staffcore.check: true
+      staffcore.lag: true
       staffcore.money.others: true
   staffcore.see:
     description: Can still see punished players
@@ -200,6 +203,15 @@ permissions:
     default: op
   staffcore.anticheat:
     description: "Sees anti-cheat alerts and marked players, /anticheat"
+    default: op
+  staffcore.check:
+    description: "/check - everything about a player on one live page"
+    default: op
+  staffcore.lag:
+    description: "/lag and /cleanup"
+    default: op
+  staffcore.announce:
+    description: "/announce - a message with a title to everybody"
     default: op
   staffcore.anticheat.bypass:
     description: Never checked by the anti-cheat (not even ops have it by default)

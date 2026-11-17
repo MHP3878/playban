@@ -3205,4 +3205,98 @@ class StaffCoreTest {
         assertEquals(0, plugin.adminPanel().tickets(sup).size(), "reports need level 50 here");
         assertEquals(1, plugin.adminPanel().tickets(admin).size());
     }
+
+    // ------------------------------------------------------------------ 0.16: /check, lag tools, announcements, finer checks
+
+    @Test
+    void checkPageShowsEverythingAndItsButtonsWork() {
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerCommandPreprocessEvent(troll, "/spawn"));
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerCommandPreprocessEvent(troll, "/login secret123"));
+        assertTrue(plugin.playerCheck().lastCommands(troll.getUniqueId()).get(0).contains("/login ***"), "passwords never show");
+        assertTrue(plugin.playerCheck().lastCommands(troll.getUniqueId()).get(1).contains("/spawn"));
+        plugin.antiCheat().flag(troll, "reach", 3, "3.9");
+        assertTrue(admin.performCommand("check Troll"));
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.playerCheck().open(admin, troll);
+            assertNoMissingTexts(admin, code);
+        }
+        server.getScheduler().performTicks(25);
+        admin.simulateInventoryClick(31);
+        assertTrue(plugin.antiCheat().watched(troll.getUniqueId()), "watch button");
+        admin.simulateInventoryClick(30);
+        assertTrue(plugin.admin().isFrozen(troll.getUniqueId()), "freeze button");
+        assertFalse(plugin.antiCheat().recentFindings(troll.getUniqueId()).isEmpty());
+    }
+
+    @Test
+    void lagToolsReportAndClean() {
+        var w = troll.getWorld();
+        for (int i = 0; i < 5; i++) w.dropItem(troll.getLocation(), new ItemStack(Material.DIRT));
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        assertTrue(admin.performCommand("lag"));
+        Component m = admin.nextComponentMessage();
+        assertNotNull(m);
+        assertTrue(plain(m).contains("TPS"));
+        admin.performCommand("cleanup all");
+        assertEquals(0, w.getEntities().stream().filter(e -> e instanceof org.bukkit.entity.Item).count(), "items are gone");
+    }
+
+    @Test
+    void announcementsGoRound() {
+        plugin.getConfig().set("announcer.messages", java.util.List.of("<white>First", "<white>Second"));
+        plugin.getConfig().set("announcer.interval-seconds", 30);
+        while (troll.nextComponentMessage() != null) { /* clear */ }
+        assertTrue(admin.performCommand("announce next"));
+        assertTrue(plain(troll.nextComponentMessage()).contains("First"));
+        admin.performCommand("announce <red>Server restart in 5 minutes <click:run_command:'/op Troll'>x</click>");
+        Component m = troll.nextComponentMessage();
+        assertTrue(plain(m).contains("Server restart"));
+        assertNull(m.clickEvent(), "no click actions from /announce");
+    }
+
+    @Test
+    void alertsCanBeSwitchedOff() {
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        plugin.antiCheat().flag(troll, "reach", 9, null);
+        boolean got = false;
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll")) got = true;
+        assertTrue(got);
+        assertTrue(admin.performCommand("alerts"));
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        plugin.antiCheat().flag(troll, "reach", 9, null);
+        got = false;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll") && plain(m).contains("+")) got = true;
+        assertFalse(got, "muted");
+    }
+
+    @Test
+    void sameTurnOverAndOverIsRobotic() {
+        // in a fight, turning exactly 7.5 degrees ten times in a row
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(troll, bystander,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1));
+        var from = troll.getLocation();
+        for (int i = 0; i < 10; i++) {
+            var to = from.clone();
+            to.setYaw(from.getYaw() + 7.5f);
+            server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerMoveEvent(troll, from, to));
+            from = to;
+        }
+        assertTrue(plugin.antiCheat().points(troll.getUniqueId(), "aim") > 0, "robotic turns give points");
+        // a human turns by different amounts
+        var f2 = bystander.getLocation();
+        float[] turns = {3.1f, 7.9f, 2.2f, 11.4f, 5.5f, 6.6f, 1.3f, 9.2f, 4.4f, 8.1f};
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(bystander, troll,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1));
+        for (float t : turns) {
+            var to = f2.clone();
+            to.setYaw(f2.getYaw() + t);
+            server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerMoveEvent(bystander, f2, to));
+            f2 = to;
+        }
+        assertEquals(0, plugin.antiCheat().points(bystander.getUniqueId(), "aim"), 0.01);
+    }
 }

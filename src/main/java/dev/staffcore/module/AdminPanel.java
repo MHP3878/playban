@@ -142,6 +142,10 @@ public final class AdminPanel implements TabExecutor, Listener {
         if (p.hasPermission("staffcore.staff")) m.set(46, Items.of(Material.COMPASS, lang().msg("panel.staffcore"), List.of()), e -> plugin.adminMenus().main(p));
         if (p.hasPermission("staffcore.tools")) m.set(47, Items.of(Material.MACE, lang().msg("panel.tools"), List.of()), e -> plugin.tools().menu(p));
         if (p.hasPermission("staffcore.admin")) m.set(52, Items.of(Material.BEACON, lang().msg("panel.modules"), List.of()), e -> plugin.modules().menu(p));
+        if (p.hasPermission("staffcore.lag") && plugin.modules().on("lag")) m.set(48, Items.of(Material.REDSTONE, lang().msg("panel.lag"), List.of()), e -> {
+            p.closeInventory();
+            p.performCommand("lag");
+        });
         m.set(49, Items.of(Material.BARRIER, lang().msg("panel.close"), List.of()), e -> p.closeInventory());
         m.fill().open(p);
     }

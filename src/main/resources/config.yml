@@ -234,6 +234,7 @@ esp:
   chest-chunks: 3
   chest-limit: 400
 modules:
+  lag: true
   prison: true
   fakebase: true
   trolls: true
@@ -308,6 +309,10 @@ anticheat:
     anchor: {enabled: true, weight: 1.0}
     crystal: {enabled: true, weight: 1.0}
     bot: {enabled: true, weight: 1.0}
+    aim: {enabled: true, weight: 1.0}
+    criticals: {enabled: true, weight: 1.0}
+    invmove: {enabled: true, weight: 1.0}
+    fastbow: {enabled: true, weight: 1.0}
 
 # ---- PlayBan ----
 playban:
@@ -319,3 +324,15 @@ playban:
     y: 100
     z: 0
     yaw: 0
+
+# ---- Announcements (/sc modules) ----
+announcer:
+  enabled: true
+  interval-seconds: 300
+  random: false
+  sound: true
+  # MiniMessage, one message per entry
+  messages:
+    - "<gray>Need help? Write <white>/ticket</white>, the team answers."
+    - "<gray>Cheating is caught by the anti-cheat. Play fair!"
+    - "<gray>Save your base with <white>/sethome</white>."

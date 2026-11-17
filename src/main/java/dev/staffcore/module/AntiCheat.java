@@ -78,7 +78,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class AntiCheat implements Listener, TabExecutor {
     public static final List<String> CHECKS = List.of("fly", "speed", "reach", "aura", "autoclick", "nofall", "velocity", "xray",
-            "timer", "step", "jesus", "fastbreak", "nuker", "scaffold", "noslow", "badpackets", "autototem", "anchor", "crystal", "bot");
+            "timer", "step", "jesus", "fastbreak", "nuker", "scaffold", "noslow", "badpackets", "autototem", "anchor", "crystal", "bot",
+            "aim", "criticals", "invmove", "fastbow");
     /** Checks that alone never catch anybody: they can only mark. */
     private static final Set<String> SOFT = Set.of("xray", "bot");
 
@@ -140,6 +141,16 @@ public final class AntiCheat implements Listener, TabExecutor {
         final Map<String, Long> grace = new HashMap<>();
         long lastDecay = System.currentTimeMillis();
         long lastCpsSecond;
+        final Deque<Double> pitchDeltas = new ArrayDeque<>();
+        int gcdStrikes;
+        float lastYawDelta;
+        int sameTurns;
+        int invMoveStrikes;
+        final Deque<Long> shots = new ArrayDeque<>();
+        double lastDy;
+        boolean special;
+        int specialTick = -100;
+        final Deque<String> findings = new ArrayDeque<>();
     }
 
     private final StaffCorePlugin plugin;
@@ -150,6 +161,10 @@ public final class AntiCheat implements Listener, TabExecutor {
     private final Set<UUID> watched = new HashSet<>();
     private final Map<UUID, Integer> caughtCount = new HashMap<>();
     private final Set<UUID> catching = new HashSet<>();
+    /** the last findings per player, newest first, for /check */
+    private final Map<UUID, Deque<String>> recent = new HashMap<>();
+    /** team members who switched the alerts off with /alerts */
+    private final Set<UUID> muted = new HashSet<>();
     private final CatchAnimation animation;
     private BukkitTask task;
     private int ticks;
@@ -337,6 +352,11 @@ public final class AntiCheat implements Listener, TabExecutor {
         if (watched.contains(p.getUniqueId())) amount *= plugin.getConfig().getDouble("anticheat.watch-multiplier", 1.5);
         Map<String, Double> account = points.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>());
         account.merge(check, amount, Double::sum);
+        recent.computeIfAbsent(p.getUniqueId(), k -> new ArrayDeque<>());
+        Deque<String> rec = recent.get(p.getUniqueId());
+        rec.addFirst(new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date(now)) + " " + lang().raw("anticheat.check." + check)
+                + String.format(Locale.ROOT, " +%.1f", amount) + (detail == null ? "" : " (" + detail + ")"));
+        while (rec.size() > 12) rec.removeLast();
         double total = total(p.getUniqueId());
         String checkName = lang().raw("anticheat.check." + check);
 
@@ -371,14 +391,46 @@ public final class AntiCheat implements Listener, TabExecutor {
         long alertGap = isWatched ? 2000 : 12_000;
         if (s != null && (now - st.lastAlert > alertGap || base >= 10)) {
             st.lastAlert = now;
-            plugin.punishments().notifyStaff(lang().prefixed(isWatched ? "anticheat.alert-watched" : "anticheat.alert", "player", p.getName(),
+            alert(lang().prefixed(isWatched ? "anticheat.alert-watched" : "anticheat.alert", "player", p.getName(),
                     "check", checkName, "points", String.format(Locale.ROOT, "%.1f", amount), "total", (int) Math.round(total),
                     "limit", (int) limit(), "detail", detail == null ? "" : detail)
-                    .clickEvent(ClickEvent.runCommand("/admin case " + p.getName())));
+                    .clickEvent(ClickEvent.runCommand("/check " + p.getName())));
             save();
         }
         plugin.staffLog("AntiCheat", check, p.getName(), String.format(Locale.ROOT, "+%.1f = %.0f %s", amount, total, detail == null ? "" : detail));
         if (total >= limit() && plugin.getConfig().getBoolean("anticheat.auto-punish", true)) caught(p);
+    }
+
+    /** Anti-cheat alerts go to the team, except to those who switched them off with /alerts. */
+    private void alert(net.kyori.adventure.text.Component line) {
+        for (Player staff : Bukkit.getOnlinePlayers()) {
+            if (staff.hasPermission("staffcore.anticheat") && !muted.contains(staff.getUniqueId())) staff.sendMessage(line);
+        }
+        Bukkit.getConsoleSender().sendMessage(line);
+    }
+
+    public boolean toggleAlerts(UUID staff) {
+        if (muted.remove(staff)) return true;
+        muted.add(staff);
+        return false;
+    }
+
+    public List<String> recentFindings(UUID id) {
+        return new ArrayList<>(recent.getOrDefault(id, new ArrayDeque<>()));
+    }
+
+    public Map<String, Double> account(UUID id) {
+        return new LinkedHashMap<>(points.getOrDefault(id, Map.of()));
+    }
+
+    /** Clicks in the last second, for the live view in /check. */
+    public int cps(UUID id) {
+        State st = states.get(id);
+        if (st == null) return 0;
+        long now = System.currentTimeMillis();
+        int n = 0;
+        for (long t : st.swings) if (now - t <= 1000) n++;
+        return n;
     }
 
     /** Over the limit: the animation for everybody around, then the next step of the ladder. */
@@ -597,7 +649,12 @@ public final class AntiCheat implements Listener, TabExecutor {
                 continue;
             }
             boolean ground = grounded(p);
-            boolean special = special(p);
+            // looking at 75 blocks around costs; every other tick is enough
+            if (ticks - st.specialTick >= 2) {
+                st.special = special(p);
+                st.specialTick = ticks;
+            }
+            boolean special = st.special;
             if (onIce(p)) st.iceUntil = now + 1500;
 
             // impossible head angles: no real client sends them
@@ -657,12 +714,7 @@ public final class AntiCheat implements Listener, TabExecutor {
             st.wasOnGround = ground;
 
             // using an item (eating, bow, shield) slows you right down
-            boolean using = false;
-            try {
-                using = p.isHandRaised();
-            } catch (RuntimeException ignored) {
-                // older API
-            }
+            boolean using = handRaised(p);
             st.usingTicks = using ? st.usingTicks + 1 : 0;
 
             // speed
@@ -689,6 +741,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                 }
             }
             st.lastYaw = loc.getYaw();
+            st.lastDy = dy;
         }
         if (ticks % 100 == 0) cleanChat();
     }
@@ -708,11 +761,29 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     // ---------------------------------------------------------------- movement packets: timer
 
+    private static boolean handRaised(Player p) {
+        try {
+            return p.isHandRaised();
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static long gcd(long a, long b) {
+        while (b > 4096) {
+            long t = a % b;
+            a = b;
+            b = t;
+        }
+        return a;
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
         Player p = e.getPlayer();
         State st = state(p);
         long now = System.currentTimeMillis();
+        aim(p, st, e.getFrom(), e.getTo(), now);
         st.movePackets.addLast(now);
         while (!st.movePackets.isEmpty() && now - st.movePackets.peekFirst() > 5000) st.movePackets.removeFirst();
         if (st.movePackets.size() > 5 * 20 && now > st.exemptUntil && ping(p) < 200) {
@@ -721,6 +792,67 @@ public final class AntiCheat implements Listener, TabExecutor {
                 if (++st.timerStrikes % 20 == 0) flag(p, "timer", rate > 30 ? 15 : rate > 25 ? 6 : 2, String.format(Locale.ROOT, "%.1f/s", rate));
             } else st.timerStrikes = 0;
         }
+    }
+
+    /**
+     * Mouse movement always comes in steps of the same size (it depends on the sensitivity). Aim cheats
+     * turn by arbitrary amounts, so the common step vanishes. Judged only in a fight, never while zooming.
+     */
+    private void aim(Player p, State st, Location from, Location to, long now) {
+        if (now - st.lastHit > 3000 || exempt(p)) return;
+        Material inHand = p.getInventory().getItemInMainHand().getType();
+        if (inHand == Material.SPYGLASS || handRaised(p)) return;
+        float dYaw = Math.abs(wrap(to.getYaw() - from.getYaw()));
+        double dPitch = Math.abs(to.getPitch() - from.getPitch());
+        if (dPitch > 0.05 && dPitch < 25 && Math.abs(to.getPitch()) < 85) {
+            st.pitchDeltas.addLast(dPitch);
+            if (st.pitchDeltas.size() >= 40) {
+                long g = 0;
+                for (double d : st.pitchDeltas) g = g == 0 ? (long) (d * 16777216L) : gcd(g, (long) (d * 16777216L));
+                st.pitchDeltas.clear();
+                double step = g / 16777216.0;
+                // the smallest step a mouse can make at the lowest sensitivity is about 0.0096 degrees
+                if (step < 0.007) {
+                    if (++st.gcdStrikes >= 3) flag(p, "aim", 1.5, String.format(Locale.ROOT, "step %.5f", step));
+                } else st.gcdStrikes = 0;
+            }
+        }
+        // the very same turn again and again
+        if (dYaw > 1.5 && Math.abs(dYaw - st.lastYawDelta) < 0.0005) {
+            if (++st.sameTurns >= 8) {
+                flag(p, "aim", 2, String.format(Locale.ROOT, "%.3f° x%d", dYaw, st.sameTurns));
+                st.sameTurns = 0;
+            }
+        } else st.sameTurns = 0;
+        st.lastYawDelta = dYaw;
+    }
+
+    /** Clicking around in your own inventory while running: the inventory screen does not let you move. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryClick(org.bukkit.event.inventory.InventoryClickEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p) || exempt(p)) return;
+        if (e.getView().getTopInventory().getType() != org.bukkit.event.inventory.InventoryType.CRAFTING) return;
+        State st = state(p);
+        long now = System.currentTimeMillis();
+        if (now < st.exemptUntil || now < st.iceUntil || st.moves.isEmpty()) return;
+        double lastTick = st.moves.peekLast()[1];
+        if (p.isSprinting() && lastTick > 0.2 && !st.special && ping(p) < 200) {
+            if (++st.invMoveStrikes >= 3) {
+                flag(p, "invmove", 2, String.format(Locale.ROOT, "%.2f", lastTick));
+                st.invMoveStrikes = 0;
+            }
+        } else st.invMoveStrikes = 0;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onShoot(org.bukkit.event.entity.EntityShootBowEvent e) {
+        if (!(e.getEntity() instanceof Player p) || exempt(p) || e.getBow() == null || e.getBow().getType() != Material.BOW) return;
+        State st = state(p);
+        long now = System.currentTimeMillis();
+        st.shots.addLast(now);
+        while (!st.shots.isEmpty() && now - st.shots.peekFirst() > 1000) st.shots.removeFirst();
+        // a full draw takes a second; three and more full shots in one second are not possible
+        if (e.getForce() > 0.9f && st.shots.size() >= 3) flag(p, "fastbow", st.shots.size() > 5 ? 8 : 4, st.shots.size() + "/s");
     }
 
     // ---------------------------------------------------------------- things that excuse odd movement
@@ -792,6 +924,16 @@ public final class AntiCheat implements Listener, TabExecutor {
                 if (dt < 50) flag(attacker, "crystal", 2, dt + "ms");
                 else if (dt < 100) flag(attacker, "crystal", 1, dt + "ms");
                 st.crystalPlacedAt = 0;
+            }
+            // a critical hit needs a fall; on the ground and not falling there is none
+            boolean critical = false;
+            try {
+                critical = e.isCritical();
+            } catch (NoSuchMethodError ignored) {
+                // older API
+            }
+            if (critical && grounded(attacker) && st.lastDy >= -0.01 && !st.special && !attacker.isInsideVehicle()) {
+                flag(attacker, "criticals", 3, null);
             }
             st.lastTarget = target.getUniqueId();
             st.lastHit = now;
@@ -1097,7 +1239,11 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        String sub = args.length > 0 ? args[0].toLowerCase() : "";
+        String sub = command.getName().equalsIgnoreCase("alerts") ? "alerts" : args.length > 0 ? args[0].toLowerCase() : "";
+        if (sub.equals("alerts") && sender instanceof Player staff) {
+            lang().send(staff, toggleAlerts(staff.getUniqueId()) ? "anticheat.alerts-on" : "anticheat.alerts-off");
+            return true;
+        }
         if (args.length >= 2 && List.of("clear", "watch", "unwatch", "points", "reset").contains(sub)) {
             UUID id = byName(args[1]);
             if (id == null) {
@@ -1147,7 +1293,7 @@ public final class AntiCheat implements Listener, TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) for (String s : List.of("points", "watch", "unwatch", "reset", "clear")) if (s.startsWith(args[0].toLowerCase())) out.add(s);
+        if (args.length == 1) for (String s : List.of("points", "watch", "unwatch", "reset", "clear", "alerts")) if (s.startsWith(args[0].toLowerCase())) out.add(s);
         if (args.length == 2) {
             for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase().startsWith(args[1].toLowerCase())) out.add(p.getName());
             for (Suspect s : suspects.values()) if (!out.contains(s.name) && s.name.toLowerCase().startsWith(args[1].toLowerCase())) out.add(s.name);

@@ -45,6 +45,8 @@ public class StaffCorePlugin extends JavaPlugin {
     private dev.staffcore.module.AntiCheat antiCheat;
     private dev.staffcore.module.GhostMode ghost;
     private dev.staffcore.module.AdminPanel adminPanel;
+    private dev.staffcore.module.PlayerCheck playerCheck;
+    private dev.staffcore.module.Announcer announcer;
     private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
@@ -147,11 +149,16 @@ public class StaffCorePlugin extends JavaPlugin {
         adminPanel = new dev.staffcore.module.AdminPanel(this);
         getServer().getPluginManager().registerEvents(adminPanel, this);
         register("admin", "Your admin panel: inbox, admin mode, ghost mode, your commands", "staffcore.panel", adminPanel);
+        playerCheck = new dev.staffcore.module.PlayerCheck(this);
+        getServer().getPluginManager().registerEvents(playerCheck, this);
+        register("check", "Everything about a player on one live page", "staffcore.check", playerCheck);
+        announcer = new dev.staffcore.module.Announcer(this);
         modules = new dev.staffcore.module.ModuleManager(this);
         defineModules(executor);
         modules.startAll();
         economy.fallback(() -> modules.on("money") ? money : null);
         antiCheat.start();
+        announcer.start();
         VoiceCommand voiceExecutor = new VoiceCommand(this);
         PluginCommand voiceCommand = getCommand("voice");
         if (voiceCommand != null) {
@@ -255,6 +262,7 @@ public class StaffCorePlugin extends JavaPlugin {
         modules.add("anticheat", org.bukkit.Material.IRON_SWORD, "anticheat.enabled", true)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("anticheat", "Players the anti-cheat marked", "staffcore.anticheat", antiCheat,
                         java.util.List.of("ac")))
+                .command(new dev.staffcore.module.ModuleManager.Cmd("alerts", "Anti-cheat alerts on or off for you", "staffcore.anticheat", antiCheat))
                 .setting("anticheat.auto-punish", BOOL, org.bukkit.Material.ANVIL, true)
                 .setting("anticheat.limit", CYCLE, org.bukkit.Material.TARGET, 25, 15, 20, 25, 35, 50)
                 .setting("anticheat.animation", CYCLE, org.bukkit.Material.MACE, "random", "random", "blackhole", "mace", "lightning", "none")
@@ -300,6 +308,15 @@ public class StaffCorePlugin extends JavaPlugin {
                 .command(new dev.staffcore.module.ModuleManager.Cmd("fakebase", "Bait base underground: catches ESP and x-ray", "staffcore.fakebase", fakeBases))
                 .setting("fakebase.minutes", CYCLE, org.bukkit.Material.CLOCK, 30, 10, 30, 60, 120)
                 .setting("fakebase.max", CYCLE, org.bukkit.Material.CHEST, 5, 1, 3, 5, 10);
+        dev.staffcore.module.LagTools lag = new dev.staffcore.module.LagTools(this);
+        modules.add("lag", org.bukkit.Material.REDSTONE, "modules.lag", true)
+                .command(new dev.staffcore.module.ModuleManager.Cmd("lag", "TPS, tick time and the busiest chunks", "staffcore.lag", lag))
+                .command(new dev.staffcore.module.ModuleManager.Cmd("cleanup", "Remove items, arrows and experience lying around", "staffcore.lag", lag));
+        modules.add("announcer", org.bukkit.Material.BELL, "announcer.enabled", true)
+                .command(new dev.staffcore.module.ModuleManager.Cmd("announce", "A message with a title to everybody", "staffcore.announce", announcer))
+                .setting("announcer.interval-seconds", CYCLE, org.bukkit.Material.CLOCK, 300, 60, 180, 300, 600, 1200)
+                .setting("announcer.random", BOOL, org.bukkit.Material.COMPARATOR, false)
+                .setting("announcer.sound", BOOL, org.bukkit.Material.NOTE_BLOCK, true);
         modules.add("trolls", org.bukkit.Material.EGG, "modules.trolls", true)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("troll", "Harmless jokes on a player", "staffcore.troll", trolls));
     }
@@ -315,6 +332,7 @@ public class StaffCorePlugin extends JavaPlugin {
         if (fakeBases != null) fakeBases.stop();
         if (esp != null) esp.stop();
         if (ghost != null) ghost.stop();
+        if (announcer != null) announcer.stop();
         if (antiCheat != null) antiCheat.stop();
         if (money != null) {
             money.saveIfDirty();
@@ -389,6 +407,8 @@ public class StaffCorePlugin extends JavaPlugin {
     public dev.staffcore.module.GhostMode ghost() { return ghost; }
 
     public dev.staffcore.module.AdminPanel adminPanel() { return adminPanel; }
+
+    public dev.staffcore.module.PlayerCheck playerCheck() { return playerCheck; }
 
     /** One line in the team protocol (/stafflog). */
     public void staffLog(String actor, String action, String target, String detail) {

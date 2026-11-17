@@ -134,6 +134,10 @@ Admin items cannot get their own tab in the creative inventory: those tabs come 
 | Auto totem | 4 (back in the off hand after 1 tick), 2 (2 ticks), 1 (3 ticks), 0 (slower) |
 | Anchor and crystal macros | 1-3 by how fast place, charge and blow up follow each other |
 | Auto clicker | 1 / 3 / 6 per second above the clicks limit |
+| Aim | 1.5 when mouse turns have no common step in a fight (aim cheats turn by arbitrary amounts; never while zooming), 2 for the very same turn eight times in a row |
+| Criticals | 3 for a critical hit while standing on the ground |
+| Inventory while running | 2 for clicking in your own inventory while sprinting, three times |
+| Fast bow | 4-8 for three and more full shots in one second |
 | X-ray (share of diamond ore and ancient debris) and bot signs | mark only, they never reach the limit alone |
 
 - **A clear finding (10 points and more)** shows a big warning ("Flying is not allowed here", points so far) and the same check waits `grace-seconds` (6) before it counts again, so a slow landing is not counted twice. Whoever carries on goes over the limit.
@@ -142,11 +146,18 @@ Admin items cannot get their own tab in the creative inventory: those tabs come 
 - Points fade by one every minute.
 - **Bots:** more than 6 new accounts within 10 seconds turn on bot protection for 2 minutes (only known players can join). Writing the moment you join, the same message as several others, or a client that does not say what it is give bot points.
 - Lag never counts: below `min-tps` (18) and above `max-ping` (300) movement is not judged. Creative, spectators, admin mode, vanished, frozen and punished players and `staffcore.anticheat.bypass` (nobody has it by default, ops neither) are not checked. Teleports, knockback, explosions, ice, water, ladders, cobwebs, slime, pistons, effects, elytra and vehicles are taken into account.
+- Alerts are clickable and open `/check`; `/alerts` switches them off and on for yourself.
 - `/anticheat` lists marked players, `/anticheat points <player>` shows the account per check, `watch`, `unwatch`, `reset` and `clear` do what they say. Limit, animation, watching, grace, speed limit, ping and clicks per second are in the module settings, every check can be switched off or weighted under `anticheat.checks`.
 
 Test it with your own clients before you rely on it; if something is too strict or too lax, change the weight of that check.
 
 **PlayBan both ways.** A PlayBan hides the player from everybody and everybody from the player (the team stays visible to them; `restrictions.hide-others`). When it is over the player is sent back: `playban.end-teleport` LAST (where they were before), SPAWN, HOME, LOCATION (`playban.end-location`) or NONE, also in Settings (shift-click there: the place where you stand).
+
+## More team tools
+
+- **`/check <player>`**: everything about one player on one page that updates every second. Ping, client, game mode, health, where they are, clicks per second right now, the anti-cheat account per check, the last findings and the last ten commands (passwords of `/login` and the like are hidden). Buttons: inventory, ender chest, freeze, watch, follow unseen (admin mode, ghost mode, to the player), reset points, punish, profile, block log of the last day, other accounts, teleport, prison for 15 minutes.
+- **`/lag`**: TPS, milliseconds per tick, loaded chunks, entities, and the five busiest chunks with a click to go there. **`/cleanup [all]`** removes items, arrows and experience orbs lying around (without `all`, only those older than 30 seconds).
+- **Announcements**: the messages under `announcer.messages` go round every few minutes (in order or random, with a quiet chime). **`/announce <text>`** shows a message with a title to everybody right now (colors yes, click actions no); `/announce next` sends the next one of the list.
 
 ## Modules
 
@@ -165,6 +176,8 @@ Test it with your own clients before you rely on it; if something is too strict 
 | Block log | `/blocklog` | days kept, largest radius |
 | Admin commands | `/tpadmin`, `/freeze`, `/invsee`, `/fly`, `/heal`, `/god`, ... | - |
 | Short commands | `/ban`, `/mute`, `/warn`, `/vanish`, ... | - |
+| Lag tools | `/lag`, `/cleanup` | - |
+| Announcements | `/announce` | how often, random order, sound |
 | Prison, fake bases, trolls | `/prison`, `/fakebase`, `/troll` | prison key time; fake base minutes and maximum |
 
 Teleports from homes and requests count down while you stand still; moving cancels them. Frozen, cuffed, jailed or punished players cannot use them, and vanished staff cannot be found with `/tpa`.

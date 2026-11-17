@@ -90,6 +90,14 @@ public final class AdminManager implements Listener {
         staff.playSound(staff.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.4f);
     }
 
+    /** Like tpAdmin, to a place instead of a player. */
+    public void tpAdminTo(Player staff, Location to) {
+        rememberReturn(staff);
+        if (!plugin.punishments().isVanished(staff.getUniqueId())) plugin.punishments().setVanished(staff, true);
+        staff.teleport(to);
+        staff.playSound(staff.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.4f);
+    }
+
     public boolean back(Player staff) {
         Location to = returnPoints.remove(staff.getUniqueId());
         if (to == null) return false;

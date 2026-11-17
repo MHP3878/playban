@@ -89,6 +89,9 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  check: ["<gray>Alles über einen Spieler auf einer", "<gray>Live-Seite: Ping, Client, Klicks,", "<gray>Anti-Cheat-Punkte und Funde, letzte", "<gray>Befehle, und Knöpfe für Inventar,", "<gray>Einfrieren, Beobachten, Bestrafen."]
+  lag: ["<gray>TPS, Tick-Zeit und die vollsten", "<gray>Chunks, ein Klick bringt dich hin.", "<gray>/cleanup räumt herumliegende Items weg."]
+  announce: ["<gray>Eine Nachricht mit Titel an alle.", "<gray>/announce next schickt die nächste", "<gray>Nachricht der Liste."]
   admin: ["<gray>Dein Admin-Panel: Postfach mit Tickets", "<gray>und markierten Spielern, Admin-Modus,", "<gray>Vanish, Geistermodus, ESP und alle", "<gray>Befehle, die du nutzen darfst."]
   anticheat: ["<gray>Vom Anti-Cheat markierte Spieler.", "<gray>/anticheat clear <spieler> nimmt", "<gray>die Markierung weg."]
   modules: ["<gray>Alle Systeme in einem Menü: Homes,", "<gray>Teleport-Anfragen, Geld, Spawn,", "<gray>Ränge, ESP, Block-Protokoll und mehr.", "<gray>Linksklick: an oder aus.", "<gray>Rechtsklick: Einstellungen."]
@@ -1748,6 +1751,12 @@ module:
   adminmode:
     name: "<#ffc371><bold>Admin-Modus-Pflicht</bold>"
     lore: ["<gray>An: Teammitglieder sind normale Spieler,", "<gray>bis sie in /admin den Admin-Modus", "<gray>anschalten. Team-Befehle und Admin-", "<gray>Items gehen nur im Admin-Modus."]
+  lag:
+    name: "<#ffc371><bold>Lag-Werkzeuge</bold>"
+    lore: ["<gray>/lag und /cleanup."]
+  announcer:
+    name: "<#ffc371><bold>Ankündigungen</bold>"
+    lore: ["<gray>Nachrichten, die von selbst herum-", "<gray>gehen, und /announce. Die Liste steht", "<gray>in config.yml unter announcer.messages."]
   homes:
     name: "<#ffc371><bold>Homes</bold>"
     lore: ["<gray>Spieler speichern Orte und", "<gray>teleportieren zurück: /sethome, /home."]
@@ -1786,6 +1795,16 @@ module:
     lore: ["<gray>/troll: harmlose Späße."]
 
 module-setting:
+  announcer:
+    interval-seconds:
+      name: "<white>Alle Sekunden"
+      lore: ["<gray>Wie oft eine Nachricht kommt."]
+    random:
+      name: "<white>Zufällige Reihenfolge"
+      lore: ["<gray>Aus: eine nach der anderen."]
+    sound:
+      name: "<white>Ton"
+      lore: ["<gray>Ein leiser Ton bei jeder Nachricht."]
   anticheat:
     limit:
       name: "<white>Punktegrenze"
@@ -1933,9 +1952,12 @@ panel:
   staffcore: "<#ffc371>StaffCore-Menü"
   tools: "<#ffc371>Admin-Items"
   modules: "<#ffc371>Module"
+  lag: "<#ffc371>Server und Lag"
   close: "<red>Schließen"
 
 anticheat:
+  alerts-on: "<green>Anti-Cheat-Meldungen sind für dich an."
+  alerts-off: "<gray>Anti-Cheat-Meldungen sind für dich aus. <white>/alerts</white> schaltet sie wieder an."
   warn-title: "<red><bold>⚠ ANTI-CHEAT ⚠</bold>"
   warn-subtitle: "<white>{check} ist hier nicht erlaubt!"
   warn-chat: "<red><bold>Achtung!</bold> <white>{check}</white> <gray>ist auf diesem Server nicht erlaubt. Du hast <white>{points}</white> von <white>{limit}</white> Punkten. Bei <white>{limit}</white> wirst du bestraft. Das war deine Warnung."
@@ -1958,6 +1980,10 @@ anticheat:
   unknown: "<red>Ein Spieler namens <white>{player}</white> ist nicht bekannt."
   cleared: "<gray>Die Markierung von <white>{player}</white> ist weg."
   check:
+    aim: "Zielen (Maus)"
+    criticals: "Kritische Treffer"
+    invmove: "Inventar beim Laufen"
+    fastbow: "Schnellbogen"
     fly: "Fliegen"
     speed: "Tempo"
     reach: "Reichweite"
@@ -1993,3 +2019,55 @@ end-teleport:
   HOME: "sein Home"
   LOCATION: "ein fester Ort"
   NONE: "bleibt, wo er ist"
+
+check:
+  title: "<dark_gray>Check: {player}"
+  usage: "<gray>Benutzung: <white>/check <spieler></white>"
+  name: "<#ffc371><bold>{player}</bold>"
+  ping: "<gray>Ping: <white>{ping} ms"
+  client: "<gray>Client: <white>{client}"
+  mode: "<gray>Spielmodus: <white>{mode}"
+  health: "<gray>Leben: <white>{health}</white>, Hunger: <white>{food}"
+  where: "<gray>Wo: <white>{world} {x} {y} {z}"
+  first: "<gray>Zuerst da: <white>{date}"
+  punished: "<red>Ist gerade bestraft"
+  frozen: "<aqua>Ist eingefroren"
+  anticheat: "<#ffc371><bold>Anti-Cheat"
+  ac-total: "<gray>Punkte: <white>{points}</white>/<white>{limit}"
+  ac-line: "<gray> {check}: <white>{points}"
+  watched: "<gold>👁 Unter Beobachtung"
+  not-watched: "<dark_gray>Nicht beobachtet"
+  findings: "<#ffc371><bold>Letzte Funde"
+  commands: "<#ffc371><bold>Letzte Befehle"
+  nothing: "<dark_gray>Nichts"
+  cps: "<#ffc371><bold>Klicks jetzt: {cps}/s"
+  cps-lore: ["<gray>Wird jede Sekunde aktualisiert."]
+  invsee: "<#ffc371>Inventar"
+  endersee: "<#ffc371>Endertruhe"
+  freeze: "<aqua>Einfrieren"
+  unfreeze: "<aqua>Auftauen"
+  watch: "<gold>Beobachten"
+  unwatch: "<gold>Nicht mehr beobachten"
+  follow: "<#ffc371>Unsichtbar folgen"
+  follow-lore: ["<gray>Admin-Modus, unsichtbar, Geister-", "<gray>modus, und hin zum Spieler."]
+  reset: "<gray>Anti-Cheat-Punkte zurücksetzen"
+  punish: "<red>Bestrafen"
+  profile: "<#ffc371>Profil und Verlauf"
+  blocklog: "<#ffc371>Block-Protokoll (1 Tag)"
+  alts: "<#ffc371>Andere Accounts"
+  tp: "<#ffc371>Unsichtbar hinteleportieren"
+  prison: "<dark_gray>Gefängnis 15 Minuten"
+
+lag:
+  header: "<gradient:#ff5f6d:#ffc371>Server</gradient> <gray>TPS <white>{tps}</white> ({state}) · {mspt} ms pro Tick · {chunks} Chunks · {entities} Entities · {players} Spieler"
+  good: "gut"
+  ok: "etwas langsam"
+  bad: "laggt"
+  chunk: "<gray>{world} <white>{x} {z}</white>: <white>{entities}</white> Entities, <white>{tiles}</white> Block-Entities <dark_gray>(Klick: hin)"
+  cleaned: "<green>{count} Items, Pfeile und Erfahrungskugeln entfernt."
+
+announce:
+  prefix: "<gradient:#ff5f6d:#ffc371><bold>»</bold></gradient> "
+  title: "<gradient:#ff5f6d:#ffc371><bold>Ankündigung</bold></gradient>"
+  usage: "<gray>Benutzung: <white>/announce <text></white> oder <white>/announce next</white>"
+  empty: "<gray>Die Liste announcer.messages ist leer."

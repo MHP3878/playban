@@ -14,6 +14,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1954,6 +1955,118 @@ class StaffCoreTest {
         admin.simulateInventoryClick(14);
         admin.simulateInventoryClick(0); // "*"
         assertTrue(created.permissions.contains("*"));
+    }
+
+    // ------------------------------------------------------------------ admin commands
+
+    @Test
+    void tpadminMakesYouInvisibleAndTpbackReturns() {
+        var home = admin.getLocation().clone();
+        bystander.teleport(home.clone().add(200, 0, 0));
+        assertTrue(admin.performCommand("tpadmin Bystander"));
+        assertTrue(plugin.punishments().isVanished(admin.getUniqueId()), "you arrive invisible");
+        assertEquals(bystander.getLocation().getX(), admin.getLocation().getX(), 0.01);
+        assertFalse(bystander.canSee(admin));
+        admin.performCommand("tpback");
+        assertEquals(home.getX(), admin.getLocation().getX(), 0.01);
+    }
+
+    @Test
+    void tphereBringsAPlayer() {
+        bystander.teleport(admin.getLocation().clone().add(-300, 0, 0));
+        admin.performCommand("tphere Bystander");
+        assertEquals(admin.getLocation().getX(), bystander.getLocation().getX(), 0.01);
+    }
+
+    @Test
+    void frozenPlayerCannotMoveBuildOrUseCommands() {
+        admin.performCommand("freeze Troll");
+        assertTrue(plugin.admin().isFrozen(troll.getUniqueId()));
+        var here = troll.getLocation();
+        var move = new org.bukkit.event.player.PlayerMoveEvent(troll, here.clone(), here.clone().add(4, 0, 0));
+        server.getPluginManager().callEvent(move);
+        assertEquals(here.getX(), move.getTo().getX(), 0.01);
+        Block block = troll.getWorld().getBlockAt(5, 3, 5);
+        block.setType(Material.STONE);
+        BlockBreakEvent br = new BlockBreakEvent(block, troll);
+        server.getPluginManager().callEvent(br);
+        assertTrue(br.isCancelled());
+        assertTrue(blocked(troll, "/spawn"));
+        assertFalse(blocked(troll, "/ticket help"), "a ticket still works");
+        server.getScheduler().performTicks(25);
+        assertTrue(troll.getFreezeTicks() > 0, "the frost overlay shows");
+
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        troll.disconnect();
+        boolean told = false;
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll")) told = true;
+        assertTrue(told, "logging out while frozen is reported");
+        troll.reconnect();
+        admin.performCommand("freeze Troll");
+        assertFalse(plugin.admin().isFrozen(troll.getUniqueId()), "freeze again to undo");
+    }
+
+    @Test
+    void invseeIsViewOnlyWithoutEditPermission() {
+        PlayerMock mod = server.addPlayer("Moderator");
+        mod.addAttachment(plugin, "staffcore.invsee", true);
+        mod.performCommand("invsee Troll");
+        assertSame(troll.getInventory(), mod.getOpenInventory().getTopInventory());
+        var click = new org.bukkit.event.inventory.InventoryClickEvent(mod.getOpenInventory(),
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.ClickType.LEFT, org.bukkit.event.inventory.InventoryAction.PICKUP_ALL);
+        server.getPluginManager().callEvent(click);
+        assertTrue(click.isCancelled(), "a mod can only look");
+        admin.performCommand("invsee Troll");
+        var adminClick = new org.bukkit.event.inventory.InventoryClickEvent(admin.getOpenInventory(),
+                org.bukkit.event.inventory.InventoryType.SlotType.CONTAINER, 0,
+                org.bukkit.event.inventory.ClickType.LEFT, org.bukkit.event.inventory.InventoryAction.PICKUP_ALL);
+        server.getPluginManager().callEvent(adminClick);
+        assertFalse(adminClick.isCancelled(), "an admin can move items");
+    }
+
+    @Test
+    void teamChatGoesToTheTeamOnly() {
+        PlayerMock mod = server.addPlayer("Moderator");
+        mod.addAttachment(plugin, "staffcore.teamchat", true);
+        admin.performCommand("teamchat");
+        while (mod.nextComponentMessage() != null) { /* clear */ }
+        while (bystander.nextComponentMessage() != null) { /* clear */ }
+        assertFalse(reachesPublicChat(admin, "secret plan"), "not in the public chat");
+        server.getScheduler().performTicks(2);
+        Component got = mod.nextComponentMessage();
+        assertNotNull(got);
+        assertTrue(plain(got).contains("secret plan"));
+        assertNull(bystander.nextComponentMessage(), "players do not see it");
+    }
+
+    @Test
+    void godFlyAndHeal() {
+        admin.performCommand("god");
+        var dmg = new EntityDamageEvent(admin, EntityDamageEvent.DamageCause.FALL,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.FALL).build(), 5);
+        server.getPluginManager().callEvent(dmg);
+        assertTrue(dmg.isCancelled());
+        admin.performCommand("fly");
+        assertTrue(admin.getAllowFlight());
+        bystander.setHealth(3);
+        admin.performCommand("heal Bystander");
+        assertEquals(20, bystander.getHealth(), 0.01);
+        bystander.performCommand("god");
+        assertFalse(plugin.admin().isGod(bystander.getUniqueId()), "players cannot");
+    }
+
+    @Test
+    void clearChatLeavesTheTeamAlone() {
+        while (bystander.nextComponentMessage() != null) { /* clear */ }
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        admin.performCommand("clearchat");
+        int playerLines = 0, adminLines = 0;
+        while (bystander.nextComponentMessage() != null) playerLines++;
+        while (admin.nextComponentMessage() != null) adminLines++;
+        assertTrue(playerLines > 100);
+        assertTrue(adminLines < 5);
     }
 
     @Test

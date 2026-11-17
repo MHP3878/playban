@@ -161,3 +161,8 @@ spawn:
   cooldown: 0
   # set with /setspawn or in the menu; without it the world spawn is used
   # location: {world: world, x: 0, y: 64, z: 0, yaw: 0, pitch: 0}
+
+# ---- Admin commands ----
+# /tpadmin, /tphere, /tpback, /freeze, /unfreeze, /invsee, /endersee, /teamchat, /clearchat, /fly, /heal, /god.
+# false = not registered at all, so another plugin can use these names. Takes effect after a restart.
+admin-commands: true

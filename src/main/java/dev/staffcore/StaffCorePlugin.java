@@ -30,6 +30,7 @@ public class StaffCorePlugin extends JavaPlugin {
     private TicketManager tickets;
     private SpawnManager spawn;
     private RankManager ranks;
+    private AdminManager admin;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
     private VoiceManager voice;
@@ -75,6 +76,24 @@ public class StaffCorePlugin extends JavaPlugin {
             register("rank", "Give and manage ranks", "staffcore.ranks", rankExecutor);
         }
         for (org.bukkit.entity.Player online : getServer().getOnlinePlayers()) ranks.apply(online);
+        admin = new AdminManager(this);
+        getServer().getPluginManager().registerEvents(admin, this);
+        admin.start();
+        if (getConfig().getBoolean("admin-commands", true)) {
+            dev.staffcore.command.AdminCommand adminExecutor = new dev.staffcore.command.AdminCommand(this);
+            register("tpadmin", "Teleport to a player, invisible", "staffcore.tpadmin", adminExecutor);
+            register("tphere", "Bring a player to you", "staffcore.tpadmin", adminExecutor);
+            register("tpback", "Go back to where you were before /tpadmin", "staffcore.tpadmin", adminExecutor);
+            register("freeze", "Freeze or unfreeze a player", "staffcore.freeze", adminExecutor);
+            register("unfreeze", "Unfreeze a player", "staffcore.freeze", adminExecutor);
+            register("invsee", "Look into a player's inventory", "staffcore.invsee", adminExecutor);
+            register("endersee", "Look into a player's ender chest", "staffcore.invsee", adminExecutor);
+            register("teamchat", "Chat with the team only", "staffcore.teamchat", adminExecutor);
+            register("clearchat", "Clear the chat for players", "staffcore.clearchat", adminExecutor);
+            register("fly", "Turn flying on or off", "staffcore.fly", adminExecutor);
+            register("heal", "Heal and feed", "staffcore.heal", adminExecutor);
+            register("god", "Take no damage", "staffcore.god", adminExecutor);
+        }
         spawn = new SpawnManager(this);
         getServer().getPluginManager().registerEvents(spawn, this);
         if (getConfig().getBoolean("spawn.enabled", true)) {
@@ -141,6 +160,7 @@ public class StaffCorePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (admin != null) admin.stop();
         // take the runtime commands away again, so /reload does not leave copies behind
         var known = getServer().getCommandMap().getKnownCommands();
         for (var cmd : registered) {
@@ -182,6 +202,7 @@ public class StaffCorePlugin extends JavaPlugin {
     public TicketManager tickets() { return tickets; }
     public SpawnManager spawn() { return spawn; }
     public RankManager ranks() { return ranks; }
+    public AdminManager admin() { return admin; }
     public dev.staffcore.gui.RankMenus rankMenus() { return rankMenus; }
     public TicketMenus ticketMenus() { return ticketMenus; }
     public VoiceManager voice() { return voice; }

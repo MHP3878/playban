@@ -25,6 +25,10 @@ permissions:
     default: op
     children:
       staffcore.staff: true
+      staffcore.invsee.edit: true
+      staffcore.fly: true
+      staffcore.heal: true
+      staffcore.god: true
   staffcore.staff:
     description: Punish players, handle reviews and tickets
     default: op
@@ -36,6 +40,11 @@ permissions:
       staffcore.commands.all: true
       staffcore.spawn.instant: true
       staffcore.spawn.others: true
+      staffcore.tpadmin: true
+      staffcore.freeze: true
+      staffcore.invsee: true
+      staffcore.teamchat: true
+      staffcore.clearchat: true
   staffcore.see:
     description: Can still see punished players
     default: op
@@ -59,6 +68,33 @@ permissions:
     default: op
   staffcore.spawn.others:
     description: Can send other players to spawn with /spawn <player>
+    default: op
+  staffcore.tpadmin:
+    description: /tpadmin, /tphere and /tpback
+    default: op
+  staffcore.freeze:
+    description: /freeze and /unfreeze
+    default: op
+  staffcore.invsee:
+    description: Look into inventories and ender chests
+    default: op
+  staffcore.invsee.edit:
+    description: Also take items out of them or put items in
+    default: op
+  staffcore.teamchat:
+    description: Read and write the team chat
+    default: op
+  staffcore.clearchat:
+    description: /clearchat
+    default: op
+  staffcore.fly:
+    description: /fly
+    default: op
+  staffcore.heal:
+    description: /heal
+    default: op
+  staffcore.god:
+    description: /god
     default: op
   staffcore.ranks:
     description: Can open /rank and give ranks below their own level

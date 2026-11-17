@@ -87,6 +87,15 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  tpadmin: ["<gray>Macht dich unsichtbar und bringt dich", "<gray>zu einem Spieler. /tpback bringt dich zurück.", "", "<dark_gray>Beispiel: /tpadmin Steve"]
+  tphere: ["<gray>Holt einen Spieler zu dir."]
+  freeze: ["<gray>Friert einen Spieler ein: kein Bewegen,", "<gray>Bauen oder Kämpfen. Nochmal zum Aufheben.", "<gray>Ausloggen wird gemeldet."]
+  invsee: ["<gray>Öffnet das Inventar eines Spielers.", "<gray>/endersee öffnet die Enderkiste.", "<gray>Admins können auch Items verschieben."]
+  teamchat: ["<gray>Schaltet den Team-Chat an oder aus.", "<gray>Mit Text wird nur der gesendet.", "", "<dark_gray>Beispiel: /teamchat schaut mal zum Spawn"]
+  clearchat: ["<gray>Leert den Chat für Spieler.", "<gray>Das Team behält ihn."]
+  fly: ["<gray>Fliegen an oder aus. Admins können", "<gray>einen Spielernamen dazuschreiben."]
+  heal: ["<gray>Volle Gesundheit und Hunger, entfernt", "<gray>schlechte Effekte und Feuer."]
+  god: ["<gray>Du bekommst keinen Schaden und", "<gray>keinen Hunger. Nochmal zum Aufheben."]
   rank: ["<gray>Gibt einem Spieler einen Rang.", "<gray>Nur Ränge unter deinem eigenen Level.", "", "<dark_gray>Beispiel: /rank set Steve mod"]
   rank-setup: ["<gray>Macht dich zum Owner, einmalig, solange", "<gray>niemand den höchsten Rang hat.", "<gray>Danach gelten die Befehls-Level."]
   spawn: ["<gray>Bringt dich zum Spawn.", "<gray>Bleib beim Countdown stehen."]
@@ -299,6 +308,39 @@ rank:
   not-allowed: "<red>Du kannst nur Ränge unter deinem eigenen Level ändern."
   set: "<green><white>{player}</white> ist jetzt <white>{rank}</white>."
   set-you: "<green>Dein Rang ist jetzt <white>{rank}</white>."
+
+admin:
+  not-online: "<red><white>{player}</white> ist nicht online."
+  tpadmin: "<gray>Unsichtbar bei <white>{player}</white>. Mit <#ffc371>/tpback</#ffc371> kommst du zurück."
+  tphere: "<gray><white>{player}</white> zu dir geholt."
+  back: "<gray>Zurück an deinem alten Platz."
+  no-back: "<red>Es gibt keinen Platz, zu dem du zurück kannst."
+  frozen: "<gray><white>{player}</white> ist eingefroren."
+  unfrozen: "<gray><white>{player}</white> kann sich wieder bewegen."
+  frozen-title: "<aqua><bold>EINGEFROREN</bold></aqua>"
+  frozen-subtitle: "<gray>von {staff}. Nicht ausloggen."
+  frozen-you: "<aqua>Du wurdest von <white>{staff}</white> eingefroren. Warte auf das Team. Ausloggen wird gemeldet."
+  unfrozen-you: "<green>Du kannst dich wieder bewegen."
+  frozen-bar: "<aqua><bold>EINGEFROREN</bold></aqua> <dark_gray>|</dark_gray> <gray>Warte auf das Team. <#ffc371>/ticket</#ffc371> geht noch"
+  frozen-command: "<red>Du bist eingefroren. Nur /ticket und /appeal funktionieren."
+  frozen-quit: "<red><white>{player}</white> hat sich eingefroren ausgeloggt."
+  view-only: "<gray>Du kannst schauen, aber nichts herausnehmen."
+  teamchat-on: "<gray>Team-Chat ist <white>an</white>. Alles, was du schreibst, geht ans Team. <#ffc371>/teamchat</#ffc371> schaltet ihn aus."
+  teamchat-off: "<gray>Team-Chat ist <white>aus</white>."
+  teamchat-line: "<dark_gray>[<#ff5f6d>Team</#ff5f6d>]</dark_gray> <white>{player}</white><gray>:</gray> <white>{text}"
+  chat-cleared: "<gray>Der Chat wurde von <white>{staff}</white> geleert."
+  fly-on: "<gray>Fliegen ist für <white>{player}</white> <white>an</white>."
+  fly-off: "<gray>Fliegen ist für <white>{player}</white> <white>aus</white>."
+  god-on: "<gray><white>{player}</white> bekommt jetzt keinen Schaden."
+  god-off: "<gray><white>{player}</white> bekommt wieder Schaden."
+  healed: "<gray><white>{player}</white> ist geheilt und satt."
+  usage:
+    tpadmin: "<gray>Nutzung: <white>/tpadmin <Spieler>"
+    tphere: "<gray>Nutzung: <white>/tphere <Spieler>"
+    freeze: "<gray>Nutzung: <white>/freeze <Spieler>"
+    unfreeze: "<gray>Nutzung: <white>/unfreeze <Spieler>"
+    invsee: "<gray>Nutzung: <white>/invsee <Spieler>"
+    endersee: "<gray>Nutzung: <white>/endersee <Spieler>"
 
 ticket:
   cooldown: "<red>Bitte warte noch <white>{time}</white>, bevor du ein neues Ticket öffnest."

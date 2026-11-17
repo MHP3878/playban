@@ -87,6 +87,15 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  tpadmin: ["<gray>Turns you invisible and takes you", "<gray>to a player. /tpback takes you back.", "", "<dark_gray>Example: /tpadmin Steve"]
+  tphere: ["<gray>Brings a player to you."]
+  freeze: ["<gray>Freezes a player in place: no moving,", "<gray>building or fighting. Again to undo.", "<gray>Logging out is reported."]
+  invsee: ["<gray>Opens a player's inventory.", "<gray>/endersee opens the ender chest.", "<gray>Admins can also move items."]
+  teamchat: ["<gray>Switches the team chat on or off.", "<gray>With a text it sends just that.", "", "<dark_gray>Example: /teamchat check spawn"]
+  clearchat: ["<gray>Clears the chat for players.", "<gray>The team keeps it."]
+  fly: ["<gray>Flying on or off. Admins can", "<gray>add a player name."]
+  heal: ["<gray>Full health and food, removes", "<gray>bad effects and fire."]
+  god: ["<gray>You take no damage and do", "<gray>not get hungry. Again to undo."]
   rank: ["<gray>Gives a player a rank.", "<gray>Only ranks below your own level.", "", "<dark_gray>Example: /rank set Steve mod"]
   rank-setup: ["<gray>Makes you owner, once, while", "<gray>nobody has the highest rank.", "<gray>After that the command levels apply."]
   spawn: ["<gray>Teleports you to spawn.", "<gray>Stand still for the countdown."]
@@ -299,6 +308,39 @@ rank:
   not-allowed: "<red>You can only change ranks below your own level."
   set: "<green><white>{player}</white> is now <white>{rank}</white>."
   set-you: "<green>Your rank is now <white>{rank}</white>."
+
+admin:
+  not-online: "<red><white>{player}</white> is not online."
+  tpadmin: "<gray>Invisible at <white>{player}</white>. <#ffc371>/tpback</#ffc371> takes you back."
+  tphere: "<gray>Brought <white>{player}</white> to you."
+  back: "<gray>Back where you were."
+  no-back: "<red>There is no place to go back to."
+  frozen: "<gray><white>{player}</white> is frozen."
+  unfrozen: "<gray><white>{player}</white> can move again."
+  frozen-title: "<aqua><bold>FROZEN</bold></aqua>"
+  frozen-subtitle: "<gray>by {staff}. Do not log out."
+  frozen-you: "<aqua>You were frozen by <white>{staff}</white>. Wait for the team. Logging out is reported."
+  unfrozen-you: "<green>You can move again."
+  frozen-bar: "<aqua><bold>FROZEN</bold></aqua> <dark_gray>|</dark_gray> <gray>Wait for the team. <#ffc371>/ticket</#ffc371> still works"
+  frozen-command: "<red>You are frozen. Only /ticket and /appeal work."
+  frozen-quit: "<red><white>{player}</white> logged out while frozen."
+  view-only: "<gray>You can look, but not take anything."
+  teamchat-on: "<gray>Team chat is <white>on</white>. Everything you write goes to the team. <#ffc371>/teamchat</#ffc371> switches it off."
+  teamchat-off: "<gray>Team chat is <white>off</white>."
+  teamchat-line: "<dark_gray>[<#ff5f6d>Team</#ff5f6d>]</dark_gray> <white>{player}</white><gray>:</gray> <white>{text}"
+  chat-cleared: "<gray>The chat was cleared by <white>{staff}</white>."
+  fly-on: "<gray>Flying is <white>on</white> for <white>{player}</white>."
+  fly-off: "<gray>Flying is <white>off</white> for <white>{player}</white>."
+  god-on: "<gray><white>{player}</white> takes no damage now."
+  god-off: "<gray><white>{player}</white> takes damage again."
+  healed: "<gray><white>{player}</white> is healed and fed."
+  usage:
+    tpadmin: "<gray>Usage: <white>/tpadmin <player>"
+    tphere: "<gray>Usage: <white>/tphere <player>"
+    freeze: "<gray>Usage: <white>/freeze <player>"
+    unfreeze: "<gray>Usage: <white>/unfreeze <player>"
+    invsee: "<gray>Usage: <white>/invsee <player>"
+    endersee: "<gray>Usage: <white>/endersee <player>"
 
 ticket:
   cooldown: "<red>Please wait <white>{time}</white> before opening another ticket."

@@ -83,7 +83,7 @@ public final class PlayerMenus {
         }
         if (i == 0) m.set(22, Items.of(Material.BARRIER, lang().msg("menu.status.no-tasks.name"), lang().lore("menu.status.no-tasks.lore")));
         m.set(48, Items.of(Material.PAPER, lang().msg("menu.status.ticket.name"), lang().lore("menu.status.ticket.lore")),
-                ev -> plugin.input().ask(player, "prompt.ticket", text -> plugin.punishments().createTicket(player, text), null));
+                ev -> plugin.ticketMenus().pickReason(player));
         m.set(50, Items.of(Material.OAK_SIGN, lang().msg("menu.status.commands.name"),
                 commandLore()));
         m.fill().open(player);

@@ -8,7 +8,6 @@ import dev.playban.model.Review;
 import dev.playban.model.TaskDef;
 import dev.playban.model.TaskStatus;
 import dev.playban.model.TaskType;
-import dev.playban.model.Ticket;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -433,7 +432,7 @@ public final class PunishmentManager {
             boolean limbo = inLimbo(target.getUniqueId());
             for (Player viewer : Bukkit.getOnlinePlayers()) {
                 if (viewer.equals(target)) continue;
-                boolean hidden = ((punished && hide) || limbo) && !maySee(viewer);
+                boolean hidden = ((punished && hide) || limbo || plugin.tickets().vanished(target.getUniqueId())) && !maySee(viewer);
                 if (limboSeesNobody && inLimbo(viewer.getUniqueId())) hidden = true;
                 if (hidden) viewer.hidePlayer(plugin, target);
                 else viewer.showPlayer(plugin, target);
@@ -503,7 +502,11 @@ public final class PunishmentManager {
                 if (online != null) updateLimboBar(online, ban);
             }
         }
-        if (++seconds % 30 == 0) store().saveIfDirty();
+        if (++seconds % 30 == 0) {
+            store().saveIfDirty();
+            plugin.tickets().saveIfDirty();
+        }
+        if (seconds % 60 == 0) plugin.tickets().remind();
     }
 
     // ---------------------------------------------------------------- tasks
@@ -579,36 +582,6 @@ public final class PunishmentManager {
         TaskProgress t = p.tasks.get(r.taskId);
         if (t != null && t.status == TaskStatus.PENDING) t.status = TaskStatus.OPEN;
         deliver(r.author, lang().prefixed("review.rejected-you"));
-    }
-
-    // ---------------------------------------------------------------- tickets
-
-    public void createTicket(Player author, String text) {
-        long open = store().tickets.values().stream().filter(x -> x.author.equals(author.getUniqueId())).count();
-        if (open >= 3) {
-            lang().send(author, "ticket.too-many");
-            return;
-        }
-        Ticket t = new Ticket();
-        t.id = store().nextId();
-        t.author = author.getUniqueId();
-        t.authorName = author.getName();
-        t.text = text;
-        t.createdAt = System.currentTimeMillis();
-        store().tickets.put(t.id, t);
-        store().markDirty();
-        lang().send(author, "ticket.sent");
-        notifyStaff(lang().prefixed("ticket.new", "player", author.getName(), "text", text));
-    }
-
-    public void replyTicket(Ticket t, String staff, String text) {
-        deliver(t.author, lang().prefixed("ticket.reply", "staff", staff, "text", text));
-        closeTicket(t);
-    }
-
-    public void closeTicket(Ticket t) {
-        store().tickets.remove(t.id);
-        store().markDirty();
     }
 
     // ---------------------------------------------------------------- messaging

@@ -81,6 +81,10 @@ help: |-
   <#ffc371>/playban history <player> <dark_gray>-</dark_gray> <gray>earlier punishments
   <#ffc371>/playban lang <code> <dark_gray>-</dark_gray> <gray>change the language
   <#ffc371>/playban reload <dark_gray>-</dark_gray> <gray>reload the files
+  <#ffc371>/ticket show [reason] <dark_gray>-</dark_gray> <gray>ticket overview
+  <#ffc371>/ticket open <number> <dark_gray>-</dark_gray> <gray>open one ticket
+  <#ffc371>/ticket stats <dark_gray>-</dark_gray> <gray>team statistics
+  <#ffc371>/ticket back <dark_gray>-</dark_gray> <gray>return after a ticket teleport
   <gray>Times look like <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
@@ -174,6 +178,7 @@ history:
   PARDONED: "<yellow>ended early by the team"
 
 staff:
+  same-address: "<yellow><white>{player}</white> joined from the same address as the punished player <white>{other}</white>."
   pending: "<gray>Waiting for the team: <white>{reviews}</white> messages to check, <white>{tickets}</white> tickets. <#ffc371>/playban menu"
 
 review:
@@ -185,11 +190,67 @@ review:
   delivered: "<gray>A message for you from <white>{player}</white>:</gray> <white>{text}"
 
 ticket:
-  sent: "<green>Your ticket was sent to the team."
+  sent: "<green>Ticket <white>#{id}</white> was sent to the team."
   too-many: "<red>You already have 3 open tickets. Please wait for an answer."
-  new: "<gray>Ticket from <white>{player}</white>:</gray> <white>{text}"
-  reply: "<gray>Answer from <white>{staff}</white>:</gray> <white>{text}"
-  replied: "<green>Answer sent to <white>{player}</white>."
+  new: "<gray>New ticket <white>#{id}</white> from <white>{player}</white> <dark_gray>({reason})</dark_gray><gray>:</gray> <white>{text}</white> <#ffc371>[click to open]"
+  webhook: "New ticket #{id} from {player} ({reason}): {text}"
+  reminder: "<gray>Tickets still waiting for someone: <white>{count}</white> <#ffc371>[click to open]"
+  accepted-you: "<green><white>{staff}</white> is now working on your ticket <white>#{id}</white>."
+  declined-you: "<red>Your ticket <white>#{id}</white> was declined."
+  closed-you: "<gray>Ticket <white>#{id}</white> was closed."
+  added-you: "<gray><white>{staff}</white> added you to ticket <white>#{id}</white>."
+  chat-on: "<#ffc371>You are now in the ticket chat. Everything you write only goes to the team."
+  chat-off: "<gray>You are back in the normal chat."
+  chat-line: "<dark_gray>[<#ffc371>Ticket #{id}</#ffc371>]</dark_gray> <white>{author}</white><gray>:</gray> <white>{text}"
+  staff-line: "<dark_gray>[<#ffc371>Ticket #{id}</#ffc371>]</dark_gray> <#ff5f6d>{author}</#ff5f6d><gray>:</gray> <white>{text}"
+  teleported: "<gray>You were teleported to <white>{player}</white>. Use <#ffc371>/ticket back</#ffc371> to return."
+  status:
+    OPEN: "<yellow>open"
+    IN_PROGRESS: "<gold>in progress"
+    CLOSED: "<green>closed"
+    DECLINED: "<red>declined"
+  filter:
+    ACTIVE: "open and in progress"
+    OPEN: "open"
+    IN_PROGRESS: "in progress"
+    CLOSED: "closed"
+    DECLINED: "declined"
+    ALL: "all"
+    any-reason: "all reasons"
+  log:
+    auto-paused: "The chat was paused because the team member left."
+    accepted: "{staff} accepted the ticket."
+    declined: "{staff} declined the ticket."
+    paused: "{staff} paused the chat."
+    resumed: "{staff} continued the chat."
+    shared: "{staff} put everyone into one chat."
+    separate: "{staff} separated the chats."
+    added: "{staff} added {player}."
+    removed: "{staff} removed {player}."
+    voice: "{staff} invited everyone to voice."
+    teleport: "{staff} teleported to {player} ({mode})."
+    closed: "{staff} closed the ticket."
+  mode:
+    SURVIVAL: "survival"
+    CREATIVE: "creative"
+    SPECTATOR: "spectator"
+    VANISH: "invisible"
+  verdict:
+    open: "not decided yet"
+    involved: "Only involved"
+    failed: "{category}: not possible ({why})"
+  voice:
+    title: "<red><bold>VOICE CHAT</bold></red>"
+    subtitle: "<red>{staff} wants to talk to you"
+    link: "<red><white>{staff}</white> invites you to voice chat: <click:open_url:'{discord}'><#ffc371><underlined>{discord}</underlined></#ffc371></click>"
+  error:
+    already-in: "<red><white>{player}</white> is already in this ticket."
+    busy: "<red><white>{player}</white> is in another ticket chat right now."
+    full: "<red>A ticket can hold at most 7 players."
+    unknown-reason: "<red>There is no ticket reason <white>{reason}</white>."
+    unknown-ticket: "<red>This ticket does not exist."
+    no-discord: "<red>Set a Discord link first: Settings → Ban screen → Discord link."
+    offline: "<red><white>{player}</white> is not online."
 
 target:
   VICTIM: "the affected player"
@@ -253,6 +314,13 @@ task:
       - "<gray>that you write yourself."
 
 prompt:
+  ticket-message: "<#ffc371>Type your message to everyone in the ticket."
+  ticket-message-to: "<#ffc371>Type your message to <white>{player}</white> only."
+  ticket-note: "<#ffc371>Type your remark. Only the team sees it."
+  ticket-reminder: "<#ffc371>After how many minutes should the team be reminded of waiting tickets? Type <white>0</white> for never."
+  ticket-webhook: "<#ffc371>Paste the Discord webhook link. Type <white>-</white> to switch it off."
+  ticket-reply-text: "<#ffc371>Type the quick reply."
+  ticket-reason-name: "<#ffc371>Type the name of the ticket reason, for example <white>Report a player</white>."
   note: "<#ffc371>Type your note about <white>{player}</white> into the chat."
   screen-line: "<#ffc371>Type the text for this line. Colors like <white>\\<red></white> work. Placeholders: <white>{reason} {time} {staff} {discord}</white>. Type <white>-</white> for an empty line."
   discord: "<#ffc371>Type the invite link to your Discord, for example <white>https://discord.gg/abc</white>. Type <white>-</white> to remove it."
@@ -271,7 +339,6 @@ prompt:
   duration: "<#ffc371>Type the duration, for example <white>45m</white>, <white>2h</white> or <white>1d 12h</white>."
   reason: "<#ffc371>Type the reason into the chat."
   change-time: "<#ffc371>Type <white>+30m</white> to add or <white>-30m</white> to remove time."
-  ticket-reply: "<#ffc371>Type your answer to <white>{player}</white> into the chat."
   command: "<#ffc371>Type the command that punished players may use, for example <white>spawn</white>."
   duration-presets: "<#ffc371>Type up to 7 durations, separated by commas. Example: <white>30m, 1h, 6h, 1d"
   reason-presets: "<#ffc371>Type up to 7 reasons, separated by commas. Example: <white>Griefing, Spam"
@@ -363,7 +430,7 @@ menu:
       lore: ["<gray>Waiting: <white>{count}", "<gray>Messages from punished players", "<gray>that you approve or reject.", "", "<#ffc371>Click to open"]
     tickets:
       name: "<#ffc371><bold>Tickets</bold>"
-      lore: ["<gray>Open: <white>{count}", "", "<#ffc371>Click to open"]
+      lore: ["<gray>Waiting: <white>{count}", "<gray>In progress: <white>{progress}", "", "<#ffc371>Click to open"]
     history:
       name: "<#ffc371><bold>Player profile</bold>"
       lore: ["<gray>Notes and earlier punishments", "<gray>of a player.", "", "<#ffc371>Click and type a name"]
@@ -464,6 +531,12 @@ menu:
     punish:
       name: "<gradient:#ff5f6d:#ffc371><bold>Punish</bold></gradient>"
       lore: ["<gray>Pick a category for this player."]
+    tickets:
+      name: "<#ffc371>Tickets"
+      lore: ["<gray>Tickets with this player: <white>{count}", "", "<#ffc371>Click to open"]
+    same-address:
+      name: "<yellow>Possible second account"
+      lore: ["<gray>Same address as:", "<white>{players}"]
 
   screen:
     title: "<dark_gray>Ban screen"
@@ -587,12 +660,185 @@ menu:
 
   tickets:
     title: "<dark_gray>Tickets"
+    of-player: "<dark_gray>Tickets: {player}"
+    outcome: "<gray>Result: <white>{outcome}"
     empty:
-      name: "<green>No open tickets"
+      name: "<green>No tickets here"
     entry:
+      name: "<#ffc371>#{id}</#ffc371> <white>{player}"
+      lore:
+        - "<gray>Reason: <white>{reason}"
+        - "<gray>Status: {status}"
+        - "<gray>Opened: <white>{age} ago"
+        - "<gray>Handled by: <white>{handler}"
+        - "<gray>Players: <white>{people}"
+        - ""
+      actions: ["", "<#ffc371>Click to open"]
+    filter-status:
+      name: "<#ffc371>Filter: status"
+      lore: ["<gray>Showing: <white>{value}", "", "<#ffc371>Click to switch"]
+    filter-reason:
+      name: "<#ffc371>Filter: reason"
+      lore: ["<gray>Showing: <white>{value}", "", "<#ffc371>Click to switch"]
+    stats:
+      name: "<#ffc371>Team statistics"
+      lore: ["<gray>Who handled how many tickets."]
+
+  ticket-new:
+    title: "<dark_gray>What is your ticket about?"
+    entry:
+      name: "<#ffc371><bold>{reason}</bold>"
+      lore: ["<#ffc371>Click and describe it in the chat"]
+
+  ticket:
+    title: "<dark_gray>Ticket #{id}: {player}"
+    known: ["", "<gray>Notes about the player: <white>{notes}", "<gray>Punishments so far: <white>{punishments}", "<gray>Earlier tickets: <white>{tickets}"]
+    accept:
+      name: "<green><bold>Accept</bold>"
+      lore: ["<gray>You take over this ticket and", "<gray>the player joins the ticket chat."]
+    decline:
+      name: "<red><bold>Decline</bold>"
+      lore: ["<gray>The ticket is closed without action."]
+    tab-current:
+      name: "<#ffc371><bold>#{id} {player}</bold>"
+      lore: ["<gray>You are looking at this ticket."]
+    tab:
+      name: "<white>#{id} {player}"
+      lore: ["<#ffc371>Click to switch to this ticket"]
+    archived:
+      name: "<gray>This ticket is {status}"
+    entry:
+      CHAT: "<white>{author} <dark_gray>{date}"
+      STAFF: "<#ff5f6d>{author} <dark_gray>{date}"
+      NOTE: "<#ffc371>Remark by {author} <dark_gray>{date}"
+      SYSTEM: "<gray>System <dark_gray>{date}"
+      only-to: "<dark_gray>Only to {player}"
+      star: ["", "<#ffc371>Click to mark with a star"]
+      unstar: ["", "<#ffc371>Click to remove the star"]
+    person:
       name: "<white>{player}"
-      lore: ["<dark_gray>{date}", ""]
-      actions: ["", "<green>Left click: answer", "<red>Right click: close"]
+      actions: ["", "<#ffc371>Left click: write only to this player", "<#ffc371>Right click: profile", "<red>Shift + click: remove from the ticket"]
+      actions-closed: ["", "<#ffc371>Click: profile"]
+    older:
+      name: "<gray>« Older messages"
+    newer:
+      name: "<gray>Newer messages »"
+    write:
+      name: "<#ffc371><bold>Write</bold>"
+      lore: ["<#ffc371>Left click: write to everyone", "<#ffc371>Right click: quick replies"]
+    note:
+      name: "<#ffc371>Remark"
+      lore: ["<gray>A note in the ticket that", "<gray>only the team sees."]
+    pause:
+      name: "<#ffc371>Pause the chat"
+      lore: ["<gray>The players are back in the", "<gray>normal chat until you continue."]
+    resume:
+      name: "<green>Continue the chat"
+      lore: ["<gray>The players write to the", "<gray>team again."]
+    shared:
+      name: "<#ffc371>One chat for all"
+      lore: ["<gray>The players read each other.", "", "<#ffc371>Click to separate them"]
+    separate:
+      name: "<#ffc371>Separate chats"
+      lore: ["<gray>Each player only talks to the team.", "", "<#ffc371>Click to put them together"]
+    add-player:
+      name: "<#ffc371>Add a player"
+      lore: ["<gray>Pull another player into", "<gray>this ticket."]
+    teleport:
+      name: "<#ffc371>Teleport"
+      lore: ["<gray>Jump to a player in this ticket.", "<gray>It is written into the ticket."]
+    voice:
+      name: "<#ffc371>Voice"
+      lore: ["<gray>Shows everyone a big red invite", "<gray>with your Discord link."]
+    close:
+      name: "<green><bold>Finish the ticket</bold>"
+      lore: ["<gray>Decide for every player what", "<gray>happens, then close it."]
+
+  ticket-replies:
+    title: "<dark_gray>Quick replies"
+    entry: "<#ffc371>Quick reply"
+    empty:
+      name: "<gray>No quick replies yet"
+
+  ticket-add:
+    title: "<dark_gray>Add which player?"
+
+  ticket-tp:
+    title: "<dark_gray>Teleport"
+    nobody:
+      name: "<red>Nobody from this ticket is online"
+    target: ["<#ffc371>Click to pick this player"]
+    target-picked: ["<green>✔ picked"]
+    mode:
+      SURVIVAL:
+        name: "<#ffc371>Survival"
+        lore: ["<gray>Teleport to <white>{player}</white>."]
+      CREATIVE:
+        name: "<#ffc371>Creative"
+        lore: ["<gray>Teleport to <white>{player}</white>."]
+      SPECTATOR:
+        name: "<#ffc371>Spectator"
+        lore: ["<gray>Teleport to <white>{player}</white>."]
+      VANISH:
+        name: "<#ffc371>Invisible"
+        lore: ["<gray>Teleport to <white>{player}</white>.", "<gray>Players cannot see you,", "<gray>your game mode stays."]
+    return:
+      name: "<green>Go back"
+      lore: ["<gray>Back to where you were,", "<gray>in your old game mode."]
+
+  ticket-close:
+    title: "<dark_gray>Finish ticket #{id}"
+    person: ["<gray>Decision: <white>{verdict}", "", "<#ffc371>Click to change"]
+    person-open: ["<red>{verdict}", "", "<#ffc371>Click to decide"]
+    confirm:
+      name: "<green><bold>Close the ticket now</bold>"
+      lore: ["<gray>The punishments are carried out", "<gray>and the ticket goes to the files."]
+    not-yet:
+      name: "<red>Decide for everyone first"
+      lore: ["<gray>Click each player above."]
+
+  ticket-verdict:
+    title: "<dark_gray>What happens to {player}?"
+    profile:
+      name: "<white>{player}"
+      lore: ["<gray>Notes: <white>{notes}", "<gray>Punishments so far: <white>{punishments}", "<gray>Tickets: <white>{tickets}", "", "<#ffc371>Click for the full profile"]
+    involved:
+      name: "<#ffc371>Only involved"
+      lore: ["<gray>No punishment. The ticket still", "<gray>shows up in the player's profile."]
+
+  ticket-stats:
+    title: "<dark_gray>Team statistics"
+    empty:
+      name: "<gray>No tickets handled yet"
+    entry:
+      name: "<white>{staff}"
+      lore: ["<gray>Accepted: <white>{accepted}", "<gray>Closed: <white>{closed}", "<gray>Average time until accepted: <white>{response}"]
+
+  ticket-settings:
+    title: "<dark_gray>Ticket settings"
+    remove: ["", "<red>Click to remove"]
+    reasons:
+      name: "<#ffc371>Ticket reasons"
+      lore: ["<gray>Reasons: <white>{count}", "", "<#ffc371>Click to edit"]
+    replies:
+      name: "<#ffc371>Quick replies"
+      lore: ["<gray>Replies: <white>{count}", "", "<#ffc371>Click to edit"]
+    reminder:
+      name: "<#ffc371>Reminder"
+      lore: ["<gray>Remind the team about waiting", "<gray>tickets after: <white>{value}", "", "<#ffc371>Click to change"]
+    webhook:
+      name: "<#ffc371>Discord message"
+      lore: ["{value}", "<gray>New tickets are posted into", "<gray>a Discord channel.", "", "<#ffc371>Click to set the webhook"]
+    add-reply:
+      name: "<green>Add a quick reply"
+      lore: ["<gray>Click and type it into the chat."]
+
+  ticket-reasons:
+    title: "<dark_gray>Ticket reasons"
+    actions: ["<dark_gray>Short name: {id}", "", "<#ffc371>Left click: rename", "<#ffc371>Right click: use the item in your hand", "<red>Shift + click: remove"]
+    add:
+      name: "<green>Add a reason"
+      lore: ["<gray>Click and type the name."]
 
   settings:
     title: "<dark_gray>Settings"
@@ -605,6 +851,9 @@ menu:
     limbo-location:
       name: "<#ffc371>Spectator ban: place"
       lore: ["<gray>Where spectator-banned players", "<gray>are held: <white>{value}", "", "<#ffc371>Click: use where I stand now", "<red>Shift + click: back to world spawn"]
+    tickets:
+      name: "<#ffc371>Tickets"
+      lore: ["<gray>Reasons, quick replies,", "<gray>reminders and Discord.", "", "<#ffc371>Click to open"]
     commands:
       name: "<#ffc371>Allowed commands"
       lore: ["<gray>Commands punished players", "<gray>may still use: <white>{count}", "", "<#ffc371>Click to edit"]

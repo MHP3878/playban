@@ -10,7 +10,7 @@ commands:
     description: PlayBan main command
     aliases: [pb]
   ticket:
-    description: Send a ticket to the server team
+    description: Open a ticket for the server team
     aliases: [pbticket]
 
 permissions:
@@ -30,6 +30,12 @@ permissions:
     default: op
   playban.notify:
     description: Receives staff notifications
+    default: op
+  playban.ticket:
+    description: Can open tickets
+    default: true
+  playban.teleport:
+    description: Can teleport to players from a ticket and pick a game mode for it
     default: op
   playban.exempt:
     description: Cannot be punished

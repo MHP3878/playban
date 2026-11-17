@@ -40,6 +40,12 @@ public class Menu implements InventoryHolder {
         return this;
     }
 
+    /** Empties the menu so it can be drawn again while it stays open. */
+    public void clear() {
+        inventory.clear();
+        actions.clear();
+    }
+
     /** Frames the menu: dark border, lighter inside. */
     public Menu fill() {
         int size = inventory.getSize();

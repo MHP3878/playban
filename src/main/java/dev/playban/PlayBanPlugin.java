@@ -4,6 +4,8 @@ import dev.playban.command.PlayBanCommand;
 import dev.playban.gui.AdminMenus;
 import dev.playban.gui.MenuListener;
 import dev.playban.gui.PlayerMenus;
+import dev.playban.gui.TicketMenus;
+import dev.playban.command.TicketCommand;
 import dev.playban.listener.ConnectionListener;
 import dev.playban.listener.RestrictionListener;
 import org.bukkit.command.PluginCommand;
@@ -20,6 +22,8 @@ public class PlayBanPlugin extends JavaPlugin {
     private TaskActions taskActions;
     private AdminMenus adminMenus;
     private PlayerMenus playerMenus;
+    private TicketManager tickets;
+    private TicketMenus ticketMenus;
 
     @Override
     public void onEnable() {
@@ -38,6 +42,9 @@ public class PlayBanPlugin extends JavaPlugin {
         taskActions = new TaskActions(this);
         adminMenus = new AdminMenus(this);
         playerMenus = new PlayerMenus(this);
+        ticketMenus = new TicketMenus(this);
+        tickets = new TicketManager(this);
+        tickets.load();
 
         getServer().getPluginManager().registerEvents(input, this);
         getServer().getPluginManager().registerEvents(new MenuListener(), this);
@@ -45,20 +52,26 @@ public class PlayBanPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
 
         PlayBanCommand executor = new PlayBanCommand(this);
-        for (String name : new String[]{"playban", "ticket"}) {
-            PluginCommand cmd = getCommand(name);
-            if (cmd != null) {
-                cmd.setExecutor(executor);
-                cmd.setTabCompleter(executor);
-            }
+        PluginCommand main = getCommand("playban");
+        if (main != null) {
+            main.setExecutor(executor);
+            main.setTabCompleter(executor);
+        }
+        TicketCommand ticketExecutor = new TicketCommand(this);
+        PluginCommand ticket = getCommand("ticket");
+        if (ticket != null) {
+            ticket.setExecutor(ticketExecutor);
+            ticket.setTabCompleter(ticketExecutor);
         }
         punishments.start();
     }
 
     @Override
     public void onDisable() {
+        if (tickets != null) tickets.returnEveryone();
         if (punishments != null) punishments.shutdown();
         if (store != null) store.saveNow();
+        if (tickets != null) tickets.saveNow();
     }
 
     public void reload() {
@@ -79,4 +92,6 @@ public class PlayBanPlugin extends JavaPlugin {
     public TaskActions taskActions() { return taskActions; }
     public AdminMenus adminMenus() { return adminMenus; }
     public PlayerMenus playerMenus() { return playerMenus; }
+    public TicketManager tickets() { return tickets; }
+    public TicketMenus ticketMenus() { return ticketMenus; }
 }

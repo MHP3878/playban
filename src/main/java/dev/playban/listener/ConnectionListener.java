@@ -45,9 +45,13 @@ public final class ConnectionListener implements Listener {
                 plugin.punishments().applyState(player);
                 plugin.punishments().sendStatus(player, now);
             }
+            if (plugin.tickets().inChat(player.getUniqueId())) plugin.lang().send(player, "ticket.chat-on");
+            for (String other : plugin.store().rememberAddress(player)) {
+                plugin.punishments().notifyStaff(plugin.lang().prefixed("staff.same-address", "player", player.getName(), "other", other));
+            }
             if (player.hasPermission("playban.notify")) {
                 int reviews = plugin.store().reviews.size();
-                int tickets = plugin.store().tickets.size();
+                int tickets = plugin.tickets().count(dev.playban.model.Ticket.Status.OPEN);
                 if (reviews + tickets > 0) plugin.lang().send(player, "staff.pending", "reviews", reviews, "tickets", tickets);
             }
         }, 20L);
@@ -56,6 +60,9 @@ public final class ConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onQuit(PlayerQuitEvent e) {
         Player player = e.getPlayer();
+        if (plugin.tickets().canReturn(player.getUniqueId())) plugin.tickets().returnBack(player);
+        plugin.ticketMenus().closed(player.getUniqueId());
+        plugin.tickets().pauseAllOf(player.getUniqueId());
         if (plugin.punishments().inLimbo(player.getUniqueId())) {
             // put everything back so the player is never left in spectator mode if the plugin is removed
             e.quitMessage(null);

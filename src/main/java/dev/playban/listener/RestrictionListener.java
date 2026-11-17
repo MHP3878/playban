@@ -195,9 +195,25 @@ public final class RestrictionListener implements Listener {
         if (e.getTarget() instanceof Player p && blocked(p, "mob-target")) e.setCancelled(true);
     }
 
+    /** Players in a ticket chat do not read the public chat until the team pauses or ends it. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onChatViewers(AsyncChatEvent e) {
+        e.viewers().removeIf(a -> a instanceof Player viewer && plugin.tickets().inChat(viewer.getUniqueId()));
+    }
+
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onChat(AsyncChatEvent e) {
         Player p = e.getPlayer();
+        if (plugin.tickets().inChat(p.getUniqueId())) {
+            // what the player types now goes to the team instead of the public chat
+            e.setCancelled(true);
+            String text = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(e.message()).trim();
+            org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                dev.playban.model.Ticket t = plugin.tickets().chatOf(p.getUniqueId());
+                if (t != null && p.isOnline() && !text.isEmpty()) plugin.tickets().playerMessage(p, t, text);
+            });
+            return;
+        }
         if (!blocked(p, "chat")) return;
         e.setCancelled(true);
         plugin.lang().send(p, "blocked.chat");

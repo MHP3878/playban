@@ -41,7 +41,12 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 | `/playban tasks` | Own tasks (for punished team members) | - |
 | `/playban lang <code>` | Switch language (`en`, `de`) | `playban.admin` |
 | `/playban reload` | Reload config, tasks and texts | `playban.admin` |
-| `/ticket <message>` | Punished player writes to the team | - |
+| `/ticket` | Open a ticket: pick a reason, then describe it | `playban.ticket` |
+| `/ticket <message>` | Open a ticket directly | `playban.ticket` |
+| `/ticket show [reason]` | Ticket overview for the team, optionally filtered | `playban.staff` |
+| `/ticket open <number>` | Open one ticket | `playban.staff` |
+| `/ticket stats` | Who handled how many tickets | `playban.staff` |
+| `/ticket back` | Return after teleporting from a ticket | `playban.staff` |
 
 Times look like `30m`, `2h`, `1d 12h`.
 
@@ -53,6 +58,8 @@ Times look like `30m`, `2h`, `1d 12h`.
 | `playban.staff` | op | Punish, review messages, answer tickets |
 | `playban.see` | op | Still sees punished players |
 | `playban.notify` | op | Gets team notifications |
+| `playban.ticket` | everyone | Can open tickets |
+| `playban.teleport` | op | Can teleport to players from a ticket and pick a game mode |
 | `playban.exempt` | nobody | Cannot be punished |
 
 ## Categories
@@ -69,6 +76,19 @@ Each category has a list of steps. The first step is used for the first offense,
 Only offenses in the same category count. Punishments the team lifted do not count, and a category can let old offenses expire.
 
 Anti-cheat plugins can run `playban apply <player> <category>` from the console.
+
+## Tickets
+
+Any player can open a ticket and picks a reason (report, question, bug, appeal or your own).
+
+- The team sees all tickets in `/ticket show`, with filters for status and reason.
+- Opening a ticket shows what is already known about the player. Accepting it puts the ticket "in progress".
+- While a ticket is in progress, what the player types goes only to the team, and the player does not read the public chat. The chat can be paused, and it pauses on its own when the team member leaves.
+- The team member works in a ticket window: every message is an entry that can be starred, plus buttons for writing, quick replies, team-only remarks, adding more players (one shared chat or separate chats), teleporting, a voice invite and finishing.
+- To finish, the team member decides for every player: a punishment by category, or "only involved". Then the ticket is closed and the punishments are carried out.
+- Closed tickets stay readable with the whole conversation, stars, remarks and results, and show up in the profile of every player who was part of them. Only admins can still add remarks to a closed ticket.
+
+Extras: new tickets can be posted to a Discord channel (webhook), the team is reminded of tickets nobody picked up, and the profile shows other players who joined from the same address. Addresses are stored as a fingerprint, not in plain text.
 
 ## Ban screen and Discord
 
@@ -92,7 +112,8 @@ Messages are only delivered and only count after a team member approved them in 
 - `categories.yml` - categories and their steps (also editable in the menu)
 - `tasks.yml` - tasks (also editable in the menu)
 - `lang/en.yml`, `lang/de.yml` - all texts; copy one to add your own language
-- `data.yml` - punishments, bans, history, open reviews and tickets
+- `data.yml` - punishments, bans, history, notes and open reviews
+- `tickets.yml` - all tickets with their conversations
 
 ## Build
 

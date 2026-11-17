@@ -12,7 +12,6 @@ import dev.playban.model.Punishment.TaskProgress;
 import dev.playban.model.Review;
 import dev.playban.model.TaskDef;
 import dev.playban.model.TaskType;
-import dev.playban.model.Ticket;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -65,11 +64,11 @@ public final class AdminMenus {
         return plugin.lang();
     }
 
-    private ItemStack item(Material material, String key, Object... kv) {
+    ItemStack item(Material material, String key, Object... kv) {
         return Items.of(material, lang().msg(key + ".name", kv), lang().lore(key + ".lore", kv));
     }
 
-    private String date(long millis) {
+    String date(long millis) {
         return new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(millis));
     }
 
@@ -78,7 +77,7 @@ public final class AdminMenus {
     }
 
     /** A 6-row list with page buttons in the bottom row. */
-    private <T> Menu paged(Component title, List<T> entries, int page, Function<T, ItemStack> render,
+    <T> Menu paged(Component title, List<T> entries, int page, Function<T, ItemStack> render,
                            BiConsumer<T, InventoryClickEvent> click, IntConsumer openPage, Runnable back) {
         Menu m = new Menu(6, title);
         int pages = Math.max(1, (entries.size() + 44) / 45);
@@ -105,7 +104,8 @@ public final class AdminMenus {
         m.set(11, item(Material.CLOCK, "menu.main.active", "count", plugin.store().active.size()), e -> active(p, 0));
         m.set(12, item(Material.IRON_BARS, "menu.main.bans", "count", plugin.store().bans.size()), e -> bans(p, 0));
         m.set(14, item(Material.WRITABLE_BOOK, "menu.main.reviews", "count", plugin.store().reviews.size()), e -> reviews(p, 0));
-        m.set(15, item(Material.PAPER, "menu.main.tickets", "count", plugin.store().tickets.size()), e -> tickets(p, 0));
+        m.set(15, item(Material.PAPER, "menu.main.tickets", "count", plugin.tickets().count(dev.playban.model.Ticket.Status.OPEN),
+                "progress", plugin.tickets().count(dev.playban.model.Ticket.Status.IN_PROGRESS)), e -> plugin.ticketMenus().list(p, "ACTIVE", null, 0));
         m.set(16, item(Material.BOOK, "menu.main.history"), e ->
                 plugin.input().ask(p, "prompt.history-name", name -> profileByName(p, name), () -> main(p)));
         if (admin(p)) {
@@ -435,7 +435,10 @@ public final class AdminMenus {
                     plugin.punishments().addNote(id, p.getName(), text);
                     profile(p, id, name);
                 }, () -> profile(p, id, name), "player", name));
+        m.set(47, item(Material.PAPER, "menu.profile.tickets", "count", plugin.tickets().involving(id).size()), e -> plugin.ticketMenus().ofPlayer(p, id, name));
         m.set(48, item(Material.BOOK, "menu.profile.history", "count", all.size()), e -> history(p, name));
+        List<String> same = plugin.store().sameAddress(id);
+        if (!same.isEmpty()) m.set(8, item(Material.COMPASS, "menu.profile.same-address", "players", String.join(", ", same)));
         m.set(50, item(Material.ANVIL, "menu.profile.punish"), e -> punishPlayer(p, id, name));
         m.set(52, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
         m.fill().open(p);
@@ -599,7 +602,7 @@ public final class AdminMenus {
 
     // ---------------------------------------------------------------- reviews & tickets
 
-    private List<Component> textLore(String text) {
+    List<Component> textLore(String text) {
         List<Component> lore = new ArrayList<>();
         for (String line : TimeUtil.wrap(text, 42)) lore.add(lang().msg("menu.text-line", "text", line));
         return lore;
@@ -624,29 +627,6 @@ public final class AdminMenus {
             reviews(p, page);
         }, n -> reviews(p, n), () -> main(p));
         if (list.isEmpty()) m.set(22, item(Material.LIME_DYE, "menu.reviews.empty"));
-        m.open(p);
-    }
-
-    public void tickets(Player p, int page) {
-        List<Ticket> list = new ArrayList<>(plugin.store().tickets.values());
-        Menu m = paged(lang().msg("menu.tickets.title"), list, page, t -> {
-            List<Component> lore = new ArrayList<>(lang().lore("menu.tickets.entry.lore", "date", date(t.createdAt)));
-            lore.addAll(textLore(t.text));
-            lore.addAll(lang().lore("menu.tickets.entry.actions"));
-            return Items.of(Material.PAPER, lang().msg("menu.tickets.entry.name", "player", t.authorName), lore);
-        }, (t, e) -> {
-            if (e.isRightClick()) {
-                plugin.punishments().closeTicket(t);
-                tickets(p, page);
-            } else {
-                plugin.input().ask(p, "prompt.ticket-reply", text -> {
-                    plugin.punishments().replyTicket(t, p.getName(), text);
-                    lang().send(p, "ticket.replied", "player", t.authorName);
-                    tickets(p, 0);
-                }, () -> tickets(p, page), "player", t.authorName);
-            }
-        }, n -> tickets(p, n), () -> main(p));
-        if (list.isEmpty()) m.set(22, item(Material.LIME_DYE, "menu.tickets.empty"));
         m.open(p);
     }
 
@@ -676,6 +656,7 @@ public final class AdminMenus {
         m.set(34, item(Material.PAPER, "menu.settings.reasons", "list", String.join(", ", plugin.getConfig().getStringList("reason-presets"))),
                 e -> editList(p, "reason-presets", "prompt.reason-presets", false));
         m.set(37, item(Material.PAINTING, "menu.settings.ban-screen"), e -> banScreen(p, 0));
+        m.set(41, item(Material.PAPER, "menu.settings.tickets"), e -> plugin.ticketMenus().settings(p));
         String limbo = plugin.getConfig().getString("limbo.location.world");
         m.set(38, item(Material.ENDER_EYE, "menu.settings.limbo-location", "value", limbo == null ? lang().raw("limbo.default-location")
                 : limbo + " " + (int) plugin.getConfig().getDouble("limbo.location.x") + " " + (int) plugin.getConfig().getDouble("limbo.location.y")

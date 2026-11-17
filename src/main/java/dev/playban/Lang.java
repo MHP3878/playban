@@ -82,6 +82,11 @@ public final class Lang {
         return MM.deserialize(fill(raw(key), kv));
     }
 
+    /** The text without colors, for logs and files. */
+    public String plain(String key, Object... kv) {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(msg(key, kv));
+    }
+
     /** Fills placeholders into a text that does not come from the language file, e.g. a custom ban screen. */
     public Component format(String template, Object... kv) {
         return MM.deserialize(fill(template, kv));

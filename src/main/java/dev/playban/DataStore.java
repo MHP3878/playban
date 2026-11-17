@@ -4,7 +4,6 @@ import dev.playban.model.Note;
 import dev.playban.model.Punishment;
 import dev.playban.model.Review;
 import dev.playban.model.TaskStatus;
-import dev.playban.model.Ticket;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -28,12 +27,16 @@ public final class DataStore {
     public final Map<UUID, Punishment> bans = new java.util.concurrent.ConcurrentHashMap<>();
     public final Map<UUID, List<Punishment>> history = new LinkedHashMap<>();
     public final Map<String, Review> reviews = new LinkedHashMap<>();
-    public final Map<String, Ticket> tickets = new LinkedHashMap<>();
+    /** Tickets from PlayBan 0.3 and older (author, name, text, time), handed to the ticket system once. */
+    public final List<String[]> legacyTickets = new ArrayList<>();
     /** Messages for players who were offline, as MiniMessage text. */
     public final Map<UUID, List<String>> mail = new LinkedHashMap<>();
     public final Map<UUID, List<Note>> notes = new LinkedHashMap<>();
     /** Last known name of every player PlayBan has dealt with, so profiles work while they are offline. */
     public final Map<UUID, String> names = new LinkedHashMap<>();
+    /** Salted fingerprint of the last address of each player, to spot second accounts. Raw addresses are never stored. */
+    public final Map<UUID, String> addresses = new LinkedHashMap<>();
+    private String addressSalt = UUID.randomUUID().toString();
     private boolean dirty;
     private long counter;
 
@@ -97,13 +100,7 @@ public final class DataStore {
         if (t != null) for (String k : t.getKeys(false)) {
             ConfigurationSection s = t.getConfigurationSection(k);
             if (s == null) continue;
-            Ticket tk = new Ticket();
-            tk.id = k;
-            tk.author = UUID.fromString(s.getString("author", ""));
-            tk.authorName = s.getString("author-name", "?");
-            tk.text = s.getString("text", "");
-            tk.createdAt = s.getLong("created");
-            tickets.put(k, tk);
+            legacyTickets.add(new String[]{s.getString("author", ""), s.getString("author-name", "?"), s.getString("text", ""), String.valueOf(s.getLong("created"))});
         }
         ConfigurationSection ns = cfg.getConfigurationSection("notes");
         if (ns != null) for (String k : ns.getKeys(false)) {
@@ -122,8 +119,49 @@ public final class DataStore {
         }
         ConfigurationSection nm = cfg.getConfigurationSection("names");
         if (nm != null) for (String k : nm.getKeys(false)) names.put(UUID.fromString(k), nm.getString(k));
+        addressSalt = cfg.getString("address-salt", addressSalt);
+        ConfigurationSection ad = cfg.getConfigurationSection("addresses");
+        if (ad != null) for (String k : ad.getKeys(false)) addresses.put(UUID.fromString(k), ad.getString(k));
         ConfigurationSection m = cfg.getConfigurationSection("mail");
         if (m != null) for (String k : m.getKeys(false)) mail.put(UUID.fromString(k), new ArrayList<>(m.getStringList(k)));
+    }
+
+    /** Names of other known players who last joined from the same address. */
+    public List<String> sameAddress(UUID id) {
+        List<String> out = new ArrayList<>();
+        String mine = addresses.get(id);
+        if (mine == null) return out;
+        for (Map.Entry<UUID, String> e : addresses.entrySet()) {
+            if (!e.getKey().equals(id) && e.getValue().equals(mine) && names.containsKey(e.getKey())) out.add(names.get(e.getKey()));
+        }
+        return out;
+    }
+
+    /**
+     * Remembers the address a player joined from and returns the names of banned or punished players
+     * who share it, so the team can be warned.
+     */
+    public List<String> rememberAddress(org.bukkit.entity.Player player) {
+        List<String> flagged = new ArrayList<>();
+        if (player.getAddress() == null || player.getAddress().getAddress() == null) return flagged;
+        String print;
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest((addressSalt + player.getAddress().getAddress().getHostAddress()).getBytes(StandardCharsets.UTF_8));
+            print = java.util.HexFormat.of().formatHex(hash, 0, 12);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return flagged;
+        }
+        String before = addresses.put(player.getUniqueId(), print);
+        names.put(player.getUniqueId(), player.getName());
+        markDirty();
+        if (print.equals(before)) return flagged;
+        for (Map.Entry<UUID, String> e : addresses.entrySet()) {
+            UUID other = e.getKey();
+            if (other.equals(player.getUniqueId()) || !e.getValue().equals(print)) continue;
+            if (active.containsKey(other) || bans.containsKey(other)) flagged.add(names.getOrDefault(other, "?"));
+        }
+        return flagged;
     }
 
     private Punishment readPunishment(ConfigurationSection s) {
@@ -215,13 +253,6 @@ public final class DataStore {
             cfg.set(p + "text", r.text);
             cfg.set(p + "created", r.createdAt);
         }
-        for (Ticket t : tickets.values()) {
-            String p = "tickets." + t.id + ".";
-            cfg.set(p + "author", t.author.toString());
-            cfg.set(p + "author-name", t.authorName);
-            cfg.set(p + "text", t.text);
-            cfg.set(p + "created", t.createdAt);
-        }
         for (Map.Entry<UUID, List<Note>> e : notes.entrySet()) {
             for (Note n : e.getValue()) {
                 String p = "notes." + e.getKey() + "." + n.id + ".";
@@ -231,6 +262,8 @@ public final class DataStore {
             }
         }
         for (Map.Entry<UUID, String> e : names.entrySet()) cfg.set("names." + e.getKey(), e.getValue());
+        cfg.set("address-salt", addressSalt);
+        for (Map.Entry<UUID, String> e : addresses.entrySet()) cfg.set("addresses." + e.getKey(), e.getValue());
         for (Map.Entry<UUID, List<String>> e : mail.entrySet()) {
             if (!e.getValue().isEmpty()) cfg.set("mail." + e.getKey(), e.getValue());
         }

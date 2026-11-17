@@ -32,19 +32,6 @@ public final class PlayBanCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("ticket")) {
-            if (!(sender instanceof Player player)) {
-                lang().send(sender, "error.players-only");
-            } else if (args.length == 0) {
-                lang().send(sender, "usage.ticket");
-            } else if (!plugin.punishments().limited(player.getUniqueId())) {
-                lang().send(sender, "error.not-punished-self");
-            } else {
-                plugin.punishments().createTicket(player, String.join(" ", args));
-            }
-            return true;
-        }
-
         boolean staff = sender.hasPermission("playban.staff");
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
 
@@ -291,7 +278,7 @@ public final class PlayBanCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (command.getName().equalsIgnoreCase("ticket") || !sender.hasPermission("playban.staff")) return out;
+        if (!sender.hasPermission("playban.staff")) return out;
         String last = args[args.length - 1].toLowerCase();
         if (args.length == 1) {
             for (String s : STAFF_SUBS) if (s.startsWith(last)) out.add(s);

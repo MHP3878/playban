@@ -59,3 +59,35 @@ limbo:
   hide-others: true
   # Where the player is held. Set it in the menu; without it the world spawn is used.
   # location: {world: world, x: 0, y: 100, z: 0, yaw: 0, pitch: 0}
+
+# ---- Tickets ----
+# What players can pick when they open a ticket. Editable in the menu.
+ticket-reasons:
+  report:
+    name: "Report a player"
+    icon: PLAYER_HEAD
+  question:
+    name: "Question"
+    icon: BOOK
+  bug:
+    name: "Bug"
+    icon: SPIDER_EYE
+  appeal:
+    name: "Appeal a punishment"
+    icon: PAPER
+  other:
+    name: "Other"
+    icon: OAK_SIGN
+
+# One-click answers for the team
+quick-replies:
+  - "Thanks for your ticket, we are looking into it."
+  - "Please describe what happened in a bit more detail."
+  - "Do you have a screenshot or a video?"
+  - "We have dealt with it. Thank you for reporting."
+
+# Remind the team about tickets nobody picked up after this many minutes. 0 = never
+ticket-reminder-minutes: 10
+
+# Discord webhook URL: new tickets are posted there. Empty = off
+discord-webhook: ""

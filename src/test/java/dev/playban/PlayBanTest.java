@@ -289,18 +289,6 @@ class PlayBanTest {
     }
 
     @Test
-    void ticketReachesStaffAndAnswerComesBack() {
-        punish("1h");
-        troll.performCommand("ticket I think this is unfair");
-        assertEquals(1, plugin.store().tickets.size());
-        plugin.punishments().replyTicket(plugin.store().tickets.values().iterator().next(), "Admin", "We checked the logs.");
-        assertTrue(plugin.store().tickets.isEmpty());
-
-        for (int i = 0; i < 6; i++) troll.performCommand("ticket spam " + i);
-        assertEquals(3, plugin.store().tickets.size(), "a player cannot flood the team with tickets");
-    }
-
-    @Test
     void dataSurvivesARestart() {
         Punishment p = punish("2h");
         troll.performCommand("ticket hello team");
@@ -313,7 +301,6 @@ class PlayBanTest {
         assertEquals(p.reason, loaded.reason);
         assertEquals(p.originalMs, loaded.originalMs);
         assertEquals(p.tasks.keySet(), loaded.tasks.keySet());
-        assertEquals(1, fresh.tickets.size());
     }
 
     @Test
@@ -336,6 +323,9 @@ class PlayBanTest {
         punish("1h");
         troll.performCommand("ticket hello");
         admin.performCommand("playban note Troll was rude in chat");
+        bystander.performCommand("ticket Troll destroyed my house");
+        plugin.tickets().accept(plugin.tickets().get(2), admin);
+        plugin.tickets().note(plugin.tickets().get(2), "Admin", "checked the logs");
         admin.performCommand("playban specban Bystander 2h Testing");
         for (String code : new String[]{"en", "de"}) {
             plugin.lang().load(code);
@@ -345,7 +335,14 @@ class PlayBanTest {
                     () -> plugin.adminMenus().active(admin, 0),
                     () -> plugin.adminMenus().detail(admin, troll.getUniqueId()),
                     () -> plugin.adminMenus().reviews(admin, 0),
-                    () -> plugin.adminMenus().tickets(admin, 0),
+                    () -> plugin.ticketMenus().list(admin, "ALL", null, 0),
+                    () -> plugin.ticketMenus().view(admin, plugin.tickets().get(1)),
+                    () -> plugin.ticketMenus().view(admin, plugin.tickets().get(2)),
+                    () -> plugin.ticketMenus().verdicts(admin, plugin.tickets().get(2)),
+                    () -> plugin.ticketMenus().stats(admin),
+                    () -> plugin.ticketMenus().settings(admin),
+                    () -> plugin.ticketMenus().ofPlayer(admin, troll.getUniqueId(), "Troll"),
+                    () -> plugin.ticketMenus().pickReason(admin),
                     () -> plugin.adminMenus().settings(admin),
                     () -> plugin.adminMenus().allowedCommands(admin, 0),
                     () -> plugin.adminMenus().tasks(admin, 0),
@@ -545,7 +542,8 @@ class PlayBanTest {
         server.getPluginManager().callEvent(spawn);
         assertTrue(spawn.isCancelled(), "even the commands allowed for PlayBans are locked");
         troll.performCommand("ticket please unban me");
-        assertEquals(1, plugin.store().tickets.size(), "writing a ticket still works");
+        assertEquals(1, plugin.tickets().all().size(), "writing a ticket still works");
+        assertEquals("appeal", plugin.tickets().all().get(0).reason);
 
         // the login itself is allowed
         var listener = new dev.playban.listener.ConnectionListener(plugin);
@@ -637,6 +635,280 @@ class PlayBanTest {
 
         admin.simulateInventoryClick(admin.getOpenInventory(), org.bukkit.event.inventory.ClickType.SHIFT_LEFT, 19);
         assertEquals(1, plugin.store().notes.get(troll.getUniqueId()).size());
+    }
+
+    // ------------------------------------------------------------------ tickets
+
+    private dev.playban.model.Ticket openTicket(PlayerMock author, String reason, String text) {
+        assertNotNull(plugin.tickets().create(author, reason, text));
+        var all = plugin.tickets().all();
+        return all.get(all.size() - 1);
+    }
+
+    private boolean reachesPublicChat(PlayerMock sender, String text, PlayerMock... mustNotSee) {
+        boolean[] delivered = {false};
+        var listener = new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+            public void on(AsyncChatEvent e) {
+                if (e.isCancelled()) return;
+                delivered[0] = true;
+                for (PlayerMock hidden : mustNotSee) assertFalse(e.viewers().contains(hidden), hidden.getName() + " must not read the public chat");
+            }
+        };
+        server.getPluginManager().registerEvents(listener, plugin);
+        typeInChat(sender, text);
+        org.bukkit.event.HandlerList.unregisterAll(listener);
+        return delivered[0];
+    }
+
+    @Test
+    void anyPlayerCanOpenATicketWithAReason() {
+        assertTrue(bystander.performCommand("ticket"));
+        assertInstanceOf(Menu.class, bystander.getOpenInventory().getTopInventory().getHolder(), "/ticket opens the reason picker");
+        bystander.simulateInventoryClick(slotOf(bystander, Material.PLAYER_HEAD)); // "report a player"
+        typeInChat(bystander, "Troll destroyed my house");
+        var t = plugin.tickets().get(1);
+        assertNotNull(t);
+        assertEquals("report", t.reason);
+        assertEquals("Troll destroyed my house", t.text);
+        assertEquals(dev.playban.model.Ticket.Status.OPEN, t.status);
+
+        for (int i = 0; i < 5; i++) bystander.performCommand("ticket spam " + i);
+        assertEquals(3, plugin.tickets().all().size(), "at most three open tickets per player");
+    }
+
+    @Test
+    void ticketOverviewFiltersByReasonAndStatus() {
+        openTicket(bystander, "report", "Troll griefed");
+        openTicket(troll, "question", "How do I claim land?");
+        admin.performCommand("ticket show report");
+        var inv = admin.getOpenInventory().getTopInventory();
+        assertNotNull(inv.getItem(0));
+        assertNull(inv.getItem(1), "only the report is listed");
+        assertTrue(plain(inv.getItem(0).getItemMeta().displayName()).contains("Bystander"));
+
+        admin.performCommand("ticket show");
+        inv = admin.getOpenInventory().getTopInventory();
+        assertNotNull(inv.getItem(1), "without a filter both are listed");
+
+        bystander.performCommand("ticket show");
+        assertEquals(3, plugin.tickets().all().size(), "for normal players 'show' is just ticket text, not the team overview");
+    }
+
+    @Test
+    void acceptedTicketMovesPlayerIntoPrivateChatUntilPaused() {
+        var t = openTicket(bystander, "report", "Troll griefed");
+        admin.performCommand("ticket open 1");
+        admin.simulateInventoryClick(slotOf(admin, Material.LIME_CONCRETE)); // accept
+        assertEquals(dev.playban.model.Ticket.Status.IN_PROGRESS, t.status);
+        assertEquals("Admin", t.handler);
+        assertTrue(plugin.tickets().inChat(bystander.getUniqueId()));
+
+        assertFalse(reachesPublicChat(bystander, "he broke my door"), "the message goes to the ticket, not the public chat");
+        assertEquals("he broke my door", t.log.get(t.log.size() - 1).text);
+        assertEquals("CHAT", t.log.get(t.log.size() - 1).kind);
+        assertTrue(reachesPublicChat(troll, "hello everyone", bystander), "others still chat, but the ticket player does not read it");
+
+        // the team answers and writes a remark only the team sees
+        while (bystander.nextComponentMessage() != null) { /* clear */ }
+        plugin.tickets().staffMessage(t, admin, "We will look at it.", null);
+        assertTrue(plain(bystander.nextComponentMessage()).contains("We will look at it."));
+        plugin.tickets().note(t, "Admin", "door was really broken by Troll");
+        assertNull(bystander.nextComponentMessage(), "remarks are not shown to the player");
+
+        plugin.tickets().setPaused(t, admin, true);
+        assertFalse(plugin.tickets().inChat(bystander.getUniqueId()));
+        assertTrue(reachesPublicChat(bystander, "back in public"), "while paused the player is in the normal chat");
+        plugin.tickets().setPaused(t, admin, false);
+        assertTrue(plugin.tickets().inChat(bystander.getUniqueId()));
+    }
+
+    @Test
+    void ticketWindowUpdatesLiveAndStarsMessages() {
+        var t = openTicket(bystander, "report", "Troll griefed");
+        plugin.tickets().accept(t, admin);
+        plugin.ticketMenus().view(admin, t);
+        var inv = admin.getOpenInventory().getTopInventory();
+        int before = 0;
+        for (int i = 9; i < 36; i++) if (inv.getItem(i) != null && inv.getItem(i).getType() != Material.GRAY_STAINED_GLASS_PANE) before++;
+        typeInChat(bystander, "he also stole my diamonds");
+        int after = 0;
+        for (int i = 9; i < 36; i++) if (inv.getItem(i) != null && inv.getItem(i).getType() != Material.GRAY_STAINED_GLASS_PANE) after++;
+        assertSame(inv, admin.getOpenInventory().getTopInventory(), "the window stays open");
+        assertEquals(before + 1, after, "the new message appears in the open window");
+
+        int slot = 9 + t.log.size() - 1;
+        assertEquals(Material.PAPER, inv.getItem(slot).getType());
+        admin.simulateInventoryClick(slot);
+        assertTrue(t.log.get(t.log.size() - 1).starred);
+        assertEquals(Material.NETHER_STAR, inv.getItem(slot).getType(), "starred messages are marked");
+    }
+
+    @Test
+    void secondPlayerCanBeAddedSharedOrSeparate() {
+        var t = openTicket(bystander, "report", "Troll griefed");
+        plugin.tickets().accept(t, admin);
+        assertNull(plugin.tickets().addParticipant(t, admin, troll.getUniqueId(), "Troll"));
+        assertEquals("ticket.error.already-in", plugin.tickets().addParticipant(t, admin, troll.getUniqueId(), "Troll"));
+        assertTrue(plugin.tickets().inChat(troll.getUniqueId()));
+
+        while (bystander.nextComponentMessage() != null) { /* clear */ }
+        typeInChat(troll, "it was an accident");
+        assertTrue(plain(bystander.nextComponentMessage()).contains("it was an accident"), "in a shared chat they read each other");
+
+        plugin.tickets().setShared(t, admin, false);
+        typeInChat(troll, "bystander is lying");
+        assertNull(bystander.nextComponentMessage(), "in separate chats they do not");
+
+        while (troll.nextComponentMessage() != null) { /* clear */ }
+        plugin.tickets().staffMessage(t, admin, "Only for you, Bystander.", t.participant(bystander.getUniqueId()));
+        assertTrue(plain(bystander.nextComponentMessage()).contains("Only for you"));
+        assertNull(troll.nextComponentMessage(), "a message to one player does not reach the other");
+
+        // a player in a ticket chat cannot be pulled into a second one at the same time
+        var other = openTicket(troll, "question", "something else");
+        plugin.tickets().accept(other, admin);
+        assertEquals("ticket.error.busy", plugin.tickets().addParticipant(other, admin, bystander.getUniqueId(), "Bystander"));
+    }
+
+    @Test
+    void closingNeedsADecisionForEveryoneAndCarriesItOut() {
+        var t = openTicket(bystander, "report", "Troll griefed");
+        plugin.tickets().accept(t, admin);
+        plugin.tickets().addParticipant(t, admin, troll.getUniqueId(), "Troll");
+
+        plugin.tickets().close(t, admin);
+        assertEquals(dev.playban.model.Ticket.Status.IN_PROGRESS, t.status, "cannot close before everyone has a decision");
+
+        plugin.ticketMenus().verdicts(admin, t);
+        assertEquals(Material.BARRIER, admin.getOpenInventory().getTopInventory().getItem(30).getType());
+        admin.simulateInventoryClick(10); // Bystander
+        admin.simulateInventoryClick(51); // only involved
+        admin.simulateInventoryClick(11); // Troll
+        admin.simulateInventoryClick(slotOf(admin, Material.TNT)); // griefing
+        admin.simulateInventoryClick(slotOf(admin, Material.LIME_CONCRETE)); // close now
+
+        assertEquals(dev.playban.model.Ticket.Status.CLOSED, t.status);
+        Punishment p = plugin.punishments().get(troll.getUniqueId());
+        assertNotNull(p, "the chosen category was applied");
+        assertEquals("griefing", p.category);
+        assertFalse(plugin.punishments().isPunished(bystander.getUniqueId()));
+        assertTrue(t.participant(troll.getUniqueId()).outcome.contains("Griefing"));
+        assertFalse(plugin.tickets().inChat(bystander.getUniqueId()), "everyone is back in the normal chat");
+
+        // both players have the ticket in their file
+        assertEquals(1, plugin.tickets().involving(bystander.getUniqueId()).size());
+        assertEquals(1, plugin.tickets().involving(troll.getUniqueId()).size());
+
+        // the closed ticket stays readable, including after a restart
+        plugin.tickets().saveNow();
+        TicketManager fresh = new TicketManager(plugin);
+        fresh.load();
+        var loaded = fresh.get(t.id);
+        assertEquals(dev.playban.model.Ticket.Status.CLOSED, loaded.status);
+        assertEquals(t.log.size(), loaded.log.size());
+        assertEquals(2, loaded.participants.size());
+        assertEquals("INVOLVED", loaded.participant(bystander.getUniqueId()).verdict);
+    }
+
+    @Test
+    void forgottenTicketDoesNotKeepPlayerOutOfPublicChat() {
+        var t = openTicket(bystander, "report", "Troll griefed");
+        plugin.tickets().accept(t, admin);
+        assertTrue(plugin.tickets().inChat(bystander.getUniqueId()));
+        admin.disconnect();
+        assertFalse(plugin.tickets().inChat(bystander.getUniqueId()), "when the team member leaves, the chat pauses on its own");
+        assertTrue(reachesPublicChat(bystander, "anyone here?"));
+        assertEquals(dev.playban.model.Ticket.Status.IN_PROGRESS, t.status, "the ticket itself stays open");
+    }
+
+    @Test
+    void declinedTicketAndStatistics() {
+        var a = openTicket(bystander, "question", "one");
+        var b = openTicket(troll, "question", "two");
+        plugin.tickets().decline(a, admin);
+        assertEquals(dev.playban.model.Ticket.Status.DECLINED, a.status);
+        plugin.tickets().accept(b, admin);
+        plugin.tickets().setVerdict(b, b.participants.get(0), "INVOLVED");
+        plugin.tickets().close(b, admin);
+        var stats = plugin.tickets().stats();
+        assertEquals(1, stats.size());
+        assertEquals("Admin", stats.get(0).name());
+        assertEquals(1, stats.get(0).accepted());
+        assertEquals(1, stats.get(0).closed());
+    }
+
+    @Test
+    void teleportIsLoggedAndCanBeUndone() {
+        var t = openTicket(bystander, "report", "come look");
+        plugin.tickets().accept(t, admin);
+        bystander.teleport(bystander.getLocation().clone().add(50, 0, 50));
+        var home = admin.getLocation().clone();
+        admin.setGameMode(org.bukkit.GameMode.SURVIVAL);
+
+        assertTrue(plugin.tickets().teleport(t, admin, t.participants.get(0), "SPECTATOR"));
+        assertEquals(org.bukkit.GameMode.SPECTATOR, admin.getGameMode());
+        assertEquals(bystander.getLocation().getX(), admin.getLocation().getX());
+        assertTrue(t.log.get(t.log.size() - 1).text.contains("Bystander"), "the teleport is written into the ticket");
+
+        assertTrue(plugin.tickets().teleport(t, admin, t.participants.get(0), "VANISH"));
+        assertFalse(bystander.canSee(admin), "invisible mode hides the team member from players");
+
+        admin.performCommand("ticket back");
+        assertEquals(org.bukkit.GameMode.SURVIVAL, admin.getGameMode());
+        assertEquals(home.getX(), admin.getLocation().getX());
+        assertTrue(bystander.canSee(admin));
+    }
+
+    @Test
+    void voiceButtonNeedsADiscordLink() {
+        var t = openTicket(bystander, "report", "let us talk");
+        plugin.tickets().accept(t, admin);
+        assertFalse(plugin.tickets().voice(t, admin), "without a Discord link there is nothing to invite to");
+        plugin.getConfig().set("ban-screen.discord", "https://discord.gg/example");
+        while (bystander.nextComponentMessage() != null) { /* clear */ }
+        assertTrue(plugin.tickets().voice(t, admin));
+        assertTrue(plain(bystander.nextComponentMessage()).contains("https://discord.gg/example"));
+    }
+
+    @Test
+    void reminderOnlyFiresForTicketsNobodyPickedUp() {
+        var t = openTicket(bystander, "question", "anyone there?");
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        plugin.tickets().remind();
+        assertNull(admin.nextComponentMessage(), "a fresh ticket is not reminded yet");
+        t.lastReminder -= 11 * 60_000L;
+        plugin.tickets().remind();
+        assertNotNull(admin.nextComponentMessage(), "after ten minutes the team is reminded");
+        plugin.tickets().remind();
+        assertNull(admin.nextComponentMessage(), "but not over and over");
+        plugin.tickets().accept(t, admin);
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        t.lastReminder -= 11 * 60_000L;
+        plugin.tickets().remind();
+        assertNull(admin.nextComponentMessage(), "accepted tickets are not reminded");
+    }
+
+    @Test
+    void sameAddressAsAPunishedPlayerIsFlagged() {
+        var address = new java.net.InetSocketAddress(java.net.InetAddress.getLoopbackAddress(), 25565);
+        var elsewhere = new java.net.InetSocketAddress("10.1.2.3", 25565);
+        troll.setAddress(address);
+        bystander.setAddress(elsewhere);
+        plugin.store().rememberAddress(troll);
+        plugin.store().rememberAddress(bystander);
+        punish("1h");
+        PlayerMock alt = server.addPlayer("TrollTwo");
+        alt.setAddress(address);
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        server.getScheduler().performTicks(30);
+        boolean warned = false;
+        Component msg;
+        while ((msg = admin.nextComponentMessage()) != null) if (plain(msg).contains("TrollTwo") && plain(msg).contains("Troll")) warned = true;
+        assertTrue(warned, "the team is told about the possible second account");
+        assertTrue(plugin.store().sameAddress(alt.getUniqueId()).contains("Troll"));
+        assertFalse(plugin.store().sameAddress(alt.getUniqueId()).contains("Bystander"), "players from other addresses are not listed");
+        assertFalse(plugin.store().addresses.get(alt.getUniqueId()).contains("."), "the raw address is not stored");
     }
 
     @Test

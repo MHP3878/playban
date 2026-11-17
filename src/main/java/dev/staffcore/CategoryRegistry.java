@@ -14,7 +14,7 @@ import java.util.Map;
 
 /** Loads and saves the offense categories (categories.yml). */
 public final class CategoryRegistry {
-    public static final List<String> TYPES = List.of("WARN", "PLAYBAN", "SPECBAN", "BAN");
+    public static final List<String> TYPES = List.of("WARN", "MUTE", "PLAYBAN", "SPECBAN", "BAN");
     private final StaffCorePlugin plugin;
     private final Map<String, Category> categories = new LinkedHashMap<>();
 
@@ -76,7 +76,7 @@ public final class CategoryRegistry {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("type", step.type);
                 if (step.type.equals("PLAYBAN")) m.put("duration", TimeUtil.format(step.durationMs));
-                if (step.type.equals("BAN") || step.type.equals("SPECBAN")) m.put("duration", step.durationMs <= 0 ? "permanent" : TimeUtil.format(step.durationMs));
+                if (step.type.equals("BAN") || step.type.equals("SPECBAN") || step.type.equals("MUTE")) m.put("duration", step.durationMs <= 0 ? "permanent" : TimeUtil.format(step.durationMs));
                 steps.add(m);
             }
             cfg.set(p + "steps", steps);

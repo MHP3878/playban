@@ -18,6 +18,8 @@ custom: "custom"
 applied: "<gray><white>{player}</white>: offense no. <white>{n}</white> in <white>{category}</white> → <white>{punishment}"
 
 type:
+  MUTE: "Mute"
+  IPBAN: "IP ban"
   SPECBAN: "Spectator ban"
   WARN: "Warning"
   PLAYBAN: "PlayBan"
@@ -87,6 +89,16 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  mute: ["<gray>The player cannot chat or use /msg.", "<gray>Without a time it is permanent.", "", "<dark_gray>Example: /mute Steve 1h Spam"]
+  ipban: ["<gray>Bans the player and the address", "<gray>they play from, so a second account", "<gray>does not help."]
+  lockdown: ["<gray>Only the team can join, everyone", "<gray>else is kicked. Again to open.", "", "<dark_gray>Example: /lockdown on Maintenance"]
+  mutechat: ["<gray>Only the team can write in chat.", "<gray>Again to open it."]
+  slowchat: ["<gray>Players may only write every few", "<gray>seconds.", "", "<dark_gray>Example: /slowchat 5"]
+  whois: ["<gray>Rank, first and last join, play time,", "<gray>punishments, notes, same address", "<gray>and where the player is right now."]
+  alts: ["<gray>Accounts that joined from the", "<gray>same address."]
+  stafflist: ["<gray>Which team members are online."]
+  near: ["<gray>Players near you, with distance."]
+  report: ["<gray>Report a player to the team.", "", "<dark_gray>Example: /report Steve destroyed my house"]
   blocklog: ["<gray>Who broke, placed or blew up which", "<gray>block, who took what from chests.", "<gray>Undo it or watch it as a replay.", "", "<dark_gray>Example: /bl near 10 2h"]
   staffmode: ["<gray>Stores your inventory and gives you", "<gray>every admin item. Again to leave."]
   tools: ["<gray>Opens the admin items: bannhammer,", "<gray>freeze wand, handcuffs, inspector,", "<gray>teleport compass, vanish cloak, x-ray."]
@@ -168,6 +180,9 @@ help: |-
   <gray>Times look like <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
+  mute: "<gray>Usage: <white>/mute <player> [time|perm] [reason]"
+  unmute: "<gray>Usage: <white>/unmute <player>"
+  ipban: "<gray>Usage: <white>/ipban <player> <time|perm> [reason]"
   specban: "<gray>Usage: <white>/sc specban <player> <time|perm> [reason]"
   note: "<gray>Usage: <white>/sc note <player> <text>"
   profile: "<gray>Usage: <white>/sc profile <player>"
@@ -185,6 +200,9 @@ usage:
   ticket: "<gray>Usage: <white>/ticket <your message>"
 
 error:
+  no-address: "<red>No address is known for <white>{player}</white> yet. They have to join once."
+  already-muted: "<red><white>{player}</white> is already muted."
+  not-muted: "<red><white>{player}</white> is not muted."
   unknown-command: "<red>Unknown command. Type <white>/guide</white> for the commands you can use."
   short-commands-off: "<red>Short commands are switched off. Use <white>/sc {command}</white>."
   bad-link: "<red>That is not a valid link. It has to start with <white>https://</white>."
@@ -355,6 +373,56 @@ log:
     fire: "Fire"
     tnt: "TNT"
     creeper: "Creeper"
+
+mute:
+  you: "<red>You were muted for <white>{time}</white>. Reason: <white>{reason}"
+  over: "<green>You can write in chat again."
+  blocked: "<red>You are muted. Time left: <white>{time}</white>. Reason: <white>{reason}"
+  broadcast: "<white>{staff}</white> <gray>muted</gray> <white>{player}</white><gray>. Duration:</gray> <white>{time}</white><gray>. Reason:</gray> <white>{reason}"
+  broadcast-unmuted: "<white>{staff}</white> <gray>unmuted</gray> <white>{player}</white><gray>."
+  lifted: "<green><white>{player}</white> may write again."
+
+moderation:
+  lockdown-default: "The server is closed for maintenance."
+  lockdown-screen: |-
+    <gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>
+
+    <yellow>The server is closed right now.
+    <gray>{reason}
+
+    <gray>{discord}
+  lockdown-on: "<red><bold>Lockdown:</bold></red> <gray>only the team can join now. Switched on by <white>{staff}</white>."
+  lockdown-off: "<green>Lockdown is over, everyone can join again. <gray>({staff})"
+  chat-muted: "<red>The chat is closed for now. <gray>({staff})"
+  chat-unmuted: "<green>The chat is open again. <gray>({staff})"
+  chat-muted-you: "<red>The chat is closed right now."
+  slow-on: "<gray>Slow chat: one message every <white>{seconds}</white> seconds. <dark_gray>({staff})"
+  slow-off: "<gray>Slow chat is off. <dark_gray>({staff})"
+  slow-wait: "<red>Slow chat: wait <white>{seconds}</white> more seconds."
+  usage-player: "<gray>Usage: <white>/{command} <player>"
+  now: "now"
+  whois-head: "<white>{player}</white> <dark_gray>|</dark_gray> <gray>Rank:</gray> <white>{rank}</white> <dark_gray>|</dark_gray> {online}"
+  whois-times: "<gray>First joined: <white>{first}</white> <dark_gray>|</dark_gray> <gray>Last seen: <white>{last}</white> <dark_gray>|</dark_gray> <gray>Played: <white>{played}"
+  whois-record: "<gray>Punishments: <white>{punishments}</white> <dark_gray>|</dark_gray> <gray>Notes: <white>{notes}</white> <dark_gray>|</dark_gray> <gray>Tickets: <white>{tickets}</white> <dark_gray>|</dark_gray> <gray>Same address: <white>{alts}</white> <dark_gray>|</dark_gray> <gray>Now: <white>{state}"
+  whois-live: "<gray>At <white>{world} {x} {y} {z}</white> <dark_gray>|</dark_gray> <gray>{mode}</gray> <dark_gray>|</dark_gray> <gray>Health <white>{health}</white> <dark_gray>|</dark_gray> <gray>Ping <white>{ping}ms"
+  whois-actions: "<#ffc371>[open profile]"
+  state:
+    none: "nothing"
+    playban: "PlayBan"
+    banned: "banned"
+    muted: "muted"
+    frozen: "frozen"
+    vanished: "vanished"
+  alts: "<gray>Same address as <white>{player}</white>: <white>{list}"
+  no-alts: "<gray>No other accounts known for <white>{player}</white>."
+  stafflist-head: "<gray>Team online: <white>{count}"
+  stafflist-entry: " <dark_gray>-</dark_gray> <white>{player}</white> <dark_gray>({rank})"
+  stafflist-hidden: " <dark_gray>- {player} ({rank}, vanished)"
+  near: "<gray>Within {radius} blocks: <white>{list}"
+  near-none: "<gray>Nobody within {radius} blocks."
+  report-usage: "<gray>Usage: <white>/report <player> <what happened>"
+  report-text: "Report against {player}: {reason}"
+  report-sent: "<green>Thanks, your report about <white>{player}</white> went to the team."
 
 tools:
   nobody: "<gray>No player to jump to."

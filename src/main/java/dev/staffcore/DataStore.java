@@ -47,6 +47,8 @@ public final class DataStore {
     private boolean loadFailed;
     /** Real bans. Read from the login thread, so this one is thread-safe. */
     public final Map<UUID, Punishment> bans = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Running mutes, read from the chat thread. */
+    public final Map<UUID, Punishment> mutes = new java.util.concurrent.ConcurrentHashMap<>();
     public final Map<UUID, List<Punishment>> history = new LinkedHashMap<>();
     public final Map<String, Review> reviews = new LinkedHashMap<>();
     /** Tickets from PlayBan 0.3 and older (author, name, text, time), handed to the ticket system once. */
@@ -120,6 +122,11 @@ public final class DataStore {
             Punishment p = readPunishment(a.getConfigurationSection(k));
             if (p != null) active.put(p.uuid, p);
         }
+        ConfigurationSection mu = cfg.getConfigurationSection("mutes");
+        if (mu != null) for (String k : mu.getKeys(false)) {
+            Punishment p = readPunishment(mu.getConfigurationSection(k));
+            if (p != null) mutes.put(p.uuid, p);
+        }
         ConfigurationSection b = cfg.getConfigurationSection("bans");
         if (b != null) for (String k : b.getKeys(false)) {
             Punishment p = readPunishment(b.getConfigurationSection(k));
@@ -191,6 +198,18 @@ public final class DataStore {
         if (m != null) for (String k : m.getKeys(false)) if (uuid(k) != null) mail.put(uuid(k), new ArrayList<>(m.getStringList(k)));
     }
 
+    /** Salted fingerprint of an address. The address itself is never stored. */
+    public String fingerprint(java.net.InetAddress address) {
+        if (address == null) return null;
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest((addressSalt + address.getHostAddress()).getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash, 0, 12);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return null;
+        }
+    }
+
     /** Names of other known players who last joined from the same address. */
     public List<String> sameAddress(UUID id) {
         List<String> out = new ArrayList<>();
@@ -209,14 +228,8 @@ public final class DataStore {
     public List<String> rememberAddress(org.bukkit.entity.Player player) {
         List<String> flagged = new ArrayList<>();
         if (player.getAddress() == null || player.getAddress().getAddress() == null) return flagged;
-        String print;
-        try {
-            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
-                    .digest((addressSalt + player.getAddress().getAddress().getHostAddress()).getBytes(StandardCharsets.UTF_8));
-            print = java.util.HexFormat.of().formatHex(hash, 0, 12);
-        } catch (java.security.NoSuchAlgorithmException e) {
-            return flagged;
-        }
+        String print = fingerprint(player.getAddress().getAddress());
+        if (print == null) return flagged;
         String before = addresses.put(player.getUniqueId(), print);
         names.put(player.getUniqueId(), player.getName());
         markDirty();
@@ -237,6 +250,7 @@ public final class DataStore {
             p.name = s.getString("name", "?");
             p.type = s.getString("type", "PLAYBAN");
             p.banId = s.getString("ban-id");
+            p.ipHash = s.getString("ip");
             p.category = s.getString("category");
             p.expiresAt = s.getLong("expires");
             p.prevMode = s.getString("prev-mode");
@@ -279,6 +293,7 @@ public final class DataStore {
         cfg.set(path + ".name", p.name);
         cfg.set(path + ".type", p.type);
         if (p.banId != null) cfg.set(path + ".ban-id", p.banId);
+        if (p.ipHash != null) cfg.set(path + ".ip", p.ipHash);
         if (p.category != null) cfg.set(path + ".category", p.category);
         if (p.expiresAt > 0) cfg.set(path + ".expires", p.expiresAt);
         if (p.prevMode != null) {
@@ -313,6 +328,7 @@ public final class DataStore {
         YamlConfiguration cfg = new YamlConfiguration();
         for (Punishment p : active.values()) writePunishment(cfg, "active." + p.uuid, p);
         for (Punishment p : bans.values()) writePunishment(cfg, "bans." + p.uuid, p);
+        for (Punishment p : mutes.values()) writePunishment(cfg, "mutes." + p.uuid, p);
         for (Punishment p : restores.values()) writePunishment(cfg, "restores." + p.uuid, p);
         List<String> exemptList = new ArrayList<>();
         for (UUID id : exempt) exemptList.add(id.toString());

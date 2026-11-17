@@ -180,3 +180,12 @@ block-log:
 staff-mode:
   # reason for warnings given with the warn stick. Empty = the text from the language file
   warn-reason: ""
+
+# ---- Mute and lockdown ----
+# Commands a muted player cannot use, so the mute cannot be dodged
+mute-blocked-commands: [msg, tell, w, whisper, r, reply, me, say, mail, m, t, pm, dm]
+lockdown:
+  # /lockdown switches this. While on, only ops, the team (from min-level) and protected players can join
+  enabled: false
+  reason: ""
+  min-level: 30

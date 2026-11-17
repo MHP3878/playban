@@ -32,6 +32,7 @@ public class StaffCorePlugin extends JavaPlugin {
     private RankManager ranks;
     private AdminManager admin;
     private ToolManager tools;
+    private ModerationManager moderation;
     private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
@@ -105,6 +106,17 @@ public class StaffCorePlugin extends JavaPlugin {
             getServer().getCommandMap().register("staffcore", logCmd);
             registered.add(logCmd);
         }
+        moderation = new ModerationManager(this);
+        getServer().getPluginManager().registerEvents(moderation, this);
+        register("report", "Report a player to the team", "staffcore.ticket", moderation);
+        register("whois", "Everything about a player at a glance", "staffcore.staff", moderation);
+        register("seen", "When a player was last online", "staffcore.staff", moderation);
+        register("alts", "Accounts that joined from the same address", "staffcore.staff", moderation);
+        register("stafflist", "Which team members are online", "staffcore.staff", moderation);
+        register("near", "Players near you", "staffcore.staff", moderation);
+        register("mutechat", "Only the team may write in chat", "staffcore.chatcontrol", moderation);
+        register("slowchat", "Players may only write every few seconds", "staffcore.chatcontrol", moderation);
+        register("lockdown", "Only the team may join", "staffcore.lockdown", moderation);
         tools = new ToolManager(this);
         getServer().getPluginManager().registerEvents(tools, this);
         register("tools", "Admin items: bannhammer, freeze wand, handcuffs and more", "staffcore.tools", tools);
@@ -130,6 +142,9 @@ public class StaffCorePlugin extends JavaPlugin {
             register("tempban", "Ban a player for a time", "staffcore.staff", executor);
             register("warn", "Warn a player", "staffcore.staff", executor);
             register("unban", "Lift a ban, by name or ban ID", "staffcore.staff", executor);
+            register("mute", "Mute a player in chat", "staffcore.staff", executor);
+            register("unmute", "Lift a mute", "staffcore.staff", executor);
+            register("ipban", "Ban a player and their address", "staffcore.ipban", executor);
             register("vanish", "Turn invisible to players", "staffcore.vanish", executor);
         }
         VoiceCommand voiceExecutor = new VoiceCommand(this);
@@ -221,6 +236,7 @@ public class StaffCorePlugin extends JavaPlugin {
     public RankManager ranks() { return ranks; }
     public AdminManager admin() { return admin; }
     public ToolManager tools() { return tools; }
+    public ModerationManager moderation() { return moderation; }
     public dev.staffcore.log.BlockLog blockLog() { return blockLog; }
     public dev.staffcore.gui.RankMenus rankMenus() { return rankMenus; }
     public TicketMenus ticketMenus() { return ticketMenus; }

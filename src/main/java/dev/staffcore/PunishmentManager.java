@@ -230,6 +230,25 @@ public final class PunishmentManager {
                 if (store().bans.containsKey(id)) return "error.already-banned";
                 ban(id, name, type, ms, reason, staff, category);
             }
+            case "IPBAN" -> {
+                if (store().bans.containsKey(id)) return "error.already-banned";
+                String print = store().addresses.get(id);
+                if (print == null) return "error.no-address";
+                ban(id, name, "BAN", ms, reason, staff, category);
+                store().bans.get(id).ipHash = print;
+                // anyone else online from that address goes too
+                for (Player other : Bukkit.getOnlinePlayers()) {
+                    if (!other.getUniqueId().equals(id) && print.equals(store().addresses.get(other.getUniqueId()))
+                            && !other.hasPermission("staffcore.exempt")) {
+                        other.kick(banScreen(store().bans.get(id)));
+                    }
+                }
+                store().saveIfDirty();
+            }
+            case "MUTE" -> {
+                if (store().mutes.containsKey(id)) return "error.already-muted";
+                mute(id, name, ms, reason, staff, category);
+            }
             default -> {
                 if (isPunished(id)) return "error.already-punished";
                 if (store().bans.containsKey(id)) return "error.already-banned";
@@ -309,6 +328,47 @@ public final class PunishmentManager {
         }
         notifyStaff(lang().prefixed(type.equals("SPECBAN") ? "ban.broadcast-spectator" : "ban.broadcast", "player", name, "staff", staff,
                 "time", ms <= 0 ? lang().raw("permanent") : TimeUtil.format(ms), "reason", reason));
+    }
+
+    // ---------------------------------------------------------------- mute
+
+    public void mute(UUID id, String name, long ms, String reason, String staff, String category) {
+        Punishment p = record(id, name, "MUTE", reason, staff, category);
+        p.originalMs = Math.max(0, ms);
+        p.expiresAt = ms <= 0 ? 0 : p.createdAt + ms;
+        store().mutes.put(id, p);
+        store().markDirty();
+        String time = ms <= 0 ? lang().raw("permanent") : TimeUtil.format(ms);
+        deliver(id, lang().prefixed("mute.you", "time", time, "reason", reason));
+        notifyStaff(lang().prefixed("mute.broadcast", "player", name, "staff", staff, "time", time, "reason", reason));
+    }
+
+    /** The running mute of a player, or null. Safe to call from the chat thread. */
+    public Punishment activeMute(UUID id) {
+        Punishment p = store().mutes.get(id);
+        if (p == null || (p.expiresAt > 0 && p.expiresAt <= System.currentTimeMillis())) return null;
+        return p;
+    }
+
+    public void unmute(Punishment p, String by) {
+        if (store().mutes.remove(p.uuid) == null) return;
+        p.endedAt = System.currentTimeMillis();
+        p.endReason = by == null ? "SERVED" : "PARDONED";
+        store().history.computeIfAbsent(p.uuid, k -> new ArrayList<>()).add(p);
+        store().markDirty();
+        deliver(p.uuid, lang().prefixed("mute.over"));
+        if (by != null) notifyStaff(lang().prefixed("mute.broadcast-unmuted", "player", p.name, "staff", by));
+    }
+
+    /** Whether an IP ban covers this address. Safe to call from the login thread. */
+    public Punishment ipBanFor(java.net.InetAddress address) {
+        String print = store().fingerprint(address);
+        if (print == null) return null;
+        long now = System.currentTimeMillis();
+        for (Punishment b : store().bans.values()) {
+            if (print.equals(b.ipHash) && (b.expiresAt <= 0 || b.expiresAt > now)) return b;
+        }
+        return null;
     }
 
     public void unban(Punishment p, String by) {
@@ -682,6 +742,9 @@ public final class PunishmentManager {
         for (UUID id : vanished) {
             Player staff = Bukkit.getPlayer(id);
             if (staff != null && !isPunished(id)) staff.sendActionBar(lang().msg("vanish.actionbar"));
+        }
+        for (Punishment m : new ArrayList<>(store().mutes.values())) {
+            if (m.expiresAt > 0 && m.expiresAt <= now) unmute(m, null);
         }
         for (Punishment ban : new ArrayList<>(store().bans.values())) {
             if (ban.expiresAt > 0 && ban.expiresAt <= now) {

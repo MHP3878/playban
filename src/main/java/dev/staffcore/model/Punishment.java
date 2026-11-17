@@ -19,7 +19,9 @@ public final class Punishment {
 
     /** Short code the player can quote, e.g. in an appeal. Unique across all punishments. */
     public String banId;
-    /** PLAYBAN, BAN or WARN */
+    /** IP bans only: fingerprint of the banned address (never the address itself). */
+    public String ipHash;
+    /** PLAYBAN, BAN, SPECBAN, MUTE or WARN */
     public String type = "PLAYBAN";
     /** Category id, or null for a custom punishment. */
     public String category;

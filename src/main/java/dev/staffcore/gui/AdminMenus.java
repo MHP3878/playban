@@ -397,6 +397,16 @@ public final class AdminMenus {
             new GuideEntry("ban", "/ban <player> <time|perm> [reason]", Material.IRON_BARS, "staffcore.staff"),
             new GuideEntry("specban", "/sc specban <player> <time|perm> [reason]", Material.ENDER_EYE, "staffcore.staff"),
             new GuideEntry("warn", "/warn <player> [reason]", Material.BELL, "staffcore.staff"),
+            new GuideEntry("mute", "/mute <player> [time] [reason]", Material.MUSIC_DISC_11, "staffcore.staff"),
+            new GuideEntry("ipban", "/ipban <player> <time|perm> [reason]", Material.BARRIER, "staffcore.ipban"),
+            new GuideEntry("whois", "/whois <player>", Material.SPYGLASS, "staffcore.staff"),
+            new GuideEntry("alts", "/alts <player>", Material.COMPASS, "staffcore.staff"),
+            new GuideEntry("stafflist", "/stafflist", Material.GOLDEN_HELMET, "staffcore.staff"),
+            new GuideEntry("near", "/near [radius]", Material.SPYGLASS, "staffcore.staff"),
+            new GuideEntry("mutechat", "/mutechat", Material.NOTE_BLOCK, "staffcore.chatcontrol"),
+            new GuideEntry("slowchat", "/slowchat <seconds|off>", Material.CLOCK, "staffcore.chatcontrol"),
+            new GuideEntry("lockdown", "/lockdown [on|off] [reason]", Material.IRON_DOOR, "staffcore.lockdown"),
+            new GuideEntry("report", "/report <player> <reason>", Material.WRITABLE_BOOK, ""),
             new GuideEntry("unban", "/unban <player|ban-ID>", Material.MILK_BUCKET, "staffcore.staff"),
             new GuideEntry("pardon", "/sc pardon <player>", Material.LIME_DYE, "staffcore.staff"),
             new GuideEntry("time", "/sc addtime|removetime <player> <time>", Material.CLOCK, "staffcore.staff"),
@@ -624,6 +634,7 @@ public final class AdminMenus {
                 case "WARN" -> Material.BELL;
                 case "BAN" -> Material.IRON_BARS;
                 case "SPECBAN" -> Material.ENDER_EYE;
+                case "MUTE" -> Material.MUSIC_DISC_11;
                 default -> Material.CLOCK;
             };
             ItemStack stepItem = item(icon, "menu.category-edit.step", "n", i + 1,
@@ -648,6 +659,7 @@ public final class AdminMenus {
                 } else {
                     step.type = CategoryRegistry.TYPES.get((CategoryRegistry.TYPES.indexOf(step.type) + 1) % CategoryRegistry.TYPES.size());
                     if (step.type.equals("PLAYBAN") && step.durationMs <= 0) step.durationMs = 86_400_000L;
+                    if (step.type.equals("MUTE") && step.durationMs <= 0) step.durationMs = 3_600_000L;
                     plugin.categories().save();
                     categoryEdit(p, id);
                 }

@@ -21,7 +21,16 @@ public final class ConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPreLogin(AsyncPlayerPreLoginEvent e) {
         Punishment ban = plugin.punishments().activeBan(e.getUniqueId());
-        if (ban != null) e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, plugin.punishments().banScreen(ban));
+        if (ban == null) ban = plugin.punishments().ipBanFor(e.getAddress());
+        // exempt players are never locked out by an IP ban someone else got
+        if (ban != null && !ban.uuid.equals(e.getUniqueId()) && plugin.store().exempt.contains(e.getUniqueId())) ban = null;
+        if (ban != null) {
+            e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, plugin.punishments().banScreen(ban));
+            return;
+        }
+        if (plugin.moderation().lockedOut(e.getUniqueId())) {
+            e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, plugin.moderation().lockdownScreen());
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH)

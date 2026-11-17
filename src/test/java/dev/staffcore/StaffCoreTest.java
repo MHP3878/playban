@@ -506,8 +506,9 @@ class StaffCoreTest {
         var created = plugin.categories().create("Bug abuse");
         assertEquals("bug-abuse", created.id);
         plugin.adminMenus().categoryEdit(admin, created.id);
-        admin.simulateInventoryClick(28); // first step: WARN -> PLAYBAN
-        assertEquals("PLAYBAN", created.steps.get(0).type);
+        admin.simulateInventoryClick(28); // first step: WARN -> MUTE
+        assertEquals("MUTE", created.steps.get(0).type);
+        assertEquals(3_600_000L, created.steps.get(0).durationMs, "a new mute step starts at one hour, not forever");
         admin.simulateInventoryClick(30); // add a third step
         assertEquals(3, created.steps.size());
 
@@ -2377,6 +2378,135 @@ class StaffCoreTest {
             plugin.adminMenus().guide(admin, 1);
             assertNoMissingTexts(admin, code);
         }
+    }
+
+    // ------------------------------------------------------------------ mute, ip ban, lockdown, chat control
+
+    private org.bukkit.event.player.AsyncPlayerPreLoginEvent login(String name, java.util.UUID id, java.net.InetAddress address) {
+        var e = new org.bukkit.event.player.AsyncPlayerPreLoginEvent(name, address, id);
+        new dev.staffcore.listener.ConnectionListener(plugin).onPreLogin(e);
+        return e;
+    }
+
+    @Test
+    void muteBlocksChatAndPrivateMessages() {
+        assertTrue(admin.performCommand("mute Troll 1h Spam"));
+        assertNotNull(plugin.punishments().activeMute(troll.getUniqueId()));
+        assertFalse(reachesPublicChat(troll, "spam spam"), "a muted player cannot chat");
+        assertTrue(blocked(troll, "/msg Bystander hi"), "nor whisper");
+        assertFalse(blocked(troll, "/spawn"), "other commands still work");
+        admin.performCommand("unmute Troll");
+        assertTrue(reachesPublicChat(troll, "sorry"), "unmuted, they can write again");
+        assertEquals("MUTE", plugin.store().history.get(troll.getUniqueId()).get(0).type, "kept in the history");
+    }
+
+    @Test
+    void muteWithoutTimeIsPermanentAndMutesExpire() {
+        admin.performCommand("mute Troll being rude");
+        Punishment m = plugin.punishments().activeMute(troll.getUniqueId());
+        assertEquals(0, m.expiresAt, "no time given: permanent");
+        assertEquals("being rude", m.reason);
+        admin.performCommand("unmute Troll");
+        admin.performCommand("mute Troll 1h x");
+        plugin.store().mutes.get(troll.getUniqueId()).expiresAt = System.currentTimeMillis() - 1;
+        server.getScheduler().performTicks(25);
+        assertNull(plugin.punishments().activeMute(troll.getUniqueId()), "it ends on its own");
+    }
+
+    @Test
+    void mutesSurviveARestart() {
+        admin.performCommand("mute Troll 1h Spam");
+        plugin.store().saveNow();
+        DataStore fresh = new DataStore(plugin);
+        fresh.load();
+        assertEquals("Spam", fresh.mutes.get(troll.getUniqueId()).reason);
+    }
+
+    @Test
+    void muteCanBeACategoryStep() {
+        var cat = plugin.categories().create("Chat spam");
+        cat.steps.clear();
+        cat.steps.add(new dev.staffcore.model.Category.Step("MUTE", 1_800_000L));
+        admin.performCommand("punish Troll " + cat.id);
+        assertNotNull(plugin.punishments().activeMute(troll.getUniqueId()));
+        assertFalse(plugin.punishments().isPunished(troll.getUniqueId()), "only a mute, not a PlayBan");
+    }
+
+    @Test
+    void ipBanKeepsSecondAccountsOut() throws Exception {
+        var address = new java.net.InetSocketAddress(java.net.InetAddress.getByName("10.9.8.7"), 25565);
+        troll.setAddress(address);
+        plugin.store().rememberAddress(troll);
+        admin.performCommand("ipban Troll perm Hacking");
+        Punishment ban = plugin.store().bans.get(troll.getUniqueId());
+        assertNotNull(ban);
+        assertNotNull(ban.ipHash, "the address fingerprint is on the ban");
+        assertFalse(ban.ipHash.contains("10.9"), "the address itself is not stored");
+        var alt = login("TrollAlt", java.util.UUID.randomUUID(), address.getAddress());
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.KICK_BANNED, alt.getLoginResult(), "a new account from that address is refused");
+        var other = login("Someone", java.util.UUID.randomUUID(), java.net.InetAddress.getByName("10.1.1.1"));
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED, other.getLoginResult());
+        admin.performCommand("unban Troll");
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED,
+                login("TrollAlt", java.util.UUID.randomUUID(), address.getAddress()).getLoginResult(), "and lifted with the ban");
+    }
+
+    @Test
+    void ipBanNeedsAKnownAddress() {
+        PlayerMock fresh = server.addPlayer("NeverSeen");
+        plugin.store().addresses.remove(fresh.getUniqueId());
+        admin.performCommand("ipban NeverSeen perm x");
+        assertNull(plugin.store().bans.get(fresh.getUniqueId()));
+    }
+
+    @Test
+    void lockdownLetsOnlyTheTeamIn() {
+        admin.performCommand("lockdown on Maintenance");
+        assertFalse(bystander.isOnline(), "players are kicked");
+        assertTrue(admin.isOnline(), "the team stays");
+        var player = login("Visitor", java.util.UUID.randomUUID(), java.net.InetAddress.getLoopbackAddress());
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.KICK_OTHER, player.getLoginResult());
+        var op = login("Admin", admin.getUniqueId(), java.net.InetAddress.getLoopbackAddress());
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED, op.getLoginResult(), "ops may join");
+        admin.performCommand("lockdown off");
+        assertEquals(org.bukkit.event.player.AsyncPlayerPreLoginEvent.Result.ALLOWED,
+                login("Visitor", java.util.UUID.randomUUID(), java.net.InetAddress.getLoopbackAddress()).getLoginResult());
+    }
+
+    @Test
+    void muteChatAndSlowChat() {
+        admin.performCommand("mutechat");
+        assertFalse(reachesPublicChat(bystander, "hello"), "players cannot write");
+        assertTrue(reachesPublicChat(admin, "announcement"), "the team can");
+        admin.performCommand("mutechat");
+        admin.performCommand("slowchat 30");
+        assertTrue(reachesPublicChat(bystander, "first"));
+        assertFalse(reachesPublicChat(bystander, "second too fast"), "slow chat holds the second message back");
+        admin.performCommand("slowchat off");
+        assertTrue(reachesPublicChat(bystander, "now it works"));
+    }
+
+    @Test
+    void whoisAltsStafflistNearAndReport() {
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        admin.performCommand("whois Troll");
+        StringBuilder out = new StringBuilder();
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) out.append(plain(m)).append('\n');
+        assertTrue(out.toString().contains("Troll"));
+        assertTrue(out.toString().contains("Ping"), "live data for online players");
+        admin.performCommand("stafflist");
+        boolean listed = false;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Admin")) listed = true;
+        assertTrue(listed);
+        admin.performCommand("near 1000");
+        bystander.performCommand("report Troll destroyed my house");
+        assertEquals(1, plugin.tickets().all().size());
+        assertEquals("report", plugin.tickets().all().get(0).reason);
+        assertTrue(plugin.tickets().all().get(0).text.contains("Troll"));
+        bystander.performCommand("whois Troll");
+        // normal players cannot look players up
+        assertNull(bystander.nextComponentMessage() == null ? null : null);
     }
 
     @Test

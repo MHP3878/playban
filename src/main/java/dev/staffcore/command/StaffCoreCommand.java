@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class StaffCoreCommand implements TabExecutor {
-    private static final List<String> STAFF_SUBS = List.of("menu", "punish", "apply", "warn", "ban", "specban", "unban", "note", "profile", "pardon", "addtime", "removetime", "info", "list", "history", "guide", "vanish");
+    private static final List<String> STAFF_SUBS = List.of("menu", "punish", "apply", "warn", "ban", "specban", "ipban", "mute", "unmute", "unban", "note", "profile", "pardon", "addtime", "removetime", "info", "list", "history", "guide", "vanish");
     private static final List<String> ADMIN_SUBS = List.of("reload", "lang");
     private final StaffCorePlugin plugin;
 
@@ -109,6 +109,52 @@ public final class StaffCoreCommand implements TabExecutor {
                     lang().send(sender, "usage.profile");
                 } else {
                     plugin.adminMenus().profileByName(player, args[1]);
+                }
+            }
+            case "mute", "ipban" -> {
+                if (args.length < 3 && sub.equals("ipban")) {
+                    lang().send(sender, "usage.ipban");
+                    return true;
+                }
+                if (args.length < 2) {
+                    lang().send(sender, "usage." + sub);
+                    return true;
+                }
+                if (sub.equals("ipban") && !sender.hasPermission("staffcore.ipban")) {
+                    lang().send(sender, "error.no-permission");
+                    return true;
+                }
+                OfflinePlayer target = target(sender, args, "usage." + sub);
+                if (target == null) return true;
+                // a time is optional for a mute: without one it is permanent
+                String when = args.length > 2 ? args[2] : "perm";
+                boolean permanent = CategoryRegistry.isPermanent(when);
+                long ms = permanent ? 0 : TimeUtil.parse(when);
+                int reasonFrom = 3;
+                if (!permanent && ms <= 0) {
+                    if (Character.isDigit(when.charAt(0))) {
+                        lang().send(sender, "error.bad-time", "input", when);
+                        return true;
+                    }
+                    ms = 0;
+                    reasonFrom = 2;
+                }
+                String reason = args.length > reasonFrom ? String.join(" ", Arrays.copyOfRange(args, reasonFrom, args.length)) : lang().raw("no-reason");
+                String error = plugin.punishments().execute(target.getUniqueId(), target.getName(), sub.equals("mute") ? "MUTE" : "IPBAN",
+                        ms, reason, sender.getName(), null, null, null);
+                if (error != null) lang().send(sender, error, "player", target.getName());
+            }
+            case "unmute" -> {
+                if (args.length < 2) {
+                    lang().send(sender, "usage.unmute");
+                    return true;
+                }
+                Punishment m = null;
+                for (Punishment x : plugin.store().mutes.values()) if (x.name.equalsIgnoreCase(args[1]) || args[1].equalsIgnoreCase(x.banId)) m = x;
+                if (m == null) lang().send(sender, "error.not-muted", "player", args[1]);
+                else {
+                    plugin.punishments().unmute(m, sender.getName());
+                    lang().send(sender, "mute.lifted", "player", m.name);
                 }
             }
             case "ban", "specban" -> {
@@ -287,7 +333,8 @@ public final class StaffCoreCommand implements TabExecutor {
 
     private static final java.util.Map<String, String> SHORTCUTS = java.util.Map.of(
             "ban", "ban", "tempban", "ban", "punish", "punish",
-            "warn", "warn", "unban", "unban", "vanish", "vanish", "guide", "guide");
+            "warn", "warn", "unban", "unban", "vanish", "vanish", "guide", "guide",
+            "mute", "mute", "unmute", "unmute", "ipban", "ipban");
 
     /** /ban Steve 1d becomes {"ban", "Steve", "1d"}, so short commands run through the same code as /playban. */
     private String[] expandShortcut(String used, String[] args) {
@@ -406,10 +453,13 @@ public final class StaffCoreCommand implements TabExecutor {
                 if (at == 1) players(out, typed);
                 else if (at == 2) reasons(out, typed);
             }
-            case "ban", "specban" -> {
+            case "ban", "specban", "mute", "ipban" -> {
                 if (at == 1) players(out, typed);
                 else if (at == 2) durations(out, typed, true);
                 else if (at == 3) reasons(out, typed);
+            }
+            case "unmute" -> {
+                if (at == 1) for (Punishment m : plugin.store().mutes.values()) add(out, m.name, typed);
             }
             case "unban" -> {
                 if (at == 1) {

@@ -32,6 +32,8 @@ permissions:
       staffcore.tool.banhammer: true
       staffcore.tool.xray: true
       staffcore.blocklog.rollback: true
+      staffcore.ipban: true
+      staffcore.lockdown: true
   staffcore.staff:
     description: Punish players, handle reviews and tickets
     default: op
@@ -61,6 +63,7 @@ permissions:
       staffcore.tool.fly: true
       staffcore.staffmode: true
       staffcore.blocklog: true
+      staffcore.chatcontrol: true
   staffcore.see:
     description: Can still see punished players
     default: op
@@ -159,6 +162,15 @@ permissions:
     default: op
   staffcore.blocklog.rollback:
     description: "/blocklog rollback and restore"
+    default: op
+  staffcore.chatcontrol:
+    description: "/mutechat and /slowchat"
+    default: op
+  staffcore.ipban:
+    description: "/ipban - ban a player and the address they play from"
+    default: op
+  staffcore.lockdown:
+    description: "/lockdown - only the team may join"
     default: op
   staffcore.ranks:
     description: Can open /rank and give ranks below their own level

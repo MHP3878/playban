@@ -18,6 +18,8 @@ custom: "frei gewählt"
 applied: "<gray><white>{player}</white>: <white>{n}.</white> Verstoß in <white>{category}</white> → <white>{punishment}"
 
 type:
+  MUTE: "Mute"
+  IPBAN: "IP-Bann"
   SPECBAN: "Zuschauer-Bann"
   WARN: "Verwarnung"
   PLAYBAN: "PlayBan"
@@ -87,6 +89,16 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  mute: ["<gray>Der Spieler kann nicht chatten und", "<gray>kein /msg nutzen. Ohne Zeit für immer.", "", "<dark_gray>Beispiel: /mute Steve 1h Spam"]
+  ipban: ["<gray>Bannt den Spieler und die Adresse,", "<gray>von der er spielt. Ein Zweit-Account", "<gray>hilft dann nicht."]
+  lockdown: ["<gray>Nur das Team kann beitreten, alle", "<gray>anderen werden gekickt. Nochmal zum Öffnen.", "", "<dark_gray>Beispiel: /lockdown on Wartung"]
+  mutechat: ["<gray>Nur das Team kann im Chat schreiben.", "<gray>Nochmal zum Öffnen."]
+  slowchat: ["<gray>Spieler dürfen nur alle paar", "<gray>Sekunden schreiben.", "", "<dark_gray>Beispiel: /slowchat 5"]
+  whois: ["<gray>Rang, erster und letzter Besuch, Spielzeit,", "<gray>Strafen, Notizen, gleiche Adresse und", "<gray>wo der Spieler gerade ist."]
+  alts: ["<gray>Accounts, die von derselben Adresse", "<gray>kamen."]
+  stafflist: ["<gray>Welche Team-Mitglieder online sind."]
+  near: ["<gray>Spieler in deiner Nähe, mit Entfernung."]
+  report: ["<gray>Einen Spieler beim Team melden.", "", "<dark_gray>Beispiel: /report Steve hat mein Haus zerstört"]
   blocklog: ["<gray>Wer welchen Block abgebaut, gesetzt oder", "<gray>gesprengt hat, wer was aus Kisten nahm.", "<gray>Rückgängig machen oder als Replay ansehen.", "", "<dark_gray>Beispiel: /bl near 10 2h"]
   staffmode: ["<gray>Verwahrt dein Inventar und gibt dir", "<gray>alle Admin-Items. Nochmal zum Verlassen."]
   tools: ["<gray>Öffnet die Admin-Items: Bannhammer,", "<gray>Freeze-Stab, Handschellen, Inspektor,", "<gray>Teleport-Kompass, Vanish-Umhang, X-Ray."]
@@ -168,6 +180,9 @@ help: |-
   <gray>Zeiten schreibst du so: <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
+  mute: "<gray>Nutzung: <white>/mute <Spieler> [Zeit|perm] [Grund]"
+  unmute: "<gray>Nutzung: <white>/unmute <Spieler>"
+  ipban: "<gray>Nutzung: <white>/ipban <Spieler> <Zeit|perm> [Grund]"
   specban: "<gray>Nutzung: <white>/sc specban <Spieler> <Zeit|perm> [Grund]"
   note: "<gray>Nutzung: <white>/sc note <Spieler> <Text>"
   profile: "<gray>Nutzung: <white>/sc profile <Spieler>"
@@ -185,6 +200,9 @@ usage:
   ticket: "<gray>Nutzung: <white>/ticket <deine Nachricht>"
 
 error:
+  no-address: "<red>Für <white>{player}</white> ist noch keine Adresse bekannt. Der Spieler muss einmal beitreten."
+  already-muted: "<red><white>{player}</white> ist bereits stummgeschaltet."
+  not-muted: "<red><white>{player}</white> ist nicht stummgeschaltet."
   unknown-command: "<red>Unbekannter Befehl. Mit <white>/guide</white> siehst du die Befehle, die du nutzen kannst."
   short-commands-off: "<red>Kurze Befehle sind ausgeschaltet. Nutze <white>/sc {command}</white>."
   bad-link: "<red>Das ist kein gültiger Link. Er muss mit <white>https://</white> anfangen."
@@ -355,6 +373,56 @@ log:
     fire: "Feuer"
     tnt: "TNT"
     creeper: "Creeper"
+
+mute:
+  you: "<red>Du wurdest für <white>{time}</white> stummgeschaltet. Grund: <white>{reason}"
+  over: "<green>Du kannst wieder im Chat schreiben."
+  blocked: "<red>Du bist stummgeschaltet. Restzeit: <white>{time}</white>. Grund: <white>{reason}"
+  broadcast: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>stummgeschaltet. Dauer:</gray> <white>{time}</white><gray>. Grund:</gray> <white>{reason}"
+  broadcast-unmuted: "<white>{staff}</white> <gray>hat die Stummschaltung von</gray> <white>{player}</white> <gray>aufgehoben."
+  lifted: "<green><white>{player}</white> darf wieder schreiben."
+
+moderation:
+  lockdown-default: "Der Server ist wegen Wartung geschlossen."
+  lockdown-screen: |-
+    <gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>
+
+    <yellow>Der Server ist gerade geschlossen.
+    <gray>{reason}
+
+    <gray>{discord}
+  lockdown-on: "<red><bold>Lockdown:</bold></red> <gray>Nur das Team kann jetzt beitreten. Eingeschaltet von <white>{staff}</white>."
+  lockdown-off: "<green>Der Lockdown ist vorbei, alle können wieder beitreten. <gray>({staff})"
+  chat-muted: "<red>Der Chat ist vorerst geschlossen. <gray>({staff})"
+  chat-unmuted: "<green>Der Chat ist wieder offen. <gray>({staff})"
+  chat-muted-you: "<red>Der Chat ist gerade geschlossen."
+  slow-on: "<gray>Langsamer Chat: eine Nachricht alle <white>{seconds}</white> Sekunden. <dark_gray>({staff})"
+  slow-off: "<gray>Langsamer Chat ist aus. <dark_gray>({staff})"
+  slow-wait: "<red>Langsamer Chat: Warte noch <white>{seconds}</white> Sekunden."
+  usage-player: "<gray>Nutzung: <white>/{command} <Spieler>"
+  now: "jetzt"
+  whois-head: "<white>{player}</white> <dark_gray>|</dark_gray> <gray>Rang:</gray> <white>{rank}</white> <dark_gray>|</dark_gray> {online}"
+  whois-times: "<gray>Erster Besuch: <white>{first}</white> <dark_gray>|</dark_gray> <gray>Zuletzt da: <white>{last}</white> <dark_gray>|</dark_gray> <gray>Gespielt: <white>{played}"
+  whois-record: "<gray>Strafen: <white>{punishments}</white> <dark_gray>|</dark_gray> <gray>Notizen: <white>{notes}</white> <dark_gray>|</dark_gray> <gray>Tickets: <white>{tickets}</white> <dark_gray>|</dark_gray> <gray>Gleiche Adresse: <white>{alts}</white> <dark_gray>|</dark_gray> <gray>Gerade: <white>{state}"
+  whois-live: "<gray>Bei <white>{world} {x} {y} {z}</white> <dark_gray>|</dark_gray> <gray>{mode}</gray> <dark_gray>|</dark_gray> <gray>Leben <white>{health}</white> <dark_gray>|</dark_gray> <gray>Ping <white>{ping}ms"
+  whois-actions: "<#ffc371>[Profil öffnen]"
+  state:
+    none: "nichts"
+    playban: "PlayBan"
+    banned: "gebannt"
+    muted: "stumm"
+    frozen: "eingefroren"
+    vanished: "unsichtbar"
+  alts: "<gray>Gleiche Adresse wie <white>{player}</white>: <white>{list}"
+  no-alts: "<gray>Keine anderen Accounts von <white>{player}</white> bekannt."
+  stafflist-head: "<gray>Team online: <white>{count}"
+  stafflist-entry: " <dark_gray>-</dark_gray> <white>{player}</white> <dark_gray>({rank})"
+  stafflist-hidden: " <dark_gray>- {player} ({rank}, unsichtbar)"
+  near: "<gray>Im Umkreis von {radius} Blöcken: <white>{list}"
+  near-none: "<gray>Niemand im Umkreis von {radius} Blöcken."
+  report-usage: "<gray>Nutzung: <white>/report <Spieler> <was passiert ist>"
+  report-text: "Meldung gegen {player}: {reason}"
+  report-sent: "<green>Danke, deine Meldung über <white>{player}</white> ging an das Team."
 
 tools:
   nobody: "<gray>Kein Spieler, zu dem du springen kannst."

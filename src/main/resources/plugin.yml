@@ -8,7 +8,27 @@ softdepend: [Vault, voicechat]
 commands:
   playban:
     description: PlayBan main command
-    aliases: [pb, punish, ban, tempban, warn, unban, vanish, guide]
+    aliases: [pb]
+  punish:
+    description: Punish a player by category or with a duration
+    permission: playban.staff
+  ban:
+    description: Ban a player (the same as /playban ban)
+    permission: playban.staff
+  tempban:
+    description: Ban a player for a time (the same as /ban)
+    permission: playban.staff
+  warn:
+    description: Warn a player
+    permission: playban.staff
+  unban:
+    description: Lift a ban, by name or ban ID
+    permission: playban.staff
+  vanish:
+    description: Turn invisible to players
+    permission: playban.vanish
+  guide:
+    description: Every command with what it does
   ticket:
     description: Open a ticket for the server team
     aliases: [pbticket]
@@ -33,6 +53,7 @@ permissions:
       playban.notify: true
       playban.voice: true
       playban.vanish: true
+      playban.commands.all: true
   playban.see:
     description: Can still see punished players
     default: op
@@ -41,6 +62,9 @@ permissions:
     default: op
   playban.vanish:
     description: Can turn invisible with /vanish and still sees vanished staff
+    default: op
+  playban.commands.all:
+    description: Sees and can use commands that are hidden from normal players
     default: op
   playban.voice:
     description: Can moderate voice groups - kick, mute, ban, close, passwords, join unseen

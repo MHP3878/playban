@@ -36,6 +36,10 @@ public final class PlayBanCommand implements TabExecutor {
         // Short commands: /ban Steve 1d -> handled like /playban ban Steve 1d
         String used = label.toLowerCase();
         if (used.contains(":")) used = used.substring(used.indexOf(':') + 1);
+        if (SHORTCUTS.containsKey(used) && !plugin.getConfig().getBoolean("short-commands", true)) {
+            lang().send(sender, "error.short-commands-off", "command", SHORTCUTS.get(used));
+            return true;
+        }
         args = expandShortcut(used, args);
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
 
@@ -351,7 +355,10 @@ public final class PlayBanCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        args = expandShortcut(alias.toLowerCase(), args);
+        String used = alias.toLowerCase();
+        if (used.contains(":")) used = used.substring(used.indexOf(':') + 1);
+        if (SHORTCUTS.containsKey(used) && !plugin.getConfig().getBoolean("short-commands", true)) return out;
+        args = expandShortcut(used, args);
         int at = args.length - 1;
         String typed = args[at].toLowerCase();
         if (!sender.hasPermission("playban.staff")) {

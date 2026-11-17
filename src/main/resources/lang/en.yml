@@ -66,7 +66,11 @@ note:
 actionbar: "<gray>PlayBan <dark_gray>|</dark_gray> <white>{time}</white> <gray>left <dark_gray>|</dark_gray> <gray>Reason: <white>{reason}"
 
 vanish:
-  "on": "<gray>You are now <white>invisible</white>. Players cannot see you. Type <#ffc371>/vanish</#ffc371> again to show yourself."
+  "on": "<gray>You are now <white>invisible</white>. Players cannot see you, and your chat goes to the team only. Start a message with <white>!</white> to write publicly. <#ffc371>/vanish</#ffc371> shows you again."
+  actionbar: "<#ffc371><bold>VANISH</bold></#ffc371> <dark_gray>|</dark_gray> <gray>Only the team can see you"
+  still: "<gray>You are still <white>invisible</white>. <#ffc371>/vanish</#ffc371> shows you again."
+  death: "<white>{player}</white> died"
+  chat: "<dark_gray>[<#ffc371>Vanish</#ffc371>]</dark_gray> <white>{player}</white><gray>:</gray> <white>{text}"
   "off": "<gray>You are <white>visible</white> again."
 
 appeal:
@@ -146,6 +150,8 @@ usage:
   ticket: "<gray>Usage: <white>/ticket <your message>"
 
 error:
+  unknown-command: "<red>Unknown command. Type <white>/guide</white> for the commands you can use."
+  short-commands-off: "<red>Short commands are switched off. Use <white>/playban {command}</white>."
   bad-link: "<red>That is not a valid link. It has to start with <white>https://</white>."
   already-banned: "<red><white>{player}</white> is already banned."
   not-banned: "<red><white>{player}</white> is not banned."
@@ -382,6 +388,7 @@ task:
       - "<gray>that you write yourself."
 
 prompt:
+  hidden-commands: "<#ffc371>Type the commands players should not see, separated by commas. Example: <white>plugins, pl, version"
   voice-password: "<#ffc371>Type the new password for the group. No spaces."
   ticket-message: "<#ffc371>Type your message to everyone in the ticket."
   ticket-message-to: "<#ffc371>Type your message to <white>{player}</white> only."
@@ -475,6 +482,20 @@ setting:
   short-commands:
     name: "<#ffc371>Short commands"
     lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish without /playban in front."]
+  vanish:
+    staff-chat-only:
+      name: "<#ffc371>Vanish: chat to the team only"
+      lore: ["<gray>Vanished staff write to the team.", "<gray>With ! in front it goes to everyone."]
+    allow-pickup:
+      name: "<#ffc371>Vanish: pick up items"
+      lore: ["<gray>Vanished staff pick up items.", "<gray>Off: items stay where they are,", "<gray>so nobody notices you."]
+  command-hiding:
+    enabled:
+      name: "<#ffc371>Hide commands"
+      lore: ["<gray>Players do not see the hidden", "<gray>commands and cannot use them."]
+    hide-namespaced:
+      name: "<#ffc371>Hide plugin:command forms"
+      lore: ["<gray>Also hides bukkit:plugins,", "<gray>minecraft:tp and the like."]
   count-only-online-time:
     name: "<#ffc371>Only online time counts"
     lore: ["<gray>On: the time only runs while", "<gray>the player is on the server.", "<gray>Off: it runs like a normal ban."]
@@ -1009,6 +1030,9 @@ menu:
     "on": "<green>● On"
     "off": "<red>● Off"
     click: "<#ffc371>Click to switch"
+    hidden-commands:
+      name: "<#ffc371>Hidden commands"
+      lore: ["<gray>Players do not see these", "<gray>and cannot use them: <white>{count}", "<white>{list}", "", "<#ffc371>Click to change"]
     inventory:
       name: "<#ffc371>Inventory of punished players"
       lore: ["<gray>Now: <white>{value}", "", "<#ffc371>Click to switch"]

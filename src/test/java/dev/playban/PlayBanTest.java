@@ -13,6 +13,7 @@ import org.bukkit.block.Block;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1456,6 +1457,101 @@ class PlayBanTest {
     void ticketOpenSuggestsTicketNumbers() {
         bystander.performCommand("ticket help me");
         assertTrue(suggest(admin, "ticket open ").contains("1"));
+    }
+
+    // ------------------------------------------------------------------ vanish privacy and hidden commands
+
+    @Test
+    void vanishedStaffSeeAnIndicatorAboveTheHotbar() {
+        admin.performCommand("vanish");
+        while (admin.nextActionBar() != null) { /* clear */ }
+        server.getScheduler().performTicks(25);
+        Component bar = admin.nextActionBar();
+        assertNotNull(bar);
+        assertTrue(plain(bar).contains("VANISH"));
+    }
+
+    @Test
+    void killByVanishedStaffDoesNotShowTheirName() {
+        admin.performCommand("vanish");
+        var drops = new java.util.ArrayList<ItemStack>();
+        var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).withCausingEntity(admin).withDirectEntity(admin).build();
+        bystander.setKiller(admin);
+        var event = new PlayerDeathEvent(bystander, source, drops, 0, Component.text("Bystander was slain by Admin"));
+        server.getPluginManager().callEvent(event);
+        assertNotNull(event.deathMessage());
+        assertFalse(plain(event.deathMessage()).contains("Admin"), "the killer's name is gone");
+        assertTrue(plain(event.deathMessage()).contains("Bystander"));
+    }
+
+    @Test
+    void deathOfVanishedStaffIsSilent() {
+        admin.performCommand("vanish");
+        var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.FALL).build();
+        var event = new PlayerDeathEvent(admin, source, new java.util.ArrayList<>(), 0, Component.text("Admin fell"));
+        server.getPluginManager().callEvent(event);
+        assertNull(event.deathMessage());
+    }
+
+    @Test
+    void vanishedChatGoesToTheTeamUnlessItStartsWithExclamationMark() {
+        admin.performCommand("vanish");
+        PlayerMock mod = server.addPlayer("Mod");
+        mod.setOp(true);
+        assertFalse(reachesPublicChat(admin, "secret team note"), "goes to the team only");
+        assertTrue(reachesPublicChat(admin, "!hello everyone"), "with ! in front it is public");
+    }
+
+    @Test
+    void vanishLastsThroughARejoin() {
+        admin.performCommand("vanish");
+        admin.disconnect();
+        admin.reconnect();
+        server.getScheduler().performTicks(30);
+        assertTrue(plugin.punishments().isVanished(admin.getUniqueId()));
+        assertFalse(bystander.canSee(admin), "still hidden after coming back");
+        assertTrue(plugin.getConfig().getStringList("vanish.players").contains(admin.getUniqueId().toString()), "kept for a restart");
+    }
+
+    @Test
+    void mobsIgnoreVanishedStaffAndItemsStayOnTheGround() {
+        admin.performCommand("vanish");
+        var zombie = admin.getWorld().spawn(admin.getLocation(), org.bukkit.entity.Zombie.class);
+        var target = new org.bukkit.event.entity.EntityTargetLivingEntityEvent(zombie, admin,
+                org.bukkit.event.entity.EntityTargetEvent.TargetReason.CLOSEST_PLAYER);
+        server.getPluginManager().callEvent(target);
+        assertTrue(target.isCancelled());
+        var item = admin.getWorld().dropItem(admin.getLocation(), new ItemStack(Material.DIAMOND));
+        var pickup = new org.bukkit.event.entity.EntityPickupItemEvent(admin, item, 0);
+        server.getPluginManager().callEvent(pickup);
+        assertTrue(pickup.isCancelled());
+    }
+
+    @Test
+    void hiddenCommandsAreRemovedForPlayersButNotForStaff() {
+        var forPlayer = new java.util.ArrayList<>(java.util.List.of("plugins", "pl", "bukkit:help", "minecraft:tp", "spawn", "ticket", "version"));
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerCommandSendEvent(bystander, forPlayer));
+        assertEquals(java.util.List.of("spawn", "ticket"), forPlayer, "only harmless commands are left");
+
+        var forStaff = new java.util.ArrayList<>(java.util.List.of("plugins", "minecraft:tp"));
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerCommandSendEvent(admin, forStaff));
+        assertEquals(2, forStaff.size(), "staff see everything");
+
+        var typed = new PlayerCommandPreprocessEvent(bystander, "/bukkit:plugins");
+        server.getPluginManager().callEvent(typed);
+        assertTrue(typed.isCancelled(), "typing a hidden command is refused too");
+        var allowed = new PlayerCommandPreprocessEvent(bystander, "/ticket hi");
+        server.getPluginManager().callEvent(allowed);
+        assertFalse(allowed.isCancelled());
+    }
+
+    @Test
+    void teamCommandsNeedThePermission() {
+        assertEquals("playban.staff", server.getCommandMap().getCommand("ban").getPermission());
+        assertEquals("playban.vanish", server.getCommandMap().getCommand("vanish").getPermission());
+        assertNull(server.getCommandMap().getCommand("guide").getPermission(), "the guide is for everyone");
+        bystander.performCommand("ban Troll 1h test");
+        assertNull(plugin.store().bans.get(troll.getUniqueId()));
     }
 
     @Test

@@ -66,7 +66,11 @@ note:
 actionbar: "<gray>PlayBan <dark_gray>|</dark_gray> <gray>noch <white>{time}</white> <dark_gray>|</dark_gray> <gray>Grund: <white>{reason}"
 
 vanish:
-  "on": "<gray>Du bist jetzt <white>unsichtbar</white>. Spieler sehen dich nicht. Tippe noch einmal <#ffc371>/vanish</#ffc371>, um dich zu zeigen."
+  "on": "<gray>Du bist jetzt <white>unsichtbar</white>. Spieler sehen dich nicht, und dein Chat geht nur ans Team. Mit <white>!</white> vor der Nachricht schreibst du öffentlich. Mit <#ffc371>/vanish</#ffc371> zeigst du dich wieder."
+  actionbar: "<#ffc371><bold>VANISH</bold></#ffc371> <dark_gray>|</dark_gray> <gray>Nur das Team sieht dich"
+  still: "<gray>Du bist noch <white>unsichtbar</white>. Mit <#ffc371>/vanish</#ffc371> zeigst du dich wieder."
+  death: "<white>{player}</white> ist gestorben"
+  chat: "<dark_gray>[<#ffc371>Vanish</#ffc371>]</dark_gray> <white>{player}</white><gray>:</gray> <white>{text}"
   "off": "<gray>Du bist wieder <white>sichtbar</white>."
 
 appeal:
@@ -146,6 +150,8 @@ usage:
   ticket: "<gray>Nutzung: <white>/ticket <deine Nachricht>"
 
 error:
+  unknown-command: "<red>Unbekannter Befehl. Mit <white>/guide</white> siehst du die Befehle, die du nutzen kannst."
+  short-commands-off: "<red>Kurze Befehle sind ausgeschaltet. Nutze <white>/playban {command}</white>."
   bad-link: "<red>Das ist kein gültiger Link. Er muss mit <white>https://</white> anfangen."
   already-banned: "<red><white>{player}</white> ist bereits gebannt."
   not-banned: "<red><white>{player}</white> ist nicht gebannt."
@@ -383,6 +389,7 @@ task:
       - "<gray>die du selbst schreibst."
 
 prompt:
+  hidden-commands: "<#ffc371>Schreib die Befehle, die Spieler nicht sehen sollen, getrennt durch Kommas. Beispiel: <white>plugins, pl, version"
   voice-password: "<#ffc371>Schreib das neue Passwort für die Gruppe. Ohne Leerzeichen."
   ticket-message: "<#ffc371>Schreib deine Nachricht an alle im Ticket."
   ticket-message-to: "<#ffc371>Schreib deine Nachricht nur an <white>{player}</white>."
@@ -476,6 +483,20 @@ setting:
   short-commands:
     name: "<#ffc371>Kurze Befehle"
     lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish ohne /playban davor."]
+  vanish:
+    staff-chat-only:
+      name: "<#ffc371>Vanish: Chat nur ans Team"
+      lore: ["<gray>Unsichtbare schreiben ans Team.", "<gray>Mit ! davor geht es an alle."]
+    allow-pickup:
+      name: "<#ffc371>Vanish: Items aufheben"
+      lore: ["<gray>Unsichtbare heben Items auf.", "<gray>Aus: Items bleiben liegen,", "<gray>damit niemand etwas merkt."]
+  command-hiding:
+    enabled:
+      name: "<#ffc371>Befehle verstecken"
+      lore: ["<gray>Spieler sehen die versteckten Befehle", "<gray>nicht und können sie nicht nutzen."]
+    hide-namespaced:
+      name: "<#ffc371>Plugin:Befehl-Formen verstecken"
+      lore: ["<gray>Versteckt auch bukkit:plugins,", "<gray>minecraft:tp und Ähnliches."]
   count-only-online-time:
     name: "<#ffc371>Nur Online-Zeit zählt"
     lore: ["<gray>An: Die Zeit läuft nur, solange", "<gray>der Spieler auf dem Server ist.", "<gray>Aus: Sie läuft wie bei einem Bann."]
@@ -1009,6 +1030,9 @@ menu:
     "on": "<green>● An"
     "off": "<red>● Aus"
     click: "<#ffc371>Klicken zum Umschalten"
+    hidden-commands:
+      name: "<#ffc371>Versteckte Befehle"
+      lore: ["<gray>Spieler sehen diese Befehle nicht", "<gray>und können sie nicht nutzen: <white>{count}", "<white>{list}", "", "<#ffc371>Klicken zum Ändern"]
     inventory:
       name: "<#ffc371>Inventar von Bestraften"
       lore: ["<gray>Jetzt: <white>{value}", "", "<#ffc371>Klicken zum Wechseln"]

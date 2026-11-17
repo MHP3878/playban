@@ -34,7 +34,7 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 | `/ban <player> <time or perm> [reason]` | Real ban | `playban.staff` |
 | `/playban specban <player> <time or perm> [reason]` | Spectator ban: may join, but is stuck and can only write tickets | `playban.staff` |
 | `/unban <player or ban-ID>` | Lift a ban or spectator ban | `playban.staff` |
-| `/vanish` | Turn invisible to players; the team still sees you | `playban.vanish` |
+| `/vanish` | Turn invisible to players; the team still sees you. Your name is left out of kill, join, quit and advancement messages, the server list does not count you, and your chat goes to the team unless it starts with `!` | `playban.vanish` |
 | `/guide` | Every command with what it does and an example | - |
 | `/appeal <ban-ID> <text>` | Ask to be unbanned, with the ID from the ban screen | - |
 | `/playban note <player> <text>` | Write a note about a player | `playban.staff` |
@@ -72,6 +72,7 @@ Every punishment gets a short ban ID such as `K7QX2M`. It is shown on the ban sc
 | `playban.notify` | op | Gets team notifications |
 | `playban.voice` | op | Can moderate voice groups |
 | `playban.vanish` | op | Can use /vanish and sees vanished staff |
+| `playban.commands.all` | op | Sees commands that are hidden from players |
 | `playban.ticket` | everyone | Can open tickets |
 | `playban.teleport` | op | Can teleport to players from a ticket and pick a game mode |
 | `playban.exempt` | nobody | Cannot be punished |
@@ -90,6 +91,10 @@ Each category has a list of steps. The first step is used for the first offense,
 Only offenses in the same category count. Punishments the team lifted do not count, and a category can let old offenses expire.
 
 Anti-cheat plugins can run `playban apply <player> <category>` from the console.
+
+## Hidden commands
+
+Players without `playban.commands.all` do not see team commands in their suggestions, and the commands listed under `command-hiding` (by default `plugins`, `pl`, `version` and similar) are hidden and answer like an unknown command. Forms like `bukkit:plugins` are hidden too. The list can be changed in Settings.
 
 ## Tickets
 

@@ -35,7 +35,7 @@ public final class PunishmentManager {
     private final PlayBanPlugin plugin;
     private final Map<UUID, BossBar> bars = new HashMap<>();
     /** Staff who turned themselves invisible with /vanish. */
-    private final java.util.Set<UUID> vanished = new java.util.HashSet<>();
+    private final java.util.Set<UUID> vanished = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private BukkitTask ticker;
     private int seconds;
@@ -53,6 +53,13 @@ public final class PunishmentManager {
     }
 
     public void start() {
+        for (String id : plugin.getConfig().getStringList("vanish.players")) {
+            try {
+                vanished.add(UUID.fromString(id));
+            } catch (IllegalArgumentException ignored) {
+                // a hand-edited entry that is not a UUID
+            }
+        }
         ticker = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (isPunished(p.getUniqueId())) applyState(p);
@@ -528,6 +535,10 @@ public final class PunishmentManager {
     public void setVanished(Player staff, boolean value) {
         if (value) vanished.add(staff.getUniqueId());
         else vanished.remove(staff.getUniqueId());
+        List<String> ids = new ArrayList<>();
+        for (UUID id : vanished) ids.add(id.toString());
+        plugin.getConfig().set("vanish.players", ids);
+        plugin.saveConfig();
         refreshVisibility();
         if (value) {
             staff.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
@@ -537,8 +548,12 @@ public final class PunishmentManager {
         lang().send(staff, value ? "vanish.on" : "vanish.off");
     }
 
-    public void clearVanish(UUID id) {
-        vanished.remove(id);
+    /** Puts the invisibility back on after a rejoin. */
+    public void reapplyVanish(Player staff) {
+        if (!isVanished(staff.getUniqueId())) return;
+        staff.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
+        refreshVisibility();
+        lang().send(staff, "vanish.still");
     }
 
     /** Re-applies who can see whom. Called on joins, punishments and setting changes. */
@@ -616,6 +631,11 @@ public final class PunishmentManager {
                     online.sendActionBar(lang().msg("actionbar", "time", TimeUtil.format(Math.max(0, p.remainingMs)), "reason", p.reason));
                 }
             }
+        }
+        // vanished staff always see that they are invisible
+        for (UUID id : vanished) {
+            Player staff = Bukkit.getPlayer(id);
+            if (staff != null && !isPunished(id)) staff.sendActionBar(lang().msg("vanish.actionbar"));
         }
         for (Punishment ban : new ArrayList<>(store().bans.values())) {
             if (ban.expiresAt > 0 && ban.expiresAt <= now) {

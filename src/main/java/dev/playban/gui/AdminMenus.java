@@ -698,6 +698,36 @@ public final class AdminMenus {
                 e -> editList(p, "reason-presets", "prompt.reason-presets", false));
         m.set(37, item(Material.PAINTING, "menu.settings.ban-screen"), e -> banScreen(p, 0));
         m.set(41, item(Material.PAPER, "menu.settings.tickets"), e -> plugin.ticketMenus().settings(p));
+        String[] staffToggles = {"vanish.staff-chat-only", "vanish.allow-pickup", "command-hiding.enabled", "command-hiding.hide-namespaced"};
+        int[] staffSlots = {45, 46, 47, 48};
+        for (int i = 0; i < staffToggles.length; i++) {
+            String key = staffToggles[i];
+            boolean on = plugin.getConfig().getBoolean(key, !key.equals("vanish.allow-pickup"));
+            List<Component> lore = new ArrayList<>(lang().lore("setting." + key + ".lore"));
+            lore.add(Component.empty());
+            lore.add(lang().msg(on ? "menu.settings.on" : "menu.settings.off"));
+            lore.add(lang().msg("menu.settings.click"));
+            m.set(staffSlots[i], Items.of(on ? Material.LIME_DYE : Material.GRAY_DYE, lang().msg("setting." + key + ".name"), lore), e -> {
+                plugin.getConfig().set(key, !on);
+                plugin.saveConfig();
+                for (Player online : Bukkit.getOnlinePlayers()) online.updateCommands();
+                settings(p);
+            });
+        }
+        List<String> hiddenCommands = plugin.getConfig().getStringList("command-hiding.hidden");
+        m.set(50, item(Material.STRUCTURE_VOID, "menu.settings.hidden-commands", "count", hiddenCommands.size(),
+                "list", hiddenCommands.isEmpty() ? lang().raw("none") : String.join(", ", hiddenCommands)), e ->
+                plugin.input().ask(p, "prompt.hidden-commands", text -> {
+                    List<String> values = new ArrayList<>();
+                    for (String part : text.split(",")) {
+                        String v = part.trim().toLowerCase().replaceFirst("^/", "");
+                        if (!v.isEmpty() && !values.contains(v)) values.add(v);
+                    }
+                    plugin.getConfig().set("command-hiding.hidden", values);
+                    plugin.saveConfig();
+                    for (Player online : Bukkit.getOnlinePlayers()) online.updateCommands();
+                    settings(p);
+                }, () -> settings(p)));
         String inv = plugin.getConfig().getString("inventory-mode", "KEEP").toUpperCase();
         m.set(43, item(Material.CHEST, "menu.settings.inventory", "value", lang().raw("inventory-mode." + inv)), e -> {
             List<String> modes = List.of("KEEP", "STORE", "CLEAR");

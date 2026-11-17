@@ -121,3 +121,20 @@ voice-report-reasons:
   - "Insults or inappropriate talk"
   - "Harassment"
   - "Other"
+
+# ---- Vanish (/vanish) ----
+vanish:
+  # Chat messages of vanished staff only go to the team. Start a message with ! to write publicly.
+  staff-chat-only: true
+  # Vanished staff pick up items from the ground
+  allow-pickup: false
+  # Filled by /vanish, so you stay invisible after a rejoin or restart
+  players: []
+
+# ---- Hidden commands ----
+# Players without playban.commands.all do not see these commands and get "unknown command" if they type them.
+command-hiding:
+  enabled: true
+  # Also hide forms like bukkit:plugins or minecraft:tp, which people use to get around blocks
+  hide-namespaced: true
+  hidden: [plugins, pl, version, ver, about, icanhasbukkit, "?"]

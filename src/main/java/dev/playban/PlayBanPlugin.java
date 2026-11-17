@@ -61,12 +61,15 @@ public class PlayBanPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MenuListener(), this);
         getServer().getPluginManager().registerEvents(new RestrictionListener(this), this);
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
+        getServer().getPluginManager().registerEvents(new dev.playban.listener.StaffListener(this), this);
 
         PlayBanCommand executor = new PlayBanCommand(this);
-        PluginCommand main = getCommand("playban");
-        if (main != null) {
-            main.setExecutor(executor);
-            main.setTabCompleter(executor);
+        for (String name : new String[]{"playban", "punish", "ban", "tempban", "warn", "unban", "vanish", "guide"}) {
+            PluginCommand cmd = getCommand(name);
+            if (cmd != null) {
+                cmd.setExecutor(executor);
+                cmd.setTabCompleter(executor);
+            }
         }
         VoiceCommand voiceExecutor = new VoiceCommand(this);
         PluginCommand voiceCommand = getCommand("voice");

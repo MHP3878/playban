@@ -167,7 +167,7 @@ public final class PunishmentManager {
             lang().send(online, "PARDONED".equals(endReason) ? "end.pardoned" : "end.served");
         } else {
             mail(p.uuid, lang().prefixed("PARDONED".equals(endReason) ? "end.pardoned" : "end.served"));
-            if (p.prevGameMode != null || p.storedInventory != null) store().restores.put(p.uuid, p);
+            if (p.prevGameMode != null || p.storedInventory != null || p.prevLocation != null) store().restores.put(p.uuid, p);
         }
         store().saveIfDirty();
         notifyStaff("PARDONED".equals(endReason)
@@ -524,6 +524,12 @@ public final class PunishmentManager {
     public void applyState(Player player) {
         Punishment p = get(player.getUniqueId());
         if (p == null) return;
+        // where the player was before, for the teleport at the end (playban.end-teleport: LAST)
+        if (p.prevLocation == null && !inLimbo(player.getUniqueId())) {
+            Location l = player.getLocation();
+            p.prevLocation = l.getWorld().getName() + ";" + l.getX() + ";" + l.getY() + ";" + l.getZ() + ";" + l.getYaw() + ";" + l.getPitch();
+            store().markDirty();
+        }
         refreshVisibility();
         player.setCollidable(false);
         // adventure mode: the client itself stops predicting block breaks, so it no longer feels laggy
@@ -603,6 +609,9 @@ public final class PunishmentManager {
             }
             if (finished) {
                 if (p.storedInventory != null) restoreInventory(player, p.storedInventory);
+                Location back = endLocation(player, p);
+                if (back != null) player.teleport(back);
+                p.prevLocation = null;
                 // done: the history entry does not need to carry the items or the old mode any longer
                 p.storedInventory = null;
                 p.prevGameMode = null;
@@ -611,6 +620,49 @@ public final class PunishmentManager {
         }
         BossBar bar = bars.remove(player.getUniqueId());
         if (bar != null) player.hideBossBar(bar);
+        // the player sees everybody again
+        Bukkit.getScheduler().runTask(plugin, this::refreshVisibility);
+    }
+
+    /**
+     * Where a player goes when the PlayBan is over (playban.end-teleport): LAST = where they were before
+     * the PlayBan, SPAWN, HOME = their first home, LOCATION = playban.end-location, NONE = stay.
+     */
+    public Location endLocation(Player player, Punishment p) {
+        String mode = plugin.getConfig().getString("playban.end-teleport", "LAST").toUpperCase();
+        switch (mode) {
+            case "LAST" -> {
+                if (p.prevLocation == null) return null;
+                String[] l = p.prevLocation.split(";");
+                org.bukkit.World w = Bukkit.getWorld(l[0]);
+                if (w == null) return null;
+                try {
+                    return new Location(w, Double.parseDouble(l[1]), Double.parseDouble(l[2]), Double.parseDouble(l[3]),
+                            Float.parseFloat(l[4]), Float.parseFloat(l[5]));
+                } catch (RuntimeException e) {
+                    return null;
+                }
+            }
+            case "SPAWN" -> {
+                return plugin.spawn() != null ? plugin.spawn().spawn() : player.getWorld().getSpawnLocation();
+            }
+            case "HOME" -> {
+                if (plugin.homes() == null) return null;
+                var homes = plugin.homes().of(player.getUniqueId());
+                if (homes.isEmpty()) return plugin.spawn() != null ? plugin.spawn().spawn() : null;
+                return homes.containsKey("home") ? homes.get("home") : homes.values().iterator().next();
+            }
+            case "LOCATION" -> {
+                String w = plugin.getConfig().getString("playban.end-location.world");
+                org.bukkit.World world = w == null ? null : Bukkit.getWorld(w);
+                if (world == null) return null;
+                return new Location(world, plugin.getConfig().getDouble("playban.end-location.x"), plugin.getConfig().getDouble("playban.end-location.y"),
+                        plugin.getConfig().getDouble("playban.end-location.z"), (float) plugin.getConfig().getDouble("playban.end-location.yaw"), 0);
+            }
+            default -> {
+                return null;
+            }
+        }
     }
 
     public boolean isVanished(UUID id) {
@@ -663,6 +715,8 @@ public final class PunishmentManager {
             UUID id = p.getUniqueId();
             if ((isPunished(id) && hide) || inLimbo(id) || plugin.tickets().vanished(id) || isVanished(id)) special.add(id);
             if (limboSeesNobody && inLimbo(id)) blind.add(id);
+            // a PlayBan works both ways: others do not see them, and they see nobody (the team aside)
+            if (isPunished(id) && plugin.getConfig().getBoolean("restrictions.hide-others", true)) blind.add(id);
         }
         // permissions once per viewer, not once per pair
         Map<UUID, boolean[]> rights = new HashMap<>();
@@ -682,7 +736,8 @@ public final class PunishmentManager {
                 boolean[] r = rightsOf.apply(viewer);
                 boolean hidden = ((isPunished(t) && hide) || inLimbo(t) || plugin.tickets().vanished(t)) && !r[0];
                 if (isVanished(t) && !r[1]) hidden = true;
-                if (blind.contains(viewer.getUniqueId())) hidden = true;
+                if (blind.contains(viewer.getUniqueId()) && !(isPunished(viewer.getUniqueId()) && !inLimbo(viewer.getUniqueId())
+                        && target.hasPermission("staffcore.staff") && !isVanished(t))) hidden = true;
                 if (hidden) viewer.hidePlayer(plugin, target);
                 else viewer.showPlayer(plugin, target);
             }

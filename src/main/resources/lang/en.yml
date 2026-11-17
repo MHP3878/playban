@@ -1450,6 +1450,9 @@ menu:
     ban-screen:
       name: "<#ffc371>Ban screen"
       lore: ["<gray>What a banned player sees,", "<gray>and your Discord link.", "", "<#ffc371>Click to edit"]
+    end-teleport:
+      name: "<#ffc371>PlayBan over: where to"
+      lore: ["<gray>Now: <white>{value}</white> {where}", "", "<#ffc371>Click: change", "<#ffc371>Shift + click: here, where I stand"]
     limbo-location:
       name: "<#ffc371>Spectator ban: place"
       lore: ["<gray>Where spectator-banned players", "<gray>are held: <white>{value}", "", "<#ffc371>Click: use where I stand now", "<red>Shift + click: back to world spawn"]
@@ -1784,6 +1787,21 @@ module:
 
 module-setting:
   anticheat:
+    limit:
+      name: "<white>Point limit"
+      lore: ["<gray>Whoever reaches it is caught."]
+    animation:
+      name: "<white>Animation"
+      lore: ["<gray>What everybody sees when", "<gray>someone is caught."]
+    auto-watch:
+      name: "<white>Watch marked players"
+      lore: ["<gray>Marked players are watched", "<gray>automatically."]
+    watch-multiplier:
+      name: "<white>Points when watched"
+      lore: ["<gray>Watched players get this many", "<gray>times the points."]
+    grace-seconds:
+      name: "<white>Grace after a warning"
+      lore: ["<gray>Seconds before the same check", "<gray>counts again after a warning."]
     auto-punish:
       name: "<white>Punish automatically"
       lore: ["<gray>Very clear cases get the punishment", "<gray>of the category below."]
@@ -1893,11 +1911,14 @@ panel:
   flagged-row: "<red><bold>Marked by the anti-cheat</bold> <gray>→"
   flag-name: "<red><bold>{player}</bold> <gray>({score} points)"
   flag-check: "<gray>{check}: <white>{vl}"
+  flag-points: "<gray>Points: <white>{points}</white>/<white>{limit}"
+  flag-watched: "<gold>👁 Watched"
+  flag-name-watched: "<gold>👁 <red><bold>{player}</bold>"
+  flag-actions: ["<#ffc371>Click: take the case (invisible,", "<#ffc371>ghost mode, go to the player)", "<#ffc371>Right-click: watch or stop watching", "<red>Shift-click: remove the mark"]
   flag-online: "<green>Online"
   flag-offline: "<dark_gray>Offline"
   flag-handler: "<gold>Being looked at by {staff}"
   flag-punished: "<red>Already punished automatically"
-  flag-actions: ["<#ffc371>Click: take the case (invisible,", "<#ffc371>ghost mode, go to the player)", "<red>Shift-click: remove the mark"]
   ticket-name: "<white>#{id} <#ffc371>{reason}</#ffc371> <gray>from {player}"
   ticket-lore: ["<gray>{text}", "", "<gray>State: <white>{state}", "<gray>Handled by: <white>{handler}", "", "<#ffc371>Click to open"]
   ticket-state:
@@ -1915,11 +1936,26 @@ panel:
   close: "<red>Close"
 
 anticheat:
-  alert: "<red>⚠ <white>{player}</white> <gray>{check} <white>({vl})</white> <dark_gray>{detail}</dark_gray> <gray>Click to take the case."
-  punished: "<red><white>{player}</white> was punished automatically for {check}: {punishment}."
+  warn-title: "<red><bold>⚠ ANTI-CHEAT ⚠</bold>"
+  warn-subtitle: "<white>{check} is not allowed here!"
+  warn-chat: "<red><bold>Careful!</bold> <white>{check}</white> <gray>is not allowed on this server. You have <white>{points}</white> of <white>{limit}</white> points. At <white>{limit}</white> you are punished. This was your warning."
+  alert: "<red>⚠ <white>{player}</white> <gray>{check} <white>+{points}</white> <dark_gray>({total}/{limit}) {detail}</dark_gray> <gray>Click to take the case."
+  alert-watched: "<gold>👁 <white>{player}</white> <gray>{check} <white>+{points}</white> <dark_gray>({total}/{limit}) {detail}</dark_gray> <gray>Click to take the case."
+  caught: "<red><bold>Caught:</bold> <white>{player}</white> <gray>({checks}) → <white>{step}</white>"
+  kicked: "<red><bold>Anti-cheat</bold>\n\n<gray>{reason}"
+  playbanned: "<red>The anti-cheat gave you a PlayBan for <white>{time}</white>. Others do not see you and you do not see them. <gray>Unfair? <white>/ticket</white>"
+  reason: "Anti-cheat: {checks}"
+  antibot-on: "<red>⚠ Many new accounts at once: bot protection is on for 2 minutes. Only players who were here before can join."
+  antibot-kick: "<red>Too many players are joining right now.\n<gray>Please try again in a few minutes."
+  watched-join: "<gold>👁 <white>{player}</white> <gray>is on the watch list and just joined."
+  now-watched: "<gold>👁 <white>{player}</white> <gray>is watched now: points count one and a half, every finding is reported."
+  not-watched: "<gray><white>{player}</white> is no longer watched."
+  reset: "<gray>The points of <white>{player}</white> are back to 0."
+  points-header: "<gray><white>{player}</white>: <white>{total}</white>/<white>{limit}</white> points, watched: <white>{watched}</white>"
+  points-line: "<gray> {check}: <white>{points}"
   header: "<gradient:#ff5f6d:#ffc371>Anti-cheat</gradient> <gray>({count} marked)"
-  line: "<white>{player}</white> <gray>{score} points: {checks}"
-  unknown: "<red><white>{player}</white> is not marked."
+  line: "<white>{player}</white> <gray>{score}/{limit} {watched}"
+  unknown: "<red>No player called <white>{player}</white> is known."
   cleared: "<gray>The mark of <white>{player}</white> is gone."
   check:
     fly: "Flying"
@@ -1930,7 +1966,30 @@ anticheat:
     nofall: "No fall damage"
     velocity: "No knockback"
     xray: "X-ray (ores)"
+    timer: "Timer"
+    step: "Step"
+    jesus: "Walking on water"
+    fastbreak: "Fast break"
+    nuker: "Nuker"
+    scaffold: "Scaffold / fast place"
+    noslow: "No slowdown"
+    badpackets: "Impossible movement"
+    autototem: "Auto totem"
+    anchor: "Anchor macro"
+    crystal: "Crystal macro"
+    bot: "Bot"
   detail:
     hover: "hangs in the air"
     rise: "rises without help"
     multi: "two targets at once"
+    wall: "through a wall"
+    no-brand: "no client name"
+    instant-chat: "writes the moment they join"
+    chat-wave: "same message as several others"
+
+end-teleport:
+  LAST: "where they were before"
+  SPAWN: "spawn"
+  HOME: "their home"
+  LOCATION: "a fixed place"
+  NONE: "stay where they are"

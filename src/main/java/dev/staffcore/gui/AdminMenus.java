@@ -807,6 +807,27 @@ public final class AdminMenus {
             plugin.saveConfig();
             settings(p);
         });
+        // where a PlayBan sends the player when it is over
+        String end = plugin.getConfig().getString("playban.end-teleport", "LAST").toUpperCase();
+        String endWhere = !end.equals("LOCATION") ? "" : plugin.getConfig().getString("playban.end-location.world", "?") + " "
+                + (int) plugin.getConfig().getDouble("playban.end-location.x") + " " + (int) plugin.getConfig().getDouble("playban.end-location.y")
+                + " " + (int) plugin.getConfig().getDouble("playban.end-location.z");
+        m.set(44, item(Material.ENDER_PEARL, "menu.settings.end-teleport", "value", lang().raw("end-teleport." + end), "where", endWhere), e -> {
+            if (e.isShiftClick()) {
+                org.bukkit.Location l = p.getLocation();
+                plugin.getConfig().set("playban.end-teleport", "LOCATION");
+                plugin.getConfig().set("playban.end-location.world", l.getWorld().getName());
+                plugin.getConfig().set("playban.end-location.x", l.getX());
+                plugin.getConfig().set("playban.end-location.y", l.getY());
+                plugin.getConfig().set("playban.end-location.z", l.getZ());
+                plugin.getConfig().set("playban.end-location.yaw", (double) l.getYaw());
+            } else {
+                List<String> modes = List.of("LAST", "SPAWN", "HOME", "LOCATION", "NONE");
+                plugin.getConfig().set("playban.end-teleport", modes.get((Math.max(0, modes.indexOf(end)) + 1) % modes.size()));
+            }
+            plugin.saveConfig();
+            settings(p);
+        });
         m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
         m.fill().open(p);
     }

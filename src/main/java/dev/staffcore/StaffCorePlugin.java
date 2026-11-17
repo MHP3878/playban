@@ -256,7 +256,11 @@ public class StaffCorePlugin extends JavaPlugin {
                 .command(new dev.staffcore.module.ModuleManager.Cmd("anticheat", "Players the anti-cheat marked", "staffcore.anticheat", antiCheat,
                         java.util.List.of("ac")))
                 .setting("anticheat.auto-punish", BOOL, org.bukkit.Material.ANVIL, true)
-                .setting("anticheat.category", TEXT, org.bukkit.Material.LECTERN, "cheating")
+                .setting("anticheat.limit", CYCLE, org.bukkit.Material.TARGET, 25, 15, 20, 25, 35, 50)
+                .setting("anticheat.animation", CYCLE, org.bukkit.Material.MACE, "random", "random", "blackhole", "mace", "lightning", "none")
+                .setting("anticheat.auto-watch", BOOL, org.bukkit.Material.ENDER_EYE, true)
+                .setting("anticheat.watch-multiplier", CYCLE, org.bukkit.Material.SPYGLASS, 1.5, 1.0, 1.25, 1.5, 2.0)
+                .setting("anticheat.grace-seconds", CYCLE, org.bukkit.Material.CLOCK, 6, 3, 6, 10)
                 .setting("anticheat.speed-limit", CYCLE, org.bukkit.Material.SUGAR, 9.5, 8.5, 9.5, 11.0, 13.0)
                 .setting("anticheat.max-ping", CYCLE, org.bukkit.Material.CLOCK, 300, 200, 300, 500)
                 .setting("anticheat.max-cps", CYCLE, org.bukkit.Material.STONE_BUTTON, 22, 18, 22, 26);

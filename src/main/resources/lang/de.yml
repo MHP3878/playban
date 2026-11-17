@@ -1450,6 +1450,9 @@ menu:
     ban-screen:
       name: "<#ffc371>Bann-Bildschirm"
       lore: ["<gray>Was ein gebannter Spieler sieht,", "<gray>und dein Discord-Link.", "", "<#ffc371>Klicken zum Bearbeiten"]
+    end-teleport:
+      name: "<#ffc371>PlayBan vorbei: wohin"
+      lore: ["<gray>Jetzt: <white>{value}</white> {where}", "", "<#ffc371>Klick: ändern", "<#ffc371>Shift + Klick: hier, wo ich stehe"]
     limbo-location:
       name: "<#ffc371>Zuschauer-Bann: Ort"
       lore: ["<gray>Hier hängen Spieler mit", "<gray>Zuschauer-Bann fest: <white>{value}", "", "<#ffc371>Klick: meinen jetzigen Standort nehmen", "<red>Shift + Klick: zurück zum Welt-Spawn"]
@@ -1784,6 +1787,21 @@ module:
 
 module-setting:
   anticheat:
+    limit:
+      name: "<white>Punktegrenze"
+      lore: ["<gray>Wer sie erreicht, ist erwischt."]
+    animation:
+      name: "<white>Animation"
+      lore: ["<gray>Was alle sehen, wenn jemand", "<gray>erwischt wird."]
+    auto-watch:
+      name: "<white>Markierte beobachten"
+      lore: ["<gray>Markierte Spieler werden", "<gray>automatisch beobachtet."]
+    watch-multiplier:
+      name: "<white>Punkte bei Beobachtung"
+      lore: ["<gray>Beobachtete Spieler bekommen", "<gray>so viel mal die Punkte."]
+    grace-seconds:
+      name: "<white>Schonfrist nach Warnung"
+      lore: ["<gray>Sekunden, bis derselbe Check nach", "<gray>einer Warnung wieder zählt."]
     auto-punish:
       name: "<white>Automatisch bestrafen"
       lore: ["<gray>Sehr klare Fälle bekommen die Strafe", "<gray>der Kategorie unten."]
@@ -1893,11 +1911,14 @@ panel:
   flagged-row: "<red><bold>Vom Anti-Cheat markiert</bold> <gray>→"
   flag-name: "<red><bold>{player}</bold> <gray>({score} Punkte)"
   flag-check: "<gray>{check}: <white>{vl}"
+  flag-points: "<gray>Punkte: <white>{points}</white>/<white>{limit}"
+  flag-watched: "<gold>👁 Unter Beobachtung"
+  flag-name-watched: "<gold>👁 <red><bold>{player}</bold>"
+  flag-actions: ["<#ffc371>Klick: Fall übernehmen (unsichtbar,", "<#ffc371>Geistermodus, zum Spieler)", "<#ffc371>Rechtsklick: beobachten oder nicht mehr", "<red>Shift-Klick: Markierung entfernen"]
   flag-online: "<green>Online"
   flag-offline: "<dark_gray>Offline"
   flag-handler: "<gold>Wird von {staff} angeschaut"
   flag-punished: "<red>Schon automatisch bestraft"
-  flag-actions: ["<#ffc371>Klick: Fall übernehmen (unsichtbar,", "<#ffc371>Geistermodus, zum Spieler)", "<red>Shift-Klick: Markierung entfernen"]
   ticket-name: "<white>#{id} <#ffc371>{reason}</#ffc371> <gray>von {player}"
   ticket-lore: ["<gray>{text}", "", "<gray>Stand: <white>{state}", "<gray>Bearbeitet von: <white>{handler}", "", "<#ffc371>Klick zum Öffnen"]
   ticket-state:
@@ -1915,11 +1936,26 @@ panel:
   close: "<red>Schließen"
 
 anticheat:
-  alert: "<red>⚠ <white>{player}</white> <gray>{check} <white>({vl})</white> <dark_gray>{detail}</dark_gray> <gray>Klick, um den Fall zu übernehmen."
-  punished: "<red><white>{player}</white> wurde automatisch bestraft wegen {check}: {punishment}."
+  warn-title: "<red><bold>⚠ ANTI-CHEAT ⚠</bold>"
+  warn-subtitle: "<white>{check} ist hier nicht erlaubt!"
+  warn-chat: "<red><bold>Achtung!</bold> <white>{check}</white> <gray>ist auf diesem Server nicht erlaubt. Du hast <white>{points}</white> von <white>{limit}</white> Punkten. Bei <white>{limit}</white> wirst du bestraft. Das war deine Warnung."
+  alert: "<red>⚠ <white>{player}</white> <gray>{check} <white>+{points}</white> <dark_gray>({total}/{limit}) {detail}</dark_gray> <gray>Klick, um den Fall zu übernehmen."
+  alert-watched: "<gold>👁 <white>{player}</white> <gray>{check} <white>+{points}</white> <dark_gray>({total}/{limit}) {detail}</dark_gray> <gray>Klick, um den Fall zu übernehmen."
+  caught: "<red><bold>Erwischt:</bold> <white>{player}</white> <gray>({checks}) → <white>{step}</white>"
+  kicked: "<red><bold>Anti-Cheat</bold>\n\n<gray>{reason}"
+  playbanned: "<red>Der Anti-Cheat hat dir einen PlayBan für <white>{time}</white> gegeben. Andere sehen dich nicht und du siehst sie nicht. <gray>Unfair? <white>/ticket</white>"
+  reason: "Anti-Cheat: {checks}"
+  antibot-on: "<red>⚠ Viele neue Accounts auf einmal: Bot-Schutz für 2 Minuten an. Nur Spieler, die schon da waren, können joinen."
+  antibot-kick: "<red>Gerade joinen zu viele Spieler.\n<gray>Bitte versuch es in ein paar Minuten nochmal."
+  watched-join: "<gold>👁 <white>{player}</white> <gray>steht unter Beobachtung und ist gerade gejoint."
+  now-watched: "<gold>👁 <white>{player}</white> <gray>wird jetzt beobachtet: Punkte zählen anderthalbfach, jeder Fund wird gemeldet."
+  not-watched: "<gray><white>{player}</white> wird nicht mehr beobachtet."
+  reset: "<gray>Die Punkte von <white>{player}</white> stehen wieder auf 0."
+  points-header: "<gray><white>{player}</white>: <white>{total}</white>/<white>{limit}</white> Punkte, beobachtet: <white>{watched}</white>"
+  points-line: "<gray> {check}: <white>{points}"
   header: "<gradient:#ff5f6d:#ffc371>Anti-Cheat</gradient> <gray>({count} markiert)"
-  line: "<white>{player}</white> <gray>{score} Punkte: {checks}"
-  unknown: "<red><white>{player}</white> ist nicht markiert."
+  line: "<white>{player}</white> <gray>{score}/{limit} {watched}"
+  unknown: "<red>Ein Spieler namens <white>{player}</white> ist nicht bekannt."
   cleared: "<gray>Die Markierung von <white>{player}</white> ist weg."
   check:
     fly: "Fliegen"
@@ -1930,7 +1966,30 @@ anticheat:
     nofall: "Kein Fallschaden"
     velocity: "Kein Rückstoß"
     xray: "X-Ray (Erze)"
+    timer: "Timer"
+    step: "Step"
+    jesus: "Auf Wasser laufen"
+    fastbreak: "Schnellabbau"
+    nuker: "Nuker"
+    scaffold: "Scaffold / Schnellbau"
+    noslow: "Kein Verlangsamen"
+    badpackets: "Unmögliche Bewegung"
+    autototem: "Auto-Totem"
+    anchor: "Anchor-Makro"
+    crystal: "Kristall-Makro"
+    bot: "Bot"
   detail:
     hover: "schwebt in der Luft"
     rise: "steigt ohne Hilfe"
     multi: "zwei Ziele gleichzeitig"
+    wall: "durch eine Wand"
+    no-brand: "kein Client-Name"
+    instant-chat: "schreibt sofort nach dem Join"
+    chat-wave: "gleiche Nachricht wie mehrere andere"
+
+end-teleport:
+  LAST: "wo er vorher war"
+  SPAWN: "Spawn"
+  HOME: "sein Home"
+  LOCATION: "ein fester Ort"
+  NONE: "bleibt, wo er ist"

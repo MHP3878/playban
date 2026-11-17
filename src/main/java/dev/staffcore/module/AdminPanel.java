@@ -130,7 +130,10 @@ public final class AdminPanel implements TabExecutor, Listener {
         for (int i = 0; i < Math.min(7, flagged.size()); i++) {
             AntiCheat.Suspect s = flagged.get(i);
             m.set(28 + i, suspectItem(s), e -> {
-                if (e.isShiftClick()) {
+                if (e.isRightClick() && !e.isShiftClick()) {
+                    plugin.antiCheat().setWatched(s.id, s.name, !s.watched, p.getName());
+                    main(p);
+                } else if (e.isShiftClick()) {
                     plugin.antiCheat().dismiss(s.id, p.getName());
                     main(p);
                 } else takeCase(p, s.id);
@@ -145,6 +148,8 @@ public final class AdminPanel implements TabExecutor, Listener {
 
     private org.bukkit.inventory.ItemStack suspectItem(AntiCheat.Suspect s) {
         List<Component> lore = new ArrayList<>();
+        lore.add(lang().msg("panel.flag-points", "points", (int) Math.round(plugin.antiCheat().total(s.id)), "limit", (int) plugin.antiCheat().limit()));
+        if (s.watched) lore.add(lang().msg("panel.flag-watched"));
         for (Map.Entry<String, Double> c : s.checks.entrySet()) {
             lore.add(lang().msg("panel.flag-check", "check", lang().raw("anticheat.check." + c.getKey()), "vl", (int) Math.round(c.getValue())));
         }
@@ -155,7 +160,7 @@ public final class AdminPanel implements TabExecutor, Listener {
         lore.add(Component.empty());
         lore.addAll(lang().lore("panel.flag-actions"));
         OfflinePlayer op = Bukkit.getOfflinePlayer(s.id);
-        return Items.head(op, lang().msg("panel.flag-name", "player", s.name, "score", (int) Math.round(s.score())), lore);
+        return Items.head(op, lang().msg(s.watched ? "panel.flag-name-watched" : "panel.flag-name", "player", s.name), lore);
     }
 
     /** Takes a marked player's case: admin mode, invisible, ghost mode, and off to the player. */
@@ -192,7 +197,10 @@ public final class AdminPanel implements TabExecutor, Listener {
                     "state", lang().raw("panel.ticket-state." + t.status.name().toLowerCase()), "handler", t.handler == null ? "-" : t.handler));
         }, (en, e) -> {
             if (en.suspect() != null) {
-                if (e.isShiftClick()) {
+                if (e.isRightClick() && !e.isShiftClick()) {
+                    plugin.antiCheat().setWatched(en.suspect().id, en.suspect().name, !en.suspect().watched, p.getName());
+                    inbox(p, page);
+                } else if (e.isShiftClick()) {
                     plugin.antiCheat().dismiss(en.suspect().id, p.getName());
                     inbox(p, page);
                 } else takeCase(p, en.suspect().id);

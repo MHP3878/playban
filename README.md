@@ -115,14 +115,38 @@ Admin items cannot get their own tab in the creative inventory: those tabs come 
 
 ## Anti-cheat
 
-The anti-cheat checks flying (hanging in the air, rising without help), speed, reach (to the hitbox, with room for ping), kill aura (hits behind you, two targets at once), auto clickers, no fall damage, no knockback and x-ray by the share of diamond ore and ancient debris among mined stone. Each check gives points that fade again over time.
+**Points.** Every finding gives points by how clear it is, and the limit is **25**:
 
-- A few points **mark** the player: the team gets a clickable alert and the player appears in `/admin`.
-- Only many points from a clear check (flying, speed, reach, kill aura, no fall, no knockback) **punish** automatically, through the next step of the `cheating` category. Auto clicker and x-ray never punish on their own.
-- Lag never counts: below `min-tps` (18) and above `max-ping` (300) movement is not judged. Creative, spectators, admin mode, vanished, frozen and punished players and `staffcore.anticheat.bypass` (nobody has it by default, ops neither) are not checked. Teleports, knockback, explosions, ice, water, ladders, cobwebs, slime, effects, elytra and vehicles are taken into account.
-- Every threshold can be changed per check under `anticheat.checks`, auto-punish, category, speed limit, ping and clicks per second also in the module settings. `/anticheat` lists marked players, `/anticheat clear <player>` removes a mark.
+| Finding | Points |
+|---|---|
+| Flying (hanging in the air, rising without help), walking on water, impossible head angles | 20 / 15 / 20 at once |
+| No fall damage | 6 (6-10 blocks), 12 (10-20), 20 (more) |
+| Speed | 1.5 to 20, by how far over the limit (15 %, 40 %, double) |
+| Reach | 1 to 12, by how far beyond reach plus ping room |
+| Kill aura | hits behind you 2-8, through walls 3, snap turns 1.5-3, two targets at once 1 |
+| No knockback | 4-8 after four hits in a row without moving |
+| Timer (too many movement packets) | 2 / 6 / 15 |
+| Step | 4 (more than a slab), 10 (a full block) |
+| Fast break | 1.5 / 4 / 8 by how much faster than tool, enchantments and haste allow |
+| Nuker | 5-15 for many hard blocks per second, 2-6 for blocks out of reach |
+| Scaffold / fast place | 2-5 for bridging under you without looking down, 3-10 for too many blocks per second |
+| No slowdown while eating or drawing a bow | 3 / 6 |
+| Auto totem | 4 (back in the off hand after 1 tick), 2 (2 ticks), 1 (3 ticks), 0 (slower) |
+| Anchor and crystal macros | 1-3 by how fast place, charge and blow up follow each other |
+| Auto clicker | 1 / 3 / 6 per second above the clicks limit |
+| X-ray (share of diamond ore and ancient debris) and bot signs | mark only, they never reach the limit alone |
 
-The anti-cheat is careful by design. Test it with your own clients before you rely on auto-punish; if it is too strict or too lax, change the numbers.
+- **A clear finding (10 points and more)** shows a big warning ("Flying is not allowed here", points so far) and the same check waits `grace-seconds` (6) before it counts again, so a slow landing is not counted twice. Whoever carries on goes over the limit.
+- **From 8 points** the player is marked for the team (`/admin`) and put on the **watch list**: their points count one and a half, every finding is reported at once, the team is told when they join. Admins put players on it by hand with `/anticheat watch <player>` or a right-click in `/admin`.
+- **At 25 points** the player is **caught**: everybody around sees an animation (a black hole that pulls them up and swallows them, a giant mace falling from the sky, or a lightning cage; `animation: random`), then the next step of the **ladder**: PlayBan 5 minutes the first time, PlayBan 1 hour the second, then the cheating category. The points start fresh after that.
+- Points fade by one every minute.
+- **Bots:** more than 6 new accounts within 10 seconds turn on bot protection for 2 minutes (only known players can join). Writing the moment you join, the same message as several others, or a client that does not say what it is give bot points.
+- Lag never counts: below `min-tps` (18) and above `max-ping` (300) movement is not judged. Creative, spectators, admin mode, vanished, frozen and punished players and `staffcore.anticheat.bypass` (nobody has it by default, ops neither) are not checked. Teleports, knockback, explosions, ice, water, ladders, cobwebs, slime, pistons, effects, elytra and vehicles are taken into account.
+- `/anticheat` lists marked players, `/anticheat points <player>` shows the account per check, `watch`, `unwatch`, `reset` and `clear` do what they say. Limit, animation, watching, grace, speed limit, ping and clicks per second are in the module settings, every check can be switched off or weighted under `anticheat.checks`.
+
+Test it with your own clients before you rely on it; if something is too strict or too lax, change the weight of that check.
+
+**PlayBan both ways.** A PlayBan hides the player from everybody and everybody from the player (the team stays visible to them; `restrictions.hide-others`). When it is over the player is sent back: `playban.end-teleport` LAST (where they were before), SPAWN, HOME, LOCATION (`playban.end-location`) or NONE, also in Settings (shift-click there: the place where you stand).
 
 ## Modules
 

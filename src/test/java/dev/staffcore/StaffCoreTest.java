@@ -97,7 +97,8 @@ class StaffCoreTest {
         punish("1h");
         assertFalse(bystander.canSee(troll), "normal players must not see the punished player");
         assertTrue(admin.canSee(troll), "staff still sees the punished player");
-        assertTrue(troll.canSee(bystander), "the punished player still sees others");
+        assertFalse(troll.canSee(bystander), "a PlayBan works both ways: the punished player sees nobody");
+        assertTrue(troll.canSee(admin), "except the team");
 
         PlayerMock late = server.addPlayer("LateJoiner");
         server.getScheduler().performTicks(30);
@@ -3017,28 +3018,108 @@ class StaffCoreTest {
         assertFalse(normal.isCancelled(), "players are not affected by this; their permission check answers");
     }
 
+    private boolean punishedOrBanned(PlayerMock p) {
+        return plugin.punishments().isPunished(p.getUniqueId()) || plugin.store().bans.containsKey(p.getUniqueId());
+    }
+
     @Test
-    void antiCheatMarksFirstAndPunishesOnlyClearCases() {
+    void antiCheatPointsMarkWarnAndCatch() {
         var ac = plugin.antiCheat();
-        ac.violation(troll, "reach", 3, "3.9");
+        ac.flag(troll, "reach", 3, "3.9");
+        assertEquals(3, ac.total(troll.getUniqueId()), 0.01);
         assertNull(ac.suspect(troll.getUniqueId()), "a few points are not enough");
-        ac.violation(troll, "reach", 4, "4.1");
-        assertNotNull(ac.suspect(troll.getUniqueId()), "marked for the team");
-        assertFalse(plugin.punishments().isPunished(troll.getUniqueId()) || plugin.store().bans.containsKey(troll.getUniqueId()));
-        ac.violation(troll, "reach", 20, "5.0");
-        assertTrue(plugin.punishments().isPunished(troll.getUniqueId()) || plugin.store().bans.containsKey(troll.getUniqueId()),
-                "very clear: punished by the cheating category");
-        // auto clicker and x-ray never punish on their own
-        ac.violation(bystander, "autoclick", 100, "40 CPS");
-        assertNotNull(ac.suspect(bystander.getUniqueId()));
-        assertFalse(plugin.punishments().isPunished(bystander.getUniqueId()) || plugin.store().bans.containsKey(bystander.getUniqueId()));
-        // creative players and the bypass permission are never checked
+        ac.flag(troll, "reach", 6, "4.4");
+        assertNotNull(ac.suspect(troll.getUniqueId()), "marked for the team from 8 points");
+        assertTrue(ac.watched(troll.getUniqueId()), "and watched from now on");
+        ac.flag(troll, "reach", 2, "3.8");
+        assertEquals(12, ac.total(troll.getUniqueId()), 0.01, "watched: points count one and a half");
+        assertFalse(punishedOrBanned(troll));
+        ac.flag(troll, "fly", 20, "hover");
+        server.getScheduler().performTicks(80);
+        assertTrue(plugin.punishments().isPunished(troll.getUniqueId()), "over 25: caught, PlayBan after the animation");
+        assertEquals("PLAYBAN", plugin.punishments().get(troll.getUniqueId()).type);
+        assertEquals(5 * 60_000L, plugin.punishments().get(troll.getUniqueId()).originalMs, "first time: 5 minutes");
+        assertEquals(0, ac.total(troll.getUniqueId()), 0.01, "the account starts fresh");
+    }
+
+    @Test
+    void aClearFindingWarnsAndGivesAChance() {
+        var ac = plugin.antiCheat();
+        ac.flag(bystander, "fly", 20, "hover");
+        assertEquals(20, ac.total(bystander.getUniqueId()), 0.01);
+        ac.flag(bystander, "fly", 20, "hover");
+        assertEquals(20, ac.total(bystander.getUniqueId()), 0.01, "slow to land: the same check waits a few seconds");
+        server.getScheduler().performTicks(80);
+        assertFalse(punishedOrBanned(bystander), "20 of 25: only the warning");
+        boolean warned = false;
+        Component m;
+        while ((m = bystander.nextComponentMessage()) != null) if (plain(m).contains("not allowed")) warned = true;
+        assertTrue(warned, "a big warning in chat");
+        // x-ray and bot signs alone never reach the limit
+        ac.flag(troll, "xray", 100, null);
+        server.getScheduler().performTicks(80);
+        assertFalse(punishedOrBanned(troll));
+        assertNotNull(ac.suspect(troll.getUniqueId()));
+        // creative players are never checked
         PlayerMock builder = server.addPlayer("Builder");
         builder.setGameMode(org.bukkit.GameMode.CREATIVE);
-        ac.violation(builder, "fly", 100, null);
-        assertNull(ac.suspect(builder.getUniqueId()));
-        ac.dismiss(bystander.getUniqueId(), "Admin");
-        assertNull(ac.suspect(bystander.getUniqueId()));
+        ac.flag(builder, "fly", 100, null);
+        assertEquals(0, ac.total(builder.getUniqueId()), 0.01);
+    }
+
+    @Test
+    void totemSpeedGivesGradedPoints() {
+        var ac = plugin.antiCheat();
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityResurrectEvent(troll, org.bukkit.inventory.EquipmentSlot.OFF_HAND));
+        troll.getInventory().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
+        server.getScheduler().performTicks(2);
+        assertEquals(4, ac.points(troll.getUniqueId(), "autototem"), 0.01, "back after one tick: 4 points");
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityResurrectEvent(bystander, org.bukkit.inventory.EquipmentSlot.OFF_HAND));
+        bystander.getInventory().setItemInOffHand(null);
+        server.getScheduler().performTicks(2);
+        bystander.getInventory().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
+        server.getScheduler().performTicks(2);
+        assertEquals(1, ac.points(bystander.getUniqueId(), "autototem"), 0.01, "after three ticks: 1 point");
+        PlayerMock slow = server.addPlayer("Slow");
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityResurrectEvent(slow, org.bukkit.inventory.EquipmentSlot.OFF_HAND));
+        server.getScheduler().performTicks(5);
+        slow.getInventory().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
+        server.getScheduler().performTicks(2);
+        assertEquals(0, ac.points(slow.getUniqueId(), "autototem"), 0.01, "a human speed: nothing");
+    }
+
+    @Test
+    void adminsCanWatchPlayers() {
+        assertTrue(admin.performCommand("anticheat watch Bystander"));
+        assertTrue(plugin.antiCheat().watched(bystander.getUniqueId()));
+        plugin.antiCheat().flag(bystander, "reach", 2, null);
+        assertEquals(3, plugin.antiCheat().total(bystander.getUniqueId()), 0.01);
+        admin.performCommand("anticheat unwatch Bystander");
+        assertFalse(plugin.antiCheat().watched(bystander.getUniqueId()));
+    }
+
+    @Test
+    void playBanWorksBothWaysAndSendsBackAtTheEnd() {
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 123.5, 70, 45.5));
+        Punishment p = punish("10m");
+        assertNotNull(p);
+        server.getScheduler().performTicks(5);
+        assertFalse(troll.canSee(bystander), "the punished player sees nobody");
+        assertFalse(bystander.canSee(troll), "and nobody sees them");
+        troll.teleport(new org.bukkit.Location(w, 500, 70, 500));
+        plugin.punishments().end(p, "PARDONED", "Admin");
+        assertEquals(123, troll.getLocation().getBlockX(), "back where they were before");
+        server.getScheduler().performTicks(2);
+        assertTrue(troll.canSee(bystander), "and sees everybody again");
+        plugin.getConfig().set("playban.end-teleport", "LOCATION");
+        plugin.getConfig().set("playban.end-location.world", w.getName());
+        plugin.getConfig().set("playban.end-location.x", 7.5);
+        plugin.getConfig().set("playban.end-location.y", 80);
+        plugin.getConfig().set("playban.end-location.z", 7.5);
+        Punishment again = punish("10m");
+        plugin.punishments().end(again, "PARDONED", "Admin");
+        assertEquals(7, troll.getLocation().getBlockX(), "or to a fixed place");
     }
 
     @Test
@@ -3050,7 +3131,8 @@ class StaffCoreTest {
             server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(troll, bystander, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                     org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1));
         }
-        assertNotNull(plugin.antiCheat().suspect(troll.getUniqueId()), "hits from 7 blocks away are reach");
+        assertTrue(plugin.antiCheat().points(troll.getUniqueId(), "reach") > 0 || plugin.punishments().isPunished(troll.getUniqueId())
+                || plugin.antiCheat().suspect(troll.getUniqueId()) != null, "hits from 7 blocks away are reach");
         admin.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5));
         bystander.teleport(new org.bukkit.Location(w, 2.5, 70, 0.5));
         for (int i = 0; i < 30; i++) {
@@ -3064,7 +3146,7 @@ class StaffCoreTest {
     void takingACaseMakesYouAnInvisibleGhostAtThePlayer() {
         var w = troll.getWorld();
         troll.teleport(new org.bukkit.Location(w, 400.5, 70, 400.5));
-        plugin.antiCheat().violation(troll, "fly", 10, null);
+        plugin.antiCheat().flag(troll, "reach", 9, null);
         assertTrue(admin.performCommand("admin"));
         assertNoMissingTexts(admin, "en");
         admin.simulateInventoryClick(28);

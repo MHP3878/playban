@@ -251,27 +251,71 @@ admin-panel:
     appeal: 50
 
 # ---- Anti-cheat ----
-# Marks suspicious players for the team (/admin inbox). Only very clear cases are punished, through the category below.
+# Every finding gives points by how clear it is (a totem back after 1 tick: 4, after 3 ticks: 1; flying: 20).
+# Whoever reaches the limit is caught: an animation for everybody around, then the next step of the ladder.
 anticheat:
   enabled: true
   auto-punish: true
-  category: cheating
-  # below this TPS and above this ping the movement checks stay quiet, so lag never gets anyone punished
+  limit: 25
+  # from this many points the player is marked for the team (/admin) and, with auto-watch, watched
+  mark-at: 8
+  auto-watch: true
+  # watched players get this many times the points
+  watch-multiplier: 1.5
+  # after a big finding (10 points and more): a loud warning and this many seconds before the same check counts again
+  grace-seconds: 6
+  # one point fades every this many seconds
+  fade-seconds: 60
+  # what happens the 1st, 2nd, 3rd ... time somebody is caught. PLAYBAN <time>, BAN <time|perm>, KICK, CATEGORY <id>
+  ladder:
+    - PLAYBAN 5m
+    - PLAYBAN 1h
+    - CATEGORY cheating
+  # blackhole, mace, lightning, random or none
+  animation: random
+  # below this TPS and above this ping movement is not judged, so lag never gets anyone punished
   min-tps: 18
   max-ping: 300
   # blocks per second on foot, before effects and ice
   speed-limit: 9.5
   max-cps: 22
+  # movement packets per second (timer)
+  max-packets: 23
   # x-ray: at least this many diamond ores or ancient debris in 30 minutes, and this share of all mined stone
   xray-ores: 10
   xray-ratio: 0.06
-  # per check: enabled, points to be marked (flag), points to be punished (punish, 0 = never)
+  # more than this many new accounts within 10 seconds: for 2 minutes only known players may join
+  bot-joins: 6
+  # per check: enabled, and a weight for its points (1.0 = as described)
   checks:
-    fly: {enabled: true, flag: 8, punish: 30}
-    speed: {enabled: true, flag: 8, punish: 30}
-    reach: {enabled: true, flag: 6, punish: 20}
-    aura: {enabled: true, flag: 5, punish: 15}
-    autoclick: {enabled: true, flag: 4, punish: 0}
-    nofall: {enabled: true, flag: 4, punish: 15}
-    velocity: {enabled: true, flag: 3, punish: 12}
-    xray: {enabled: true, flag: 1, punish: 0}
+    fly: {enabled: true, weight: 1.0}
+    speed: {enabled: true, weight: 1.0}
+    reach: {enabled: true, weight: 1.0}
+    aura: {enabled: true, weight: 1.0}
+    autoclick: {enabled: true, weight: 1.0}
+    nofall: {enabled: true, weight: 1.0}
+    velocity: {enabled: true, weight: 1.0}
+    xray: {enabled: true, weight: 1.0}
+    timer: {enabled: true, weight: 1.0}
+    step: {enabled: true, weight: 1.0}
+    jesus: {enabled: true, weight: 1.0}
+    fastbreak: {enabled: true, weight: 1.0}
+    nuker: {enabled: true, weight: 1.0}
+    scaffold: {enabled: true, weight: 1.0}
+    noslow: {enabled: true, weight: 1.0}
+    badpackets: {enabled: true, weight: 1.0}
+    autototem: {enabled: true, weight: 1.0}
+    anchor: {enabled: true, weight: 1.0}
+    crystal: {enabled: true, weight: 1.0}
+    bot: {enabled: true, weight: 1.0}
+
+# ---- PlayBan ----
+playban:
+  # where the player goes when the PlayBan is over: LAST (where they were before), SPAWN, HOME, LOCATION or NONE
+  end-teleport: LAST
+  end-location:
+    world: world
+    x: 0
+    y: 100
+    z: 0
+    yaw: 0

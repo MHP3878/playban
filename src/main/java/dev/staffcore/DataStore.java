@@ -296,10 +296,8 @@ public final class DataStore {
         if (p.ipHash != null) cfg.set(path + ".ip", p.ipHash);
         if (p.category != null) cfg.set(path + ".category", p.category);
         if (p.expiresAt > 0) cfg.set(path + ".expires", p.expiresAt);
-        if (p.prevMode != null) {
-            cfg.set(path + ".prev-mode", p.prevMode);
-            cfg.set(path + ".prev-location", p.prevLocation);
-        }
+        if (p.prevMode != null) cfg.set(path + ".prev-mode", p.prevMode);
+        if (p.prevLocation != null) cfg.set(path + ".prev-location", p.prevLocation);
         if (p.prevGameMode != null) cfg.set(path + ".prev-gamemode", p.prevGameMode);
         if (p.storedInventory != null) cfg.set(path + ".stored-inventory", p.storedInventory);
         if (p.inventoryCleared) cfg.set(path + ".inventory-cleared", true);

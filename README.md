@@ -115,7 +115,7 @@ Admin items cannot get their own tab in the creative inventory: those tabs come 
 
 ## Anti-cheat
 
-**Points.** Every finding gives points by how clear it is, and the limit is **25**:
+**Points.** Every finding is measured, and the points grow smoothly with how far it lies outside what people can do: just over the human limit gives half a point or two, clearly over gives more, and at the point where it is plainly a cheat the full points. So a player 10 % too fast gets about 2 points, 50 % too fast about 10, twice as fast all 20. The limit is **25**:
 
 | Finding | Points |
 |---|---|
@@ -138,6 +138,8 @@ Admin items cannot get their own tab in the creative inventory: those tabs come 
 | Criticals | 3 for a critical hit while standing on the ground |
 | Inventory while running | 2 for clicking in your own inventory while sprinting, three times |
 | Fast bow | 4-8 for three and more full shots in one second |
+| Sudden aim jump | up to 6: the mouse stood still, then jumped 40° and more in a single tick right before a hit, a block break or a placed block |
+| Mining like a bot | up to 10: always dead on the middle of the block (people are a few degrees off) and the very same rhythm block after block |
 | X-ray (share of diamond ore and ancient debris) and bot signs | mark only, they never reach the limit alone |
 
 - **A clear finding (10 points and more)** shows a big warning ("Flying is not allowed here", points so far) and the same check waits `grace-seconds` (6) before it counts again, so a slow landing is not counted twice. Whoever carries on goes over the limit.
@@ -146,6 +148,7 @@ Admin items cannot get their own tab in the creative inventory: those tabs come 
 - Points fade by one every minute.
 - **Bots:** more than 6 new accounts within 10 seconds turn on bot protection for 2 minutes (only known players can join). Writing the moment you join, the same message as several others, or a client that does not say what it is give bot points.
 - Lag never counts: below `min-tps` (18) and above `max-ping` (300) movement is not judged. Creative, spectators, admin mode, vanished, frozen and punished players and `staffcore.anticheat.bypass` (nobody has it by default, ops neither) are not checked. Teleports, knockback, explosions, ice, water, ladders, cobwebs, slime, pistons, effects, elytra and vehicles are taken into account.
+- **Recording:** every player's movement (position and where they look, every tick) and every action (hit, break, place, totem with its timing) is kept for the last ten seconds. A clear finding saves that as a clip (five per player), being caught also saves it to `anticheat-clips/`. `/anticheat replay <player> [1-5|now|stop]` or the button in `/check` plays it back: a figure with the player's head moves exactly as recorded, actions flash where they happened, and only you see it. Right-click in `/check` records the last ten seconds right now.
 - Alerts are clickable and open `/check`; `/alerts` switches them off and on for yourself.
 - `/anticheat` lists marked players, `/anticheat points <player>` shows the account per check, `watch`, `unwatch`, `reset` and `clear` do what they say. Limit, animation, watching, grace, speed limit, ping and clicks per second are in the module settings, every check can be switched off or weighted under `anticheat.checks`.
 

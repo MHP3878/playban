@@ -1980,6 +1980,8 @@ anticheat:
   unknown: "<red>Ein Spieler namens <white>{player}</white> ist nicht bekannt."
   cleared: "<gray>Die Markierung von <white>{player}</white> ist weg."
   check:
+    snap: "Ruckartiges Einrasten"
+    botmine: "Abbauen wie ein Bot"
     aim: "Zielen (Maus)"
     criticals: "Kritische Treffer"
     invmove: "Inventar beim Laufen"
@@ -2057,6 +2059,8 @@ check:
   alts: "<#ffc371>Andere Accounts"
   tp: "<#ffc371>Unsichtbar hinteleportieren"
   prison: "<dark_gray>Gefängnis 15 Minuten"
+  replay: "<#ffc371>Aufnahme ansehen ({count})"
+  replay-lore: ["<gray>Der letzte gespeicherte Clip als Replay:", "<gray>eine Figur bewegt sich genau wie der Spieler,", "<gray>nur du siehst sie.", "", "<#ffc371>Klick: neuester Clip", "<#ffc371>Rechtsklick: die letzten 10 Sekunden jetzt"]
 
 lag:
   header: "<gradient:#ff5f6d:#ffc371>Server</gradient> <gray>TPS <white>{tps}</white> ({state}) · {mspt} ms pro Tick · {chunks} Chunks · {entities} Entities · {players} Spieler"
@@ -2071,3 +2075,12 @@ announce:
   title: "<gradient:#ff5f6d:#ffc371><bold>Ankündigung</bold></gradient>"
   usage: "<gray>Benutzung: <white>/announce <text></white> oder <white>/announce next</white>"
   empty: "<gray>Die Liste announcer.messages ist leer."
+
+replay:
+  usage: "<gray>Benutzung: <white>/anticheat replay <spieler> [1-5|now|stop]</white>"
+  bar: "<red>Replay: <white>{player}</white> <gray>- {reason}"
+  started: "<gray>Replay von <white>{player}</white>, {seconds} Sekunden. Nur du siehst die Figur. <white>/ac replay {player} stop</white> beendet es."
+  ended: "<gray>Replay vorbei."
+  event: "<#ffc371>{event}"
+  none: "<gray>Von diesem Spieler gibt es keine Aufnahme."
+  live: "gerade aufgenommen"

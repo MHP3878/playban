@@ -3067,25 +3067,88 @@ class StaffCoreTest {
         assertEquals(0, ac.total(builder.getUniqueId()), 0.01);
     }
 
+    private double totemPoints(PlayerMock p, int ticksLater) {
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityResurrectEvent(p, org.bukkit.inventory.EquipmentSlot.OFF_HAND));
+        p.getInventory().setItemInOffHand(null);
+        server.getScheduler().performTicks(ticksLater - 1);
+        p.getInventory().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
+        server.getScheduler().performTicks(2);
+        return plugin.antiCheat().points(p.getUniqueId(), "autototem");
+    }
+
     @Test
     void totemSpeedGivesGradedPoints() {
-        var ac = plugin.antiCheat();
-        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityResurrectEvent(troll, org.bukkit.inventory.EquipmentSlot.OFF_HAND));
-        troll.getInventory().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
-        server.getScheduler().performTicks(2);
-        assertEquals(4, ac.points(troll.getUniqueId(), "autototem"), 0.01, "back after one tick: 4 points");
-        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityResurrectEvent(bystander, org.bukkit.inventory.EquipmentSlot.OFF_HAND));
-        bystander.getInventory().setItemInOffHand(null);
-        server.getScheduler().performTicks(2);
-        bystander.getInventory().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
-        server.getScheduler().performTicks(2);
-        assertEquals(1, ac.points(bystander.getUniqueId(), "autototem"), 0.01, "after three ticks: 1 point");
-        PlayerMock slow = server.addPlayer("Slow");
-        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityResurrectEvent(slow, org.bukkit.inventory.EquipmentSlot.OFF_HAND));
-        server.getScheduler().performTicks(5);
-        slow.getInventory().setItemInOffHand(new ItemStack(Material.TOTEM_OF_UNDYING));
-        server.getScheduler().performTicks(2);
-        assertEquals(0, ac.points(slow.getUniqueId(), "autototem"), 0.01, "a human speed: nothing");
+        double one = totemPoints(troll, 1);
+        double two = totemPoints(bystander, 2);
+        double three = totemPoints(server.addPlayer("Third"), 3);
+        double slow = totemPoints(server.addPlayer("Slow"), 6);
+        assertTrue(one > two && two > three, "the faster, the more points: " + one + " " + two + " " + three);
+        assertTrue(one >= 4, "one tick is clearly a cheat");
+        assertEquals(0, slow, 0.01, "a human speed: nothing");
+    }
+
+    @Test
+    void pointsGrowWithHowInhumanSomethingIs() {
+        assertEquals(0, dev.staffcore.module.AntiCheat.severity(9, 9.5, 19, 20), 0.01, "within what people do: nothing");
+        double slightly = dev.staffcore.module.AntiCheat.severity(10.5, 9.5, 19, 20);
+        double clearly = dev.staffcore.module.AntiCheat.severity(14, 9.5, 19, 20);
+        double extreme = dev.staffcore.module.AntiCheat.severity(30, 9.5, 19, 20);
+        assertTrue(slightly > 0 && slightly < 6, "a bit too fast: a few points, " + slightly);
+        assertTrue(clearly > slightly && clearly < 20, "clearly too fast: more, " + clearly);
+        assertEquals(20, extreme, 0.01, "plainly a cheat: everything");
+    }
+
+    @Test
+    void suddenAimJumpBeforeAHitIsNoticed() {
+        var w = troll.getWorld();
+        var l = new org.bukkit.Location(w, 0.5, 70, 0.5, 0, 0);
+        troll.teleport(l);
+        server.getScheduler().performTicks(80);
+        troll.setRotation(0, 0);
+        server.getScheduler().performTicks(3);
+        troll.setRotation(120, 0);
+        server.getScheduler().performTicks(1);
+        bystander.teleport(new org.bukkit.Location(w, 0.5, 70, 2.5));
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(troll, bystander,
+                org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1));
+        double pts = plugin.antiCheat().points(troll.getUniqueId(), "snap");
+        assertTrue(pts > 0 && pts <= 6, "a jump of 120 degrees in one tick right before the hit: " + pts);
+    }
+
+    @Test
+    void miningDeadCentreInAMachineRhythmIsABot() throws Exception {
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5));
+        for (int i = 0; i < 12; i++) {
+            Block b = w.getBlockAt(0, 71, 3 + i % 2);
+            b.setType(Material.STONE);
+            // look exactly at the middle of the block
+            var eye = troll.getEyeLocation();
+            var look = troll.getLocation().clone();
+            look.setDirection(new org.bukkit.util.Vector(b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5).subtract(eye.toVector()));
+            troll.setRotation(look.getYaw(), look.getPitch());
+            server.getPluginManager().callEvent(new org.bukkit.event.block.BlockDamageEvent(troll, b, troll.getInventory().getItemInMainHand(), false));
+            Thread.sleep(101);
+            server.getPluginManager().callEvent(new BlockBreakEvent(b, troll));
+        }
+        assertTrue(plugin.antiCheat().points(troll.getUniqueId(), "botmine") > 0, "dead centre every time and the same rhythm");
+    }
+
+    @Test
+    void everythingIsRecordedAndCanBeReplayed() {
+        var w = troll.getWorld();
+        for (int i = 0; i < 40; i++) {
+            troll.teleport(new org.bukkit.Location(w, i * 0.2, 70, 0));
+            server.getScheduler().performTicks(1);
+        }
+        plugin.antiCheat().flag(troll, "reach", 9, "test");
+        assertFalse(plugin.antiCheat().clips(troll.getUniqueId()).isEmpty(), "a clear finding keeps the last seconds");
+        var clip = plugin.antiCheat().clips(troll.getUniqueId()).get(0);
+        assertTrue(clip.samples().size() >= 40, "every tick is in it");
+        admin.performCommand("anticheat replay Troll");
+        server.getScheduler().performTicks(60);
+        admin.performCommand("anticheat replay Troll stop");
     }
 
     @Test

@@ -186,6 +186,11 @@ public final class PlayerCheck implements TabExecutor, Listener {
             staff.closeInventory();
             staff.performCommand("prison " + t.getName() + " 15m");
         });
+        int clipCount = ac.clips(t.getUniqueId()).size();
+        m.set(37, Items.of(Material.RECOVERY_COMPASS, lang().msg("check.replay", "count", clipCount), lang().lore("check.replay-lore")), e -> {
+            staff.closeInventory();
+            ac.replay(staff, t.getUniqueId(), e.isRightClick() ? "now" : null);
+        });
         m.set(49, Items.of(Material.BARRIER, lang().msg("panel.close"), List.of()), e -> staff.closeInventory());
         return m.fill();
     }

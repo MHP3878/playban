@@ -313,6 +313,8 @@ anticheat:
     criticals: {enabled: true, weight: 1.0}
     invmove: {enabled: true, weight: 1.0}
     fastbow: {enabled: true, weight: 1.0}
+    snap: {enabled: true, weight: 1.0}
+    botmine: {enabled: true, weight: 1.0}
 
 # ---- PlayBan ----
 playban:

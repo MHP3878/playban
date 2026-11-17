@@ -79,7 +79,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AntiCheat implements Listener, TabExecutor {
     public static final List<String> CHECKS = List.of("fly", "speed", "reach", "aura", "autoclick", "nofall", "velocity", "xray",
             "timer", "step", "jesus", "fastbreak", "nuker", "scaffold", "noslow", "badpackets", "autototem", "anchor", "crystal", "bot",
-            "aim", "criticals", "invmove", "fastbow");
+            "aim", "criticals", "invmove", "fastbow", "snap", "botmine");
     /** Checks that alone never catch anybody: they can only mark. */
     private static final Set<String> SOFT = Set.of("xray", "bot");
 
@@ -151,10 +151,23 @@ public final class AntiCheat implements Listener, TabExecutor {
         boolean special;
         int specialTick = -100;
         final Deque<String> findings = new ArrayDeque<>();
+        /** the recording: the last ten seconds, one sample per tick plus every action */
+        final Deque<Sample> track = new ArrayDeque<>();
+        final Deque<Float> yawSteps = new ArrayDeque<>();
+        final Deque<Double> digAim = new ArrayDeque<>();
+        final Deque<Long> digIntervals = new ArrayDeque<>();
+        long lastBreakAt;
     }
+
+    /** One moment of the recording. event is null for plain movement. */
+    public record Sample(long time, String world, double x, double y, double z, float yaw, float pitch, String event) {}
+
+    /** A saved piece of recording, kept as evidence. */
+    public record Clip(String name, long time, String reason, List<Sample> samples) {}
 
     private final StaffCorePlugin plugin;
     private final Map<UUID, State> states = new HashMap<>();
+    private final Map<UUID, Deque<Clip>> clips = new HashMap<>();
     private final Map<UUID, Suspect> suspects = new LinkedHashMap<>();
     /** the point account: player -> check -> points */
     private final Map<UUID, Map<String, Double>> points = new HashMap<>();
@@ -166,6 +179,7 @@ public final class AntiCheat implements Listener, TabExecutor {
     /** team members who switched the alerts off with /alerts */
     private final Set<UUID> muted = new HashSet<>();
     private final CatchAnimation animation;
+    private final EvidenceReplay replay;
     private BukkitTask task;
     private int ticks;
     // bots
@@ -176,6 +190,7 @@ public final class AntiCheat implements Listener, TabExecutor {
     public AntiCheat(StaffCorePlugin plugin) {
         this.plugin = plugin;
         this.animation = new CatchAnimation(plugin);
+        this.replay = new EvidenceReplay(plugin);
     }
 
     private Lang lang() {
@@ -360,6 +375,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         double total = total(p.getUniqueId());
         String checkName = lang().raw("anticheat.check." + check);
 
+        if (base >= 6) keep(p, checkName + String.format(Locale.ROOT, " +%.1f", amount));
         if (base >= 10) {
             st.grace.put(check, now + plugin.getConfig().getLong("anticheat.grace-seconds", 6) * 1000L);
             p.showTitle(Title.title(lang().msg("anticheat.warn-title"), lang().msg("anticheat.warn-subtitle", "check", checkName),
@@ -451,6 +467,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         String step = ladder.get(Math.min(n, ladder.size()) - 1);
         UUID id = p.getUniqueId();
         String name = p.getName();
+        saveClip(id, keep(p, reason));
         plugin.punishments().notifyStaff(lang().prefixed("anticheat.caught", "player", name, "checks", why.toString(), "step", step));
         Runnable punish = () -> {
             catching.remove(id);
@@ -532,6 +549,7 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     public void stop() {
         if (task != null) task.cancel();
+        replay.stopAll();
         save();
     }
 
@@ -632,6 +650,11 @@ public final class AntiCheat implements Listener, TabExecutor {
             Location loc = p.getLocation();
             Location last = st.last;
             st.last = loc;
+            record(st, loc, null);
+            if (last != null) {
+                st.yawSteps.addLast(Math.abs(wrap(loc.getYaw() - last.getYaw())));
+                while (st.yawSteps.size() > 4) st.yawSteps.removeFirst();
+            }
             if (last == null || last.getWorld() != loc.getWorld()) continue;
             boolean skip = exempt(p) || now < st.exemptUntil || p.isFlying() || p.getAllowFlight() || p.isGliding() || p.isRiptiding()
                     || p.isInsideVehicle() || p.isDead() || ping(p) > plugin.getConfig().getInt("anticheat.max-ping", 300) || laggy;
@@ -681,7 +704,7 @@ public final class AntiCheat implements Listener, TabExecutor {
             // step: more than a slab up in one tick, from ground to ground
             if (st.wasOnGround && ground && dy > 0.62 && dy < 3 && amplifier(p, PotionEffectType.JUMP_BOOST) < 0 && !special
                     && attribute(p, "step_height", 0.6) < 0.7) {
-                flag(p, "step", dy >= 1.0 ? 10 : 4, String.format(Locale.ROOT, "%.2f", dy));
+                flag(p, "step", severity(dy, 0.62, 1.5, 12), String.format(Locale.ROOT, "%.2f", dy));
             }
 
             // walking on water
@@ -705,7 +728,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                     double height = fell;
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (!st.fallDamaged && st.landedAt == now && p.isOnline() && !p.isDead()) {
-                            flag(p, "nofall", height > 20 ? 20 : height > 10 ? 12 : 6, String.format(Locale.ROOT, "%.1f", height));
+                            flag(p, "nofall", severity(height, 4, 22, 20), String.format(Locale.ROOT, "%.1f", height));
                         }
                     }, 20L);
                 }
@@ -732,18 +755,122 @@ public final class AntiCheat implements Listener, TabExecutor {
                 double ratio = second / limit;
                 if (ratio > 1) {
                     if (++st.speedStrikes >= 2) {
-                        flag(p, "speed", ratio > 2 ? 20 : ratio > 1.4 ? 10 : ratio > 1.15 ? 4 : 1.5, String.format(Locale.ROOT, "%.1f b/s", second));
+                        flag(p, "speed", severity(second, limit, limit * 2, 20), String.format(Locale.ROOT, "%.1f b/s", second));
                     }
                 } else st.speedStrikes = 0;
                 // no slow: full speed while eating or drawing a bow
                 if (st.usingTicks > 20 && second > 5.5 * (speed >= 0 ? 1 + 0.2 * (speed + 1) : 1) && now > st.iceUntil && !special) {
-                    flag(p, "noslow", second > 7 ? 6 : 3, String.format(Locale.ROOT, "%.1f b/s", second));
+                    double slowLimit = 5.5 * (speed >= 0 ? 1 + 0.2 * (speed + 1) : 1);
+                    flag(p, "noslow", severity(second, slowLimit, slowLimit * 1.7, 8), String.format(Locale.ROOT, "%.1f b/s", second));
                 }
             }
             st.lastYaw = loc.getYaw();
             st.lastDy = dy;
         }
         if (ticks % 100 == 0) cleanChat();
+    }
+
+    private void record(State st, Location l, String event) {
+        st.track.addLast(new Sample(System.currentTimeMillis(), l.getWorld().getName(), l.getX(), l.getY(), l.getZ(), l.getYaw(), l.getPitch(), event));
+        while (st.track.size() > 260) st.track.removeFirst();
+    }
+
+    private void event(Player p, String event) {
+        record(state(p), p.getLocation(), event);
+    }
+
+    /** Keeps the last ten seconds as evidence (at most five clips per player). */
+    private Clip keep(Player p, String reason) {
+        State st = state(p);
+        Clip c = new Clip(p.getName(), System.currentTimeMillis(), reason, new ArrayList<>(st.track));
+        Deque<Clip> mine = clips.computeIfAbsent(p.getUniqueId(), k -> new ArrayDeque<>());
+        mine.addFirst(c);
+        while (mine.size() > 5) mine.removeLast();
+        return c;
+    }
+
+    /**
+     * Plays evidence: a saved clip (newest first, n = 1..5), or with "now" the last ten seconds of a
+     * player who is online right now.
+     */
+    public void replay(Player staff, UUID id, String which) {
+        Clip clip = null;
+        Player online = Bukkit.getPlayer(id);
+        if ("now".equalsIgnoreCase(which) && online != null) clip = keep(online, lang().raw("replay.live"));
+        else {
+            List<Clip> mine = clips(id);
+            int n = 1;
+            try {
+                if (which != null) n = Integer.parseInt(which);
+            } catch (NumberFormatException ignored) {
+                // the newest
+            }
+            if (!mine.isEmpty()) clip = mine.get(Math.max(0, Math.min(mine.size(), n) - 1));
+            else clip = loadLatestClip(id);
+            if (clip == null && online != null) clip = keep(online, lang().raw("replay.live"));
+        }
+        if (clip == null || !replay.play(staff, id, clip)) lang().send(staff, "replay.none");
+    }
+
+    public List<Clip> clips(UUID id) {
+        return new ArrayList<>(clips.getOrDefault(id, new ArrayDeque<>()));
+    }
+
+    /** Saves a clip to anticheat-clips/, so the evidence survives a restart. */
+    private void saveClip(UUID id, Clip c) {
+        File dir = new File(plugin.getDataFolder(), "anticheat-clips");
+        dir.mkdirs();
+        YamlConfiguration cfg = new YamlConfiguration();
+        cfg.set("player", id.toString());
+        cfg.set("name", c.name());
+        cfg.set("time", c.time());
+        cfg.set("reason", c.reason());
+        List<String> lines = new ArrayList<>();
+        for (Sample s : c.samples()) {
+            lines.add(String.format(Locale.ROOT, "%d;%s;%.3f;%.3f;%.3f;%.2f;%.2f;%s", s.time(), s.world(), s.x(), s.y(), s.z(), s.yaw(), s.pitch(),
+                    s.event() == null ? "" : s.event()));
+        }
+        cfg.set("samples", lines);
+        try {
+            cfg.save(new File(dir, id + "-" + c.time() + ".yml"));
+        } catch (IOException e) {
+            plugin.getLogger().warning("Could not save an anti-cheat clip: " + e.getMessage());
+        }
+    }
+
+    /** The newest saved clip of a player from disk, when none is in memory any more. */
+    public Clip loadLatestClip(UUID id) {
+        File dir = new File(plugin.getDataFolder(), "anticheat-clips");
+        File[] files = dir.listFiles((d, n) -> n.startsWith(id.toString()) && n.endsWith(".yml"));
+        if (files == null || files.length == 0) return null;
+        java.util.Arrays.sort(files, (a, b) -> b.getName().compareTo(a.getName()));
+        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(files[0]);
+        List<Sample> samples = new ArrayList<>();
+        for (String line : cfg.getStringList("samples")) {
+            String[] f = line.split(";", -1);
+            try {
+                samples.add(new Sample(Long.parseLong(f[0]), f[1], Double.parseDouble(f[2]), Double.parseDouble(f[3]), Double.parseDouble(f[4]),
+                        Float.parseFloat(f[5]), Float.parseFloat(f[6]), f[7].isEmpty() ? null : f[7]));
+            } catch (RuntimeException ignored) {
+                // a broken line
+            }
+        }
+        return new Clip(cfg.getString("name", "?"), cfg.getLong("time"), cfg.getString("reason", ""), samples);
+    }
+
+    /**
+     * A sudden turn right before an action: the mouse stood still, then jumped many degrees in a single
+     * tick straight onto the target. Hands speed up and slow down; aim locks and bots jump.
+     */
+    private void snap(Player p, State st, String what) {
+        if (st.yawSteps.size() < 3) return;
+        Float[] d = st.yawSteps.toArray(new Float[0]);
+        int n = d.length;
+        float spike = Math.max(d[n - 1], d[n - 2]);
+        float before = d[n - 1] >= d[n - 2] ? d[n - 2] : d[n - 3];
+        if (before < 3 && spike > 40) {
+            flag(p, "snap", severity(spike, 40, 160, 6), String.format(Locale.ROOT, "%s %.0f°", what, spike));
+        }
     }
 
     /** Points fade: by default one point a minute. */
@@ -760,6 +887,17 @@ public final class AntiCheat implements Listener, TabExecutor {
     }
 
     // ---------------------------------------------------------------- movement packets: timer
+
+    /**
+     * Points by how far a value lies outside what people can do: nothing up to the human limit, then
+     * smoothly more up to the full points where it is plainly a cheat. 0.5 steps, at least 0.5.
+     */
+    public static double severity(double value, double human, double clear, double max) {
+        if (!(value > human) || clear <= human) return 0;
+        double r = Math.min(1, (value - human) / (clear - human));
+        double pts = max * Math.pow(r, 0.8);
+        return Math.max(0.5, Math.round(pts * 2) / 2.0);
+    }
 
     private static boolean handRaised(Player p) {
         try {
@@ -789,7 +927,8 @@ public final class AntiCheat implements Listener, TabExecutor {
         if (st.movePackets.size() > 5 * 20 && now > st.exemptUntil && ping(p) < 200) {
             double rate = st.movePackets.size() / 5.0;
             if (rate > plugin.getConfig().getDouble("anticheat.max-packets", 23)) {
-                if (++st.timerStrikes % 20 == 0) flag(p, "timer", rate > 30 ? 15 : rate > 25 ? 6 : 2, String.format(Locale.ROOT, "%.1f/s", rate));
+                double maxRate = plugin.getConfig().getDouble("anticheat.max-packets", 23);
+                if (++st.timerStrikes % 20 == 0) flag(p, "timer", severity(rate, maxRate, maxRate * 1.6, 16), String.format(Locale.ROOT, "%.1f/s", rate));
             } else st.timerStrikes = 0;
         }
     }
@@ -813,7 +952,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                 double step = g / 16777216.0;
                 // the smallest step a mouse can make at the lowest sensitivity is about 0.0096 degrees
                 if (step < 0.007) {
-                    if (++st.gcdStrikes >= 3) flag(p, "aim", 1.5, String.format(Locale.ROOT, "step %.5f", step));
+                    if (++st.gcdStrikes >= 3) flag(p, "aim", severity(0.007 - step, 0, 0.007, 3), String.format(Locale.ROOT, "step %.5f", step));
                 } else st.gcdStrikes = 0;
             }
         }
@@ -862,6 +1001,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         exemptFor(e.getPlayer(), 3000);
         state(e.getPlayer()).last = e.getTo();
         state(e.getPlayer()).movePackets.clear();
+        state(e.getPlayer()).yawSteps.clear();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -903,11 +1043,11 @@ public final class AntiCheat implements Listener, TabExecutor {
             double distance = closest.distance(eye.toVector());
             double limit = attribute(attacker, "entity_interaction_range", 3.0) + 0.6 + Math.min(1.2, ping(attacker) / 150.0);
             double over = distance - limit;
-            if (over > 0) flag(attacker, "reach", over < 0.3 ? 1 : over < 0.8 ? 3 : over < 1.5 ? 6 : 12, String.format(Locale.ROOT, "%.2f", distance));
+            if (over > 0) flag(attacker, "reach", severity(distance, limit, limit + 2.5, 14), String.format(Locale.ROOT, "%.2f", distance));
 
             Vector toTarget = box.getCenter().subtract(eye.toVector());
             double angle = Math.toDegrees(eye.getDirection().angle(toTarget));
-            if (distance > 1.5 && angle > 100) flag(attacker, "aura", angle > 140 ? 8 : angle > 120 ? 5 : 2, String.format(Locale.ROOT, "%.0f°", angle));
+            if (distance > 1.5 && angle > 100) flag(attacker, "aura", severity(angle, 100, 180, 10), String.format(Locale.ROOT, "%.0f°", angle));
 
             if (st.lastTarget != null && !st.lastTarget.equals(target.getUniqueId()) && now - st.lastHit < 40) {
                 flag(attacker, "aura", 1, lang().raw("anticheat.detail.multi"));
@@ -916,13 +1056,11 @@ public final class AntiCheat implements Listener, TabExecutor {
             if (distance > 1.2 && blocked(eye, box.getCenter()) && blocked(eye, new Vector(box.getCenterX(), box.getMaxY() - 0.1, box.getCenterZ()))) {
                 flag(attacker, "aura", 3, lang().raw("anticheat.detail.wall"));
             }
-            // a big turn straight onto the target right before the hit
-            float turn = Math.abs(wrap(attacker.getLocation().getYaw() - st.lastYaw));
-            if (turn > 60 && angle < 6) flag(attacker, "aura", turn > 120 ? 3 : 1.5, String.format(Locale.ROOT, "snap %.0f°", turn));
+            event(attacker, "hit");
+            snap(attacker, st, "hit");
             if (target instanceof EnderCrystal && st.crystalPlacedAt > 0) {
                 long dt = now - st.crystalPlacedAt;
-                if (dt < 50) flag(attacker, "crystal", 2, dt + "ms");
-                else if (dt < 100) flag(attacker, "crystal", 1, dt + "ms");
+                flag(attacker, "crystal", severity(110 - dt, 0, 100, 3), dt + "ms");
                 st.crystalPlacedAt = 0;
             }
             // a critical hit needs a fall; on the ground and not falling there is none
@@ -951,7 +1089,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                 if (!victim.isOnline() || victim.getWorld() != start.getWorld()) return;
                 double moved = Math.hypot(victim.getLocation().getX() - start.getX(), victim.getLocation().getZ() - start.getZ());
                 if (moved < 0.1) {
-                    if (++st.kbLow >= 4) flag(victim, "velocity", moved < 0.02 ? 8 : 4, String.format(Locale.ROOT, "%.2f", moved));
+                    if (++st.kbLow >= 4) flag(victim, "velocity", severity(0.1 - moved, 0, 0.1, 8), String.format(Locale.ROOT, "%.2f", moved));
                 } else st.kbLow = 0;
             }, 6L);
         }
@@ -997,7 +1135,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         // judged once per second of clicking above the limit
         if (cps > max && now / 1000 != st.lastCpsSecond) {
             st.lastCpsSecond = now / 1000;
-            flag(p, "autoclick", cps > max + 10 ? 6 : cps > max + 4 ? 3 : 1, cps + " CPS");
+            flag(p, "autoclick", severity(cps, max, max + 15, 8), cps + " CPS");
         }
     }
 
@@ -1005,10 +1143,50 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDig(BlockDamageEvent e) {
-        State st = state(e.getPlayer());
+        Player p = e.getPlayer();
+        State st = state(p);
         st.diggingUntil = System.currentTimeMillis() + 600;
         st.digging = e.getBlock();
         st.digStart = System.currentTimeMillis();
+        if (exempt(p)) return;
+        snap(p, st, "dig");
+        // how exactly the player looks at the middle of the block: people are always a few degrees off
+        Location eye = p.getEyeLocation();
+        Block block = e.getBlock();
+        Vector toCenter = new Vector(block.getX() + 0.5, block.getY() + 0.5, block.getZ() + 0.5).subtract(eye.toVector());
+        if (toCenter.lengthSquared() > 0.25) {
+            st.digAim.addLast(Math.toDegrees(eye.getDirection().angle(toCenter)));
+            while (st.digAim.size() > 12) st.digAim.removeFirst();
+        }
+    }
+
+    /** Mining like a bot: always dead on the middle of the block, and the same rhythm block after block. */
+    private void botMining(Player p, State st, long now) {
+        if (st.lastBreakAt > 0) {
+            long gap = now - st.lastBreakAt;
+            if (gap > 80 && gap < 3000) st.digIntervals.addLast(gap);
+            while (st.digIntervals.size() > 12) st.digIntervals.removeFirst();
+        }
+        st.lastBreakAt = now;
+        if (st.digAim.size() < 10) return;
+        List<Double> sorted = new ArrayList<>(st.digAim);
+        sorted.sort(Double::compare);
+        double median = sorted.get(sorted.size() / 2);
+        double cv = 1;
+        if (st.digIntervals.size() >= 10) {
+            double mean = 0;
+            for (long g : st.digIntervals) mean += g;
+            mean /= st.digIntervals.size();
+            double var = 0;
+            for (long g : st.digIntervals) var += (g - mean) * (g - mean);
+            cv = Math.sqrt(var / st.digIntervals.size()) / mean;
+        }
+        double pts = severity(1.0 - median, 0, 1.0, 6) + (median < 2 ? severity(0.06 - cv, 0, 0.06, 4) : 0);
+        if (pts > 0) {
+            flag(p, "botmine", pts, String.format(Locale.ROOT, "%.2f° rhythm %.0f%%", median, cv * 100));
+            st.digAim.clear();
+            st.digIntervals.clear();
+        }
     }
 
     private static boolean filler(Material m) {
@@ -1027,6 +1205,8 @@ public final class AntiCheat implements Listener, TabExecutor {
         State st = state(p);
         long now = System.currentTimeMillis();
         Block b = e.getBlock();
+        event(p, "break");
+        if (b.getType().getHardness() > 0.3f) botMining(p, st, now);
         // fast break: faster than the tool, enchantments and haste allow
         if (b.equals(st.digging)) {
             try {
@@ -1035,7 +1215,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                     double expected = Math.ceil(1 / perTick) * 50.0;
                     double took = now - st.digStart;
                     double ratio = took / expected;
-                    if (expected > 200 && ratio < 0.7) flag(p, "fastbreak", ratio < 0.3 ? 8 : ratio < 0.5 ? 4 : 1.5,
+                    if (expected > 200 && ratio < 0.7) flag(p, "fastbreak", severity(1 - ratio, 0.3, 0.9, 10),
                             String.format(Locale.ROOT, "%.0f/%.0fms", took, expected));
                 }
             } catch (RuntimeException | NoSuchMethodError ignored) {
@@ -1046,10 +1226,11 @@ public final class AntiCheat implements Listener, TabExecutor {
         if (b.getType().getHardness() > 0.3f) {
             st.breaks.addLast(now);
             while (!st.breaks.isEmpty() && now - st.breaks.peekFirst() > 1000) st.breaks.removeFirst();
-            if (st.breaks.size() > 12) flag(p, "nuker", st.breaks.size() > 20 ? 15 : 5, st.breaks.size() + "/s");
+            if (st.breaks.size() > 12) flag(p, "nuker", severity(st.breaks.size(), 12, 30, 16), st.breaks.size() + "/s");
         }
-        double far = p.getEyeLocation().toVector().distance(b.getLocation().add(0.5, 0.5, 0.5).toVector());
-        if (far > attribute(p, "block_interaction_range", 4.5) + 1.5) flag(p, "nuker", far > 8 ? 6 : 2, String.format(Locale.ROOT, "%.1f", far));
+        double far = p.getEyeLocation().toVector().distance(new Vector(b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5));
+        double blockRange = attribute(p, "block_interaction_range", 4.5) + 1.5;
+        if (far > blockRange) flag(p, "nuker", severity(far, blockRange, blockRange + 4.5, 8), String.format(Locale.ROOT, "%.1f", far));
         // x-ray by the share of rare ores
         if (now - st.miningWindowStart > 30 * 60_000L) {
             st.miningWindowStart = now;
@@ -1075,14 +1256,16 @@ public final class AntiCheat implements Listener, TabExecutor {
         long now = System.currentTimeMillis();
         st.places.addLast(now);
         while (!st.places.isEmpty() && now - st.places.peekFirst() > 1000) st.places.removeFirst();
-        if (st.places.size() > 12) flag(p, "scaffold", st.places.size() > 20 ? 10 : 3, st.places.size() + "/s");
+        if (st.places.size() > 12) flag(p, "scaffold", severity(st.places.size(), 12, 25, 12), st.places.size() + "/s");
         // bridging under your own feet without looking down, at walking speed
         Location l = p.getLocation();
         Block placed = e.getBlockPlaced();
         boolean underFeet = placed.getY() < l.getY() - 0.5 && Math.abs(placed.getX() + 0.5 - l.getX()) < 1.6 && Math.abs(placed.getZ() + 0.5 - l.getZ()) < 1.6;
         double speed = 0;
         for (double[] mv : st.moves) speed += mv[1];
-        if (underFeet && l.getPitch() < 35 && speed > 3.5) flag(p, "scaffold", l.getPitch() < 10 ? 5 : 2, String.format(Locale.ROOT, "pitch %.0f", l.getPitch()));
+        if (underFeet && l.getPitch() < 35 && speed > 3.5) flag(p, "scaffold", severity(35 - l.getPitch(), 0, 35, 6), String.format(Locale.ROOT, "pitch %.0f", l.getPitch()));
+        event(p, "place");
+        snap(p, st, "place");
         // respawn anchors: place, charge, blow up, faster than hands can
         if (placed.getType() == Material.RESPAWN_ANCHOR) {
             st.anchor = placed;
@@ -1102,12 +1285,10 @@ public final class AntiCheat implements Listener, TabExecutor {
             if (hand != null && hand.getType() == Material.GLOWSTONE && st.anchorChargedAt == 0) {
                 st.anchorChargedAt = now;
                 long dt = now - st.anchorPlacedAt;
-                if (dt < 50) flag(p, "anchor", 3, "charge " + dt + "ms");
-                else if (dt < 100) flag(p, "anchor", 1, "charge " + dt + "ms");
+                flag(p, "anchor", severity(110 - dt, 0, 100, 3), "charge " + dt + "ms");
             } else if (st.anchorChargedAt > 0 && (hand == null || hand.getType() != Material.GLOWSTONE)) {
                 long dt = now - st.anchorChargedAt;
-                if (dt < 50) flag(p, "anchor", 3, "explode " + dt + "ms");
-                else if (dt < 100) flag(p, "anchor", 1, "explode " + dt + "ms");
+                flag(p, "anchor", severity(110 - dt, 0, 100, 3), "explode " + dt + "ms");
                 st.anchor = null;
                 st.anchorChargedAt = 0;
             }
@@ -1136,9 +1317,11 @@ public final class AntiCheat implements Listener, TabExecutor {
         ItemStack off = p.getInventory().getItemInOffHand();
         if (off != null && off.getType() == Material.TOTEM_OF_UNDYING) {
             st.totemPopAt = -1;
-            // the inventory was closed, so the totem came by a key press or by a cheat
-            double pts = dt <= 1 ? 4 : dt == 2 ? 2 : dt == 3 ? 1 : 0;
-            if (pts > 0) flag(p, "autototem", pts, (dt * 50) + "ms");
+            // how fast the next totem was there: a hand needs a few ticks, a cheat one
+            long ms = dt * 50;
+            event(p, "totem " + ms + "ms");
+            double pts = severity(200 - ms, 40, 200, 6);
+            if (pts > 0) flag(p, "autototem", pts, ms + "ms");
         }
     }
 
@@ -1244,6 +1427,23 @@ public final class AntiCheat implements Listener, TabExecutor {
             lang().send(staff, toggleAlerts(staff.getUniqueId()) ? "anticheat.alerts-on" : "anticheat.alerts-off");
             return true;
         }
+        if (sub.equals("replay") && sender instanceof Player staff) {
+            if (args.length < 2) {
+                lang().send(staff, "replay.usage");
+                return true;
+            }
+            UUID id = byName(args[1]);
+            if (id == null) {
+                lang().send(staff, "anticheat.unknown", "player", args[1]);
+                return true;
+            }
+            if (args.length >= 3 && args[2].equalsIgnoreCase("stop")) {
+                replay.stop(staff.getUniqueId());
+                return true;
+            }
+            replay(staff, id, args.length >= 3 ? args[2] : null);
+            return true;
+        }
         if (args.length >= 2 && List.of("clear", "watch", "unwatch", "points", "reset").contains(sub)) {
             UUID id = byName(args[1]);
             if (id == null) {
@@ -1293,7 +1493,7 @@ public final class AntiCheat implements Listener, TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) for (String s : List.of("points", "watch", "unwatch", "reset", "clear", "alerts")) if (s.startsWith(args[0].toLowerCase())) out.add(s);
+        if (args.length == 1) for (String s : List.of("points", "watch", "unwatch", "reset", "clear", "alerts", "replay")) if (s.startsWith(args[0].toLowerCase())) out.add(s);
         if (args.length == 2) {
             for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase().startsWith(args[1].toLowerCase())) out.add(p.getName());
             for (Suspect s : suspects.values()) if (!out.contains(s.name) && s.name.toLowerCase().startsWith(args[1].toLowerCase())) out.add(s.name);

@@ -1980,6 +1980,8 @@ anticheat:
   unknown: "<red>No player called <white>{player}</white> is known."
   cleared: "<gray>The mark of <white>{player}</white> is gone."
   check:
+    snap: "Sudden aim jump"
+    botmine: "Mining like a bot"
     aim: "Aim (mouse)"
     criticals: "Criticals"
     invmove: "Inventory while running"
@@ -2057,6 +2059,8 @@ check:
   alts: "<#ffc371>Other accounts"
   tp: "<#ffc371>Teleport there unseen"
   prison: "<dark_gray>Prison 15 minutes"
+  replay: "<#ffc371>Watch the recording ({count})"
+  replay-lore: ["<gray>The last saved clip as a replay:", "<gray>a figure moves exactly like the player,", "<gray>only you see it.", "", "<#ffc371>Click: newest clip", "<#ffc371>Right-click: the last 10 seconds now"]
 
 lag:
   header: "<gradient:#ff5f6d:#ffc371>Server</gradient> <gray>TPS <white>{tps}</white> ({state}) · {mspt} ms per tick · {chunks} chunks · {entities} entities · {players} players"
@@ -2071,3 +2075,12 @@ announce:
   title: "<gradient:#ff5f6d:#ffc371><bold>Announcement</bold></gradient>"
   usage: "<gray>Usage: <white>/announce <text></white> or <white>/announce next</white>"
   empty: "<gray>The list announcer.messages is empty."
+
+replay:
+  usage: "<gray>Usage: <white>/anticheat replay <player> [1-5|now|stop]</white>"
+  bar: "<red>Replay: <white>{player}</white> <gray>- {reason}"
+  started: "<gray>Replay of <white>{player}</white>, {seconds} seconds. Only you see the figure. <white>/ac replay {player} stop</white> ends it."
+  ended: "<gray>Replay over."
+  event: "<#ffc371>{event}"
+  none: "<gray>There is no recording of this player."
+  live: "recorded now"

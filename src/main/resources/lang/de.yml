@@ -87,6 +87,8 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  rank: ["<gray>Gibt einem Spieler einen Rang.", "<gray>Nur Ränge unter deinem eigenen Level.", "", "<dark_gray>Beispiel: /rank set Steve mod"]
+  rank-setup: ["<gray>Macht dich zum Owner, einmalig, solange", "<gray>niemand den höchsten Rang hat.", "<gray>Danach gelten die Befehls-Level."]
   spawn: ["<gray>Bringt dich zum Spawn.", "<gray>Bleib beim Countdown stehen."]
   setspawn: ["<gray>Setzt den Spawn dort, wo du stehst."]
   menu: ["<gray>Öffnet das Hauptmenü.", "<gray>Von hier aus geht alles."]
@@ -284,6 +286,20 @@ voice:
     <#ffc371>/voice report <dark_gray>-</dark_gray> <gray>eine Voice-Gruppe melden
     <#ffc371>/voice manage <dark_gray>-</dark_gray> <gray>in deiner eigenen Gruppe kicken oder bannen
 
+rank:
+  too-low: "<red>Dein Rang ist zu niedrig für diesen Befehl. Er braucht Level <white>{level}</white>."
+  setup-console: "<gray>Nutze <white>/rank set <Spieler> owner</white> in der Konsole oder <white>/rank setup</white> im Spiel als OP."
+  setup-done-already: "<red>Es gibt schon einen Owner. Frag ihn nach einem Rang."
+  setup-needs-op: "<red>Nur ein OP kann sich den ersten Owner-Rang holen."
+  setup-ok: "<green>Du bist jetzt <white>{rank}</white>. Ab jetzt gelten die Befehls-Level, auch für OPs."
+  list-entry: "<dark_gray>[{level}]</dark_gray> <gray>{members} Spieler</gray> "
+  info: "<white>{player}</white> <gray>hat den Rang</gray> <white>{rank}</white> <dark_gray>(Level {level})"
+  usage: "<gray>Nutzung: <white>/rank set <Spieler> <Rang></white>, <white>/rank remove <Spieler></white>, <white>/rank info <Spieler></white>, <white>/rank list</white>, <white>/rank setup</white>"
+  unknown: "<red>Den Rang <white>{rank}</white> gibt es nicht."
+  not-allowed: "<red>Du kannst nur Ränge unter deinem eigenen Level ändern."
+  set: "<green><white>{player}</white> ist jetzt <white>{rank}</white>."
+  set-you: "<green>Dein Rang ist jetzt <white>{rank}</white>."
+
 ticket:
   cooldown: "<red>Bitte warte noch <white>{time}</white>, bevor du ein neues Ticket öffnest."
   sent: "<green>Ticket <white>#{id}</white> ging an das Team."
@@ -412,6 +428,11 @@ task:
       - "<gray>die du selbst schreibst."
 
 prompt:
+  rank-name: "<#ffc371>Schreib den Namen des Rangs, zum Beispiel <white>Builder</white>."
+  rank-prefix: "<#ffc371>Schreib das Präfix mit Farben, zum Beispiel <white>\\<green><bold>BUILDER</bold></green> \\<green></white>"
+  rank-level: "<#ffc371>Schreib das Level als Zahl. Höher heißt mehr Rechte."
+  rank-permission: "<#ffc371>Schreib das Recht, zum Beispiel <white>minecraft.command.fly</white>."
+  rank-command-level: "<#ffc371>Schreib den Befehl und das Level, zum Beispiel <white>gamemode 70</white> oder <white>sc reload 90</white>."
   hidden-commands: "<#ffc371>Schreib die Befehle, die Spieler nicht sehen sollen, getrennt durch Kommas. Beispiel: <white>plugins, pl, version"
   voice-password: "<#ffc371>Schreib das neue Passwort für die Gruppe. Ohne Leerzeichen."
   ticket-message: "<#ffc371>Schreib deine Nachricht an alle im Ticket."
@@ -542,6 +563,9 @@ menu:
 
   main:
     title: "<gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>"
+    ranks:
+      name: "<#ffc371><bold>Ränge</bold>"
+      lore: ["<gray>Ränge: <white>{count}", "<gray>Owner, Admin, Mod und mehr,", "<gray>und welcher Befehl welches Level braucht.", "", "<#ffc371>Klicken zum Öffnen"]
     guide:
       name: "<#ffc371><bold>Befehls-Anleitung</bold>"
       lore: ["<gray>Jeder Befehl mit Erklärung", "<gray>und Beispiel.", "", "<#ffc371>Klicken zum Öffnen"]
@@ -785,6 +809,69 @@ menu:
     warmup:
       name: "<#ffc371>Countdown"
       lore: ["<gray>Jetzt: <white>{value}</white> Sekunden", "<gray>Stillstehen nötig, Bewegen oder", "<gray>Schaden bricht ab.", "", "<#ffc371>Klicken zum Wechseln: 0, 3, 5, 10"]
+
+  ranks:
+    title: "<dark_gray>Ränge"
+    active: "<green>aktiv"
+    inactive: "<red>noch nicht aktiv: niemand ist Owner"
+    entry:
+      lore: ["<gray>Level: <white>{level}", "<gray>Spieler: <white>{members}", "<gray>Rechte: <white>{permissions}", "", "<#ffc371>Klicken zum Bearbeiten"]
+      locked: ["", "<red>Auf oder über deinem Level, daher gesperrt"]
+    levels:
+      name: "<#ffc371>Befehls-Level"
+      lore: ["<gray>Regeln: <white>{count}", "<gray>Status: {state}", "<gray>Welcher Befehl welches Level braucht.", "<gray>Gilt auch für OPs.", "", "<#ffc371>Klicken zum Bearbeiten"]
+    new:
+      name: "<green>Neuer Rang"
+      lore: ["<gray>Klicken und Namen schreiben."]
+    setup:
+      name: "<gold><bold>Owner werden</bold>"
+      lore: ["<gray>Noch niemand hat den höchsten Rang.", "<gray>Klicken, um ihn zu übernehmen. Danach", "<gray>gelten die Befehls-Level."]
+
+  rank-edit:
+    title: "<dark_gray>Rang: {rank}"
+    preview: ["<gray>Level: <white>{level}"]
+    name:
+      name: "<#ffc371>Name"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#ffc371>Klicken zum Ändern"]
+    prefix:
+      name: "<#ffc371>Präfix"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Steht im Chat und in der Tab-Liste.", "", "<#ffc371>Klicken zum Ändern"]
+    level:
+      name: "<#ffc371>Level"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Höher heißt mehr Rechte.", "", "<#ffc371>Klicken zum Ändern"]
+    permissions:
+      name: "<#ffc371>Rechte"
+      lore: ["<gray>Vergeben: <white>{count}", "", "<#ffc371>Klicken zum Bearbeiten"]
+    members:
+      name: "<#ffc371>Spieler"
+      lore: ["<gray>Mit diesem Rang: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]
+    delete:
+      name: "<red>Rang löschen"
+      lore: ["<gray>Seine Spieler bekommen den Standard-Rang.", "", "<red>Shift + Klick zum Löschen"]
+
+  rank-perms:
+    title: "<dark_gray>Rechte: {rank}"
+    entry: "<white>{node}"
+    add:
+      name: "<green>Recht hinzufügen"
+      lore: ["<gray>Für Rechte anderer Plugins.", "<gray>Klicken und schreiben."]
+
+  rank-members:
+    title: "<dark_gray>Spieler: {rank}"
+    remove: ["<red>Shift + Klick: Rang wegnehmen"]
+    add:
+      name: "<green>Jemandem diesen Rang geben"
+      lore: ["<gray>Klicken und Namen schreiben."]
+    empty:
+      name: "<gray>Noch niemand hat diesen Rang"
+
+  rank-levels:
+    title: "<dark_gray>Befehls-Level"
+    entry: "<white>/{command}</white> <gray>ab Level</gray> <white>{level}"
+    actions: ["<#ffc371>Klick: Level ändern", "<red>Shift + Klick: Regel entfernen"]
+    add:
+      name: "<green>Regel hinzufügen"
+      lore: ["<gray>Klicken und zum Beispiel", "<white>gamemode 70</white> <gray>schreiben"]
 
   select-player:
     title: "<dark_gray>Wen willst du bestrafen?"

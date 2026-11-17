@@ -110,6 +110,9 @@ public final class AdminMenus {
         m.set(40, item(Material.KNOWLEDGE_BOOK, "menu.main.guide"), e -> guide(p, 0));
         m.set(16, item(Material.BOOK, "menu.main.history"), e ->
                 plugin.input().ask(p, "prompt.history-name", name -> profileByName(p, name), () -> main(p)));
+        if (p.hasPermission("staffcore.ranks") && plugin.ranks().enabled()) {
+            m.set(20, item(Material.GOLDEN_HELMET, "menu.main.ranks", "count", plugin.ranks().all().size()), e -> plugin.rankMenus().list(p));
+        }
         if (plugin.voice().available() && p.hasPermission("staffcore.voice")) {
             m.set(22, item(Material.JUKEBOX, "menu.main.voice", "count", plugin.voice().groups().size()), e -> plugin.voiceMenus().groups(p));
         }
@@ -401,6 +404,8 @@ public final class AdminMenus {
             new GuideEntry("voice", "/voice", Material.JUKEBOX, "staffcore.voice"),
             new GuideEntry("setspawn", "/setspawn", Material.RESPAWN_ANCHOR, "staffcore.admin"),
             new GuideEntry("spawn", "/spawn", Material.ENDER_PEARL, "staffcore.spawn"),
+            new GuideEntry("rank", "/rank set <player> <rank>", Material.GOLDEN_HELMET, "staffcore.ranks"),
+            new GuideEntry("rank-setup", "/rank setup", Material.GOLDEN_HELMET, "staffcore.ranks"),
             new GuideEntry("ticket", "/ticket", Material.PAPER, ""),
             new GuideEntry("appeal", "/appeal <ban-ID> <text>", Material.NAME_TAG, ""),
             new GuideEntry("tasks", "/playban", Material.FEATHER, ""));

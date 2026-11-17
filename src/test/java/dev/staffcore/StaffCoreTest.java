@@ -1830,6 +1830,132 @@ class StaffCoreTest {
         assertEquals(before.getX(), event.getRespawnLocation().getX(), 0.01, "a world plugin's respawn point is left alone");
     }
 
+    // ------------------------------------------------------------------ ranks
+
+    private boolean blocked(PlayerMock who, String line) {
+        var e = new PlayerCommandPreprocessEvent(who, line);
+        server.getPluginManager().callEvent(e);
+        return e.isCancelled();
+    }
+
+    @Test
+    void commandLevelsOnlyStartOnceSomeoneIsOwner() {
+        PlayerMock op2 = server.addPlayer("OpTwo");
+        op2.setOp(true);
+        assertFalse(blocked(op2, "/gamemode creative"), "before setup nothing is limited, so nobody locks themselves out");
+        assertTrue(admin.performCommand("rank setup"));
+        assertEquals("owner", plugin.ranks().of(admin.getUniqueId()).id);
+        assertTrue(plugin.ranks().active());
+        assertTrue(blocked(op2, "/gamemode creative"), "OP alone is not enough any more");
+        assertTrue(blocked(op2, "/minecraft:gamemode creative"), "not even with the minecraft: form");
+        assertTrue(blocked(op2, "/execute run gamemode creative"), "and not through /execute");
+        assertFalse(blocked(admin, "/gamemode creative"), "the owner may");
+        op2.performCommand("rank setup");
+        assertNotEquals("owner", plugin.ranks().of(op2.getUniqueId()).id, "setup works only once");
+    }
+
+    @Test
+    void subCommandRulesAreExact() {
+        admin.performCommand("rank setup");
+        admin.performCommand("rank set Bystander mod");
+        assertTrue(blocked(bystander, "/sc reload"), "sc reload needs level 90");
+        assertTrue(blocked(bystander, "/playban reload"), "whichever alias is used");
+        assertFalse(blocked(bystander, "/sc list"), "other parts of /sc are fine");
+    }
+
+    @Test
+    void ranksGivePermissionsWithoutOp() {
+        assertFalse(bystander.hasPermission("staffcore.staff"));
+        admin.performCommand("rank set Bystander mod");
+        assertTrue(bystander.hasPermission("staffcore.staff"), "a mod gets the staff permission");
+        assertTrue(bystander.performCommand("ban Troll 1h test"));
+        assertNotNull(plugin.store().bans.get(troll.getUniqueId()), "and can really ban, without being op");
+        admin.performCommand("rank set Bystander admin");
+        assertTrue(bystander.hasPermission("staffcore.ranks"), "staffcore.* gives every StaffCore permission");
+        admin.performCommand("rank remove Bystander");
+        assertFalse(bystander.hasPermission("staffcore.staff"), "and it is taken away again");
+    }
+
+    @Test
+    void nobodyCanTouchRanksAtOrAboveTheirOwn() {
+        admin.performCommand("rank setup");
+        admin.performCommand("rank set Bystander admin");
+        bystander.performCommand("rank set Troll co-owner");
+        assertNotEquals("co-owner", plugin.ranks().of(troll.getUniqueId()).id, "an admin cannot hand out co-owner");
+        bystander.performCommand("rank set Troll mod");
+        assertEquals("mod", plugin.ranks().of(troll.getUniqueId()).id, "but mod is fine");
+        bystander.performCommand("rank remove Admin");
+        assertEquals("owner", plugin.ranks().of(admin.getUniqueId()).id, "and the owner stays owner");
+        troll.performCommand("rank set Troll owner");
+        assertEquals("mod", plugin.ranks().of(troll.getUniqueId()).id, "nobody promotes themselves");
+    }
+
+    @Test
+    void blockedCommandsDisappearFromSuggestions() {
+        admin.performCommand("rank setup");
+        var list = new java.util.ArrayList<>(java.util.List.of("gamemode", "minecraft:gamemode", "spawn", "tp", "help"));
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerCommandSendEvent(bystander, list));
+        assertFalse(list.contains("gamemode"));
+        assertFalse(list.contains("tp"));
+        assertTrue(list.contains("help"));
+    }
+
+    @Test
+    void rankShowsInTabListAndChat() {
+        admin.performCommand("rank set Bystander mod");
+        assertTrue(plain(bystander.playerListName()).contains("MOD"), "prefix in the tab list");
+        Component[] rendered = new Component[1];
+        var listener = new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+            public void on(AsyncChatEvent e) {
+                rendered[0] = e.renderer().render(e.getPlayer(), e.getPlayer().displayName(), e.message(), admin);
+            }
+        };
+        server.getPluginManager().registerEvents(listener, plugin);
+        typeInChat(bystander, "hello <red>red</red>");
+        assertNotNull(rendered[0]);
+        String text = plain(rendered[0]);
+        assertTrue(text.startsWith("MOD"), "prefix in front: " + text);
+        assertTrue(text.contains("Bystander"));
+        assertTrue(text.contains("hello <red>red</red>"), "what the player typed is not turned into colors");
+    }
+
+    @Test
+    void ranksSurviveARestart() {
+        admin.performCommand("rank set Bystander mod");
+        RankManager fresh = new RankManager(plugin);
+        fresh.load();
+        assertEquals("mod", fresh.of(bystander.getUniqueId()).id);
+    }
+
+    @Test
+    void ranksAndLevelsCanBeEditedInTheMenu() {
+        admin.performCommand("rank setup");
+        var created = plugin.ranks().create("Builder");
+        assertEquals("builder", created.id);
+        plugin.ranks().setCommandLevel("/fly", 40);
+        assertEquals(40, plugin.ranks().requiredLevel("/fly"));
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.rankMenus().list(admin);
+            assertNoMissingTexts(admin, code);
+            plugin.rankMenus().edit(admin, created);
+            assertNoMissingTexts(admin, code);
+            admin.simulateInventoryClick(14); // permissions
+            assertNoMissingTexts(admin, code);
+            plugin.rankMenus().edit(admin, created);
+            admin.simulateInventoryClick(15); // members
+            assertNoMissingTexts(admin, code);
+            plugin.rankMenus().levels(admin, 0);
+            assertNoMissingTexts(admin, code);
+        }
+        // toggling a permission in the menu gives it to the rank
+        plugin.rankMenus().edit(admin, created);
+        admin.simulateInventoryClick(14);
+        admin.simulateInventoryClick(0); // "*"
+        assertTrue(created.permissions.contains("*"));
+    }
+
     @Test
     void timeParsing() {
         assertEquals(90_000_000L + 1_800_000L, TimeUtil.parse("1d 1h 30m"));

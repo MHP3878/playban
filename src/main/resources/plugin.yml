@@ -60,6 +60,9 @@ permissions:
   staffcore.spawn.others:
     description: Can send other players to spawn with /spawn <player>
     default: op
+  staffcore.ranks:
+    description: Can open /rank and give ranks below their own level
+    default: op
   staffcore.ticket:
     description: Can open tickets
     default: true

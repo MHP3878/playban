@@ -1,0 +1,94 @@
+# StaffCore ranks. Easier to edit in-game: /rank menu
+#
+# level:       higher = more power. Nobody can give or change ranks at or above their own level.
+# prefix:      shown in front of the name in chat and in the tab list (MiniMessage colors)
+# permissions: given to everyone with the rank. "staffcore.*" = every StaffCore permission,
+#              "*" = every permission of every plugin and of Minecraft itself
+enabled: true
+# rank for players who were never given one
+default-rank: player
+# show the rank in front of the name in chat
+chat-format: true
+# how a chat line looks. <prefix>, <name> and <message> are filled in
+chat-layout: "<prefix><name><dark_gray>:</dark_gray> <white><message>"
+# show the rank in the tab list and above the head, sorted by level
+tab-list: true
+
+ranks:
+  owner:
+    name: Owner
+    level: 100
+    prefix: "<dark_red><bold>OWNER</bold></dark_red> <red>"
+    permissions: ["*"]
+  co-owner:
+    name: Co-Owner
+    level: 90
+    prefix: "<red><bold>CO-OWNER</bold></red> <red>"
+    permissions: ["*"]
+  admin:
+    name: Admin
+    level: 80
+    prefix: "<gold><bold>ADMIN</bold></gold> <gold>"
+    permissions: ["staffcore.*", "minecraft.command.gamemode", "minecraft.command.tp", "minecraft.command.teleport"]
+  dev:
+    name: Dev
+    level: 70
+    prefix: "<aqua><bold>DEV</bold></aqua> <aqua>"
+    permissions: ["staffcore.staff", "staffcore.vanish", "staffcore.spawn.instant", "minecraft.command.gamemode"]
+  mod:
+    name: Mod
+    level: 50
+    prefix: "<green><bold>MOD</bold></green> <green>"
+    permissions: ["staffcore.staff", "staffcore.vanish", "staffcore.teleport"]
+  supporter:
+    name: Supporter
+    level: 30
+    prefix: "<blue><bold>SUP</bold></blue> <blue>"
+    permissions: ["staffcore.staff"]
+  player:
+    name: Player
+    level: 0
+    prefix: "<gray>"
+    permissions: []
+
+# Commands only players from this level up may use. This also applies to ops,
+# so OP alone is no longer enough. It starts as soon as someone has the highest rank
+# (/rank setup), so nobody locks themselves out while setting up.
+# "sc reload" means the reload part of /sc only. The console is never limited.
+# Tip: also set enable-command-block=false in server.properties, command blocks are not limited.
+command-levels:
+  op: 100
+  deop: 100
+  stop: 100
+  restart: 100
+  reload: 100
+  execute: 90
+  difficulty: 90
+  gamerule: 90
+  whitelist: 90
+  worldborder: 90
+  rank: 80
+  sc reload: 90
+  sc lang: 90
+  setspawn: 90
+  gamemode: 70
+  give: 80
+  effect: 80
+  enchant: 80
+  summon: 80
+  setblock: 80
+  fill: 80
+  clone: 80
+  kill: 70
+  time: 70
+  weather: 70
+  ban-ip: 80
+  pardon-ip: 80
+  tp: 50
+  teleport: 50
+  ban: 50
+  specban: 50
+  unban: 50
+
+# Filled by /rank set. uuid: rank
+players: {}

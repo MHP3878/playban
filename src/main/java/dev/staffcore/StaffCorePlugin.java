@@ -29,6 +29,8 @@ public class StaffCorePlugin extends JavaPlugin {
     private PlayerMenus playerMenus;
     private TicketManager tickets;
     private SpawnManager spawn;
+    private RankManager ranks;
+    private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
     private VoiceManager voice;
     private VoiceMenus voiceMenus;
@@ -64,6 +66,15 @@ public class StaffCorePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RestrictionListener(this), this);
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new dev.staffcore.listener.StaffListener(this), this);
+        ranks = new RankManager(this);
+        ranks.load();
+        rankMenus = new dev.staffcore.gui.RankMenus(this);
+        getServer().getPluginManager().registerEvents(ranks, this);
+        if (ranks.enabled()) {
+            dev.staffcore.command.RankCommand rankExecutor = new dev.staffcore.command.RankCommand(this);
+            register("rank", "Give and manage ranks", "staffcore.ranks", rankExecutor);
+        }
+        for (org.bukkit.entity.Player online : getServer().getOnlinePlayers()) ranks.apply(online);
         spawn = new SpawnManager(this);
         getServer().getPluginManager().registerEvents(spawn, this);
         if (getConfig().getBoolean("spawn.enabled", true)) {
@@ -145,6 +156,8 @@ public class StaffCorePlugin extends JavaPlugin {
 
     public void reload() {
         reloadConfig();
+        ranks.load();
+        for (org.bukkit.entity.Player online : getServer().getOnlinePlayers()) ranks.apply(online);
         for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) {
             if (!punishments.isPunished(p.getUniqueId())) continue;
             p.removePotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS);
@@ -168,6 +181,8 @@ public class StaffCorePlugin extends JavaPlugin {
     public PlayerMenus playerMenus() { return playerMenus; }
     public TicketManager tickets() { return tickets; }
     public SpawnManager spawn() { return spawn; }
+    public RankManager ranks() { return ranks; }
+    public dev.staffcore.gui.RankMenus rankMenus() { return rankMenus; }
     public TicketMenus ticketMenus() { return ticketMenus; }
     public VoiceManager voice() { return voice; }
     public VoiceMenus voiceMenus() { return voiceMenus; }

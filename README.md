@@ -98,6 +98,34 @@ Only offenses in the same category count. Punishments the team lifted do not cou
 
 Anti-cheat plugins can run `playban apply <player> <category>` from the console.
 
+## Ranks
+
+Owner, Co-Owner, Admin, Dev, Mod, Supporter and Player come ready-made (`ranks.yml`, or `/rank menu`). Each rank has a level, a prefix shown in chat and the tab list, and permissions it gives (`staffcore.*` and `*` are expanded).
+
+Command levels say from which level a command may be used, ops included, so OP alone is no longer enough: by default `/gamemode` needs 70, `/give` 80, `/execute` 90 and `/op` 100. A rule can also name part of a command, like `sc reload`. The levels start once someone holds the highest rank, which an op claims once with `/rank setup`, so nobody locks themselves out. Nobody can give, change or remove a rank at or above their own level. Command blocks are not covered, so set `enable-command-block=false`.
+
+| Command | What it does | Permission |
+|---|---|---|
+| `/rank set <player> <rank>` | Give a rank below your own level | `staffcore.ranks` |
+| `/rank remove <player>`, `info`, `list` | Take away, look up, list | `staffcore.ranks` |
+| `/rank setup` | Claim the highest rank once, as an op | `staffcore.ranks` |
+| `/rank menu` | Edit ranks, permissions, players and command levels | `staffcore.ranks` |
+
+## Admin commands and items
+
+| Command | What it does | Permission |
+|---|---|---|
+| `/tpadmin <player>` | Teleport there invisible; `/tpback` returns | `staffcore.tpadmin` |
+| `/tphere <player>` | Bring a player to you | `staffcore.tpadmin` |
+| `/freeze <player>` | Freeze in place; logging out is reported | `staffcore.freeze` |
+| `/invsee`, `/endersee <player>` | Look into inventories; edit with `staffcore.invsee.edit` | `staffcore.invsee` |
+| `/teamchat [text]` | Team-only chat, toggle or one message | `staffcore.teamchat` |
+| `/clearchat` | Clear the chat for players | `staffcore.clearchat` |
+| `/fly`, `/heal`, `/god [player]` | For staff | `staffcore.fly`, `.heal`, `.god` |
+| `/tools` | Admin items | `staffcore.tools` |
+
+The items from `/tools`, each with its own permission `staffcore.tool.<name>`: bannhammer (a hit opens the punish menu), freeze wand (aim and right-click), handcuffs (the player follows you and cannot act), inspector (right-click shows the profile), teleport compass (jump to anyone, invisible), vanish cloak and x-ray glasses (ores within 20 blocks glow through walls for 15 seconds, only for you).
+
 ## Hidden commands
 
 Players without `staffcore.commands.all` do not see team commands in their suggestions, and the commands listed under `command-hiding` (by default `plugins`, `pl`, `version` and similar) are hidden and answer like an unknown command. Forms like `bukkit:plugins` are hidden too. The list can be changed in Settings.

@@ -2069,6 +2069,101 @@ class StaffCoreTest {
         assertTrue(adminLines < 5);
     }
 
+    // ------------------------------------------------------------------ admin items
+
+    private ItemStack tool(String id) {
+        for (var t : ToolManager.TOOLS) if (t.id().equals(id)) return plugin.tools().create(t);
+        throw new AssertionError(id);
+    }
+
+    private void rightClickPlayer(PlayerMock staff, PlayerMock target) {
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerInteractEntityEvent(staff, target, org.bukkit.inventory.EquipmentSlot.HAND));
+    }
+
+    private void rightClickAir(PlayerMock staff) {
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerInteractEvent(staff, org.bukkit.event.block.Action.RIGHT_CLICK_AIR,
+                staff.getInventory().getItemInMainHand(), null, org.bukkit.block.BlockFace.SELF, org.bukkit.inventory.EquipmentSlot.HAND));
+    }
+
+    @Test
+    void toolsMenuHandsOutOnlyAllowedItems() {
+        assertTrue(admin.performCommand("tools"));
+        admin.simulateInventoryClick(10);
+        assertNotNull(plugin.tools().toolOf(admin.getInventory().getItem(0)), "the admin got the bannhammer");
+        PlayerMock mod = server.addPlayer("Moderator");
+        mod.addAttachment(plugin, "staffcore.tools", true);
+        plugin.tools().menu(mod);
+        mod.simulateInventoryClick(10);
+        assertNull(plugin.tools().toolOf(mod.getInventory().getItem(0)), "without staffcore.tool.banhammer there is nothing to take");
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.tools().menu(admin);
+            assertNoMissingTexts(admin, code);
+        }
+    }
+
+    @Test
+    void bannhammerOpensThePunishMenuInsteadOfHurting() {
+        admin.getInventory().setItemInMainHand(tool("banhammer"));
+        var hit = new org.bukkit.event.entity.EntityDamageByEntityEvent(admin, troll, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).withCausingEntity(admin).withDirectEntity(admin).build(), 6);
+        server.getPluginManager().callEvent(hit);
+        assertTrue(hit.isCancelled());
+        server.getScheduler().performTicks(2);
+        assertInstanceOf(Menu.class, admin.getOpenInventory().getTopInventory().getHolder(), "the category menu is open");
+    }
+
+    @Test
+    void handcuffsLeadAPlayerAndRestrainThem() {
+        admin.getInventory().setItemInMainHand(tool("handcuffs"));
+        troll.teleport(admin.getLocation().clone().add(30, 0, 0));
+        rightClickPlayer(admin, troll);
+        assertTrue(plugin.admin().isCuffed(troll.getUniqueId()));
+        server.getScheduler().performTicks(6);
+        assertTrue(troll.getLocation().distance(admin.getLocation()) < 3, "pulled along behind the admin");
+        assertTrue(blocked(troll, "/spawn"), "and cannot act on their own");
+        rightClickPlayer(admin, troll);
+        assertFalse(plugin.admin().isCuffed(troll.getUniqueId()), "a second click lets go");
+    }
+
+    @Test
+    void inspectorFreezeWandAndVanishCloak() {
+        admin.getInventory().setItemInMainHand(tool("inspector"));
+        rightClickPlayer(admin, troll);
+        assertInstanceOf(Menu.class, admin.getOpenInventory().getTopInventory().getHolder(), "the profile opens");
+        admin.getInventory().setItemInMainHand(tool("freeze"));
+        rightClickPlayer(admin, troll);
+        assertTrue(plugin.admin().isFrozen(troll.getUniqueId()));
+        admin.getInventory().setItemInMainHand(tool("vanish"));
+        rightClickAir(admin);
+        assertTrue(plugin.punishments().isVanished(admin.getUniqueId()));
+        admin.getInventory().setItemInMainHand(tool("compass"));
+        rightClickAir(admin);
+        assertInstanceOf(Menu.class, admin.getOpenInventory().getTopInventory().getHolder(), "the player list opens");
+    }
+
+    @Test
+    void stolenToolsDoNothing() {
+        bystander.getInventory().setItemInMainHand(tool("handcuffs"));
+        rightClickPlayer(bystander, troll);
+        assertFalse(plugin.admin().isCuffed(troll.getUniqueId()), "a player without the permission cannot use it");
+        bystander.getInventory().setItemInMainHand(tool("vanish"));
+        rightClickAir(bystander);
+        assertFalse(plugin.punishments().isVanished(bystander.getUniqueId()));
+    }
+
+    @Test
+    void xrayFindsNearbyOres() {
+        var at = admin.getLocation();
+        at.getWorld().getBlockAt(at.getBlockX() + 3, at.getBlockY(), at.getBlockZ()).setType(Material.DIAMOND_ORE);
+        at.getWorld().getBlockAt(at.getBlockX() - 5, at.getBlockY(), at.getBlockZ()).setType(Material.ANCIENT_DEBRIS);
+        var ores = plugin.tools().findOres(at, 8, 50);
+        assertEquals(2, ores.size());
+        assertEquals(Material.DIAMOND_ORE, ores.get(0).getType(), "nearest first");
+        admin.getInventory().setItemInMainHand(tool("xray"));
+        rightClickAir(admin);
+    }
+
     @Test
     void timeParsing() {
         assertEquals(90_000_000L + 1_800_000L, TimeUtil.parse("1d 1h 30m"));

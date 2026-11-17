@@ -78,7 +78,7 @@ public final class AdminMenus {
     }
 
     /** A 6-row list with page buttons in the bottom row. */
-    <T> Menu paged(Component title, List<T> entries, int page, Function<T, ItemStack> render,
+    public <T> Menu paged(Component title, List<T> entries, int page, Function<T, ItemStack> render,
                            BiConsumer<T, InventoryClickEvent> click, IntConsumer openPage, Runnable back) {
         Menu m = new Menu(6, title);
         int pages = Math.max(1, (entries.size() + 44) / 45);
@@ -110,6 +110,9 @@ public final class AdminMenus {
         m.set(40, item(Material.KNOWLEDGE_BOOK, "menu.main.guide"), e -> guide(p, 0));
         m.set(16, item(Material.BOOK, "menu.main.history"), e ->
                 plugin.input().ask(p, "prompt.history-name", name -> profileByName(p, name), () -> main(p)));
+        if (p.hasPermission("staffcore.tools")) {
+            m.set(24, item(Material.MACE, "menu.main.tools"), e -> plugin.tools().menu(p));
+        }
         if (p.hasPermission("staffcore.ranks") && plugin.ranks().enabled()) {
             m.set(20, item(Material.GOLDEN_HELMET, "menu.main.ranks", "count", plugin.ranks().all().size()), e -> plugin.rankMenus().list(p));
         }
@@ -401,6 +404,7 @@ public final class AdminMenus {
             new GuideEntry("profile", "/sc profile <player>", Material.BOOK, "staffcore.staff"),
             new GuideEntry("vanish", "/vanish", Material.GLASS, "staffcore.vanish"),
             new GuideEntry("ticket-show", "/ticket show [reason]", Material.HOPPER, "staffcore.staff"),
+            new GuideEntry("tools", "/tools", Material.MACE, "staffcore.tools"),
             new GuideEntry("tpadmin", "/tpadmin <player>", Material.ENDER_PEARL, "staffcore.tpadmin"),
             new GuideEntry("tphere", "/tphere <player>", Material.LEAD, "staffcore.tpadmin"),
             new GuideEntry("freeze", "/freeze <player>", Material.ICE, "staffcore.freeze"),

@@ -50,8 +50,10 @@ public final class AdminCommand implements TabExecutor {
         }
         if (cmd.equals("teamchat")) {
             if (!(sender instanceof Player p)) {
-                if (args.length > 0) Bukkit.getOnlinePlayers().stream().filter(x -> x.hasPermission("staffcore.teamchat"))
-                        .forEach(x -> x.sendMessage(lang().msg("admin.teamchat-line", "player", "Console", "text", String.join(" ", args))));
+                if (args.length == 0) return true;
+                Component line = lang().msg("admin.teamchat-line", "player", "Console", "text", String.join(" ", args));
+                Bukkit.getOnlinePlayers().stream().filter(x -> x.hasPermission("staffcore.teamchat")).forEach(x -> x.sendMessage(line));
+                sender.sendMessage(line);
                 return true;
             }
             if (args.length > 0) admin().teamMessage(p, String.join(" ", args));

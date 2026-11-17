@@ -31,6 +31,7 @@ public class StaffCorePlugin extends JavaPlugin {
     private SpawnManager spawn;
     private RankManager ranks;
     private AdminManager admin;
+    private ToolManager tools;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
     private VoiceManager voice;
@@ -94,6 +95,9 @@ public class StaffCorePlugin extends JavaPlugin {
             register("heal", "Heal and feed", "staffcore.heal", adminExecutor);
             register("god", "Take no damage", "staffcore.god", adminExecutor);
         }
+        tools = new ToolManager(this);
+        getServer().getPluginManager().registerEvents(tools, this);
+        register("tools", "Admin items: bannhammer, freeze wand, handcuffs and more", "staffcore.tools", tools);
         spawn = new SpawnManager(this);
         getServer().getPluginManager().registerEvents(spawn, this);
         if (getConfig().getBoolean("spawn.enabled", true)) {
@@ -203,6 +207,7 @@ public class StaffCorePlugin extends JavaPlugin {
     public SpawnManager spawn() { return spawn; }
     public RankManager ranks() { return ranks; }
     public AdminManager admin() { return admin; }
+    public ToolManager tools() { return tools; }
     public dev.staffcore.gui.RankMenus rankMenus() { return rankMenus; }
     public TicketMenus ticketMenus() { return ticketMenus; }
     public VoiceManager voice() { return voice; }

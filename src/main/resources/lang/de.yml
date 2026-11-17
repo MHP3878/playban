@@ -87,6 +87,7 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  tools: ["<gray>Öffnet die Admin-Items: Bannhammer,", "<gray>Freeze-Stab, Handschellen, Inspektor,", "<gray>Teleport-Kompass, Vanish-Umhang, X-Ray."]
   tpadmin: ["<gray>Macht dich unsichtbar und bringt dich", "<gray>zu einem Spieler. /tpback bringt dich zurück.", "", "<dark_gray>Beispiel: /tpadmin Steve"]
   tphere: ["<gray>Holt einen Spieler zu dir."]
   freeze: ["<gray>Friert einen Spieler ein: kein Bewegen,", "<gray>Bauen oder Kämpfen. Nochmal zum Aufheben.", "<gray>Ausloggen wird gemeldet."]
@@ -309,7 +310,43 @@ rank:
   set: "<green><white>{player}</white> ist jetzt <white>{rank}</white>."
   set-you: "<green>Dein Rang ist jetzt <white>{rank}</white>."
 
+tools:
+  title: "<dark_gray>Admin-Items"
+  take: "<#ffc371>Klicken zum Nehmen"
+  locked: "<red>Dein Rang darf das nicht nutzen"
+  not-allowed: "<red>Du darfst dieses Item nicht nutzen."
+  missed: "<gray>Daneben. Ziel auf einen Spieler."
+  xray-found: "<gray>Erze in der Nähe: <white>{count}</white>. Sie leuchten 15 Sekunden, nur für dich."
+  compass-title: "<dark_gray>Teleport zu"
+  compass-entry: ["<gray>{world} <white>{x} {y} {z}", "", "<#ffc371>Klicken, um unsichtbar hinzuspringen"]
+  banhammer:
+    name: "<dark_red><bold>Bannhammer</bold>"
+    lore: ["<gray>Schlag einen Spieler, um das", "<gray>Straf-Menü für ihn zu öffnen."]
+  freeze:
+    name: "<aqua><bold>Freeze-Stab</bold>"
+    lore: ["<gray>Rechtsklick, während du auf einen Spieler", "<gray>bis 40 Blöcke weit zielst, friert ihn", "<gray>ein oder taut ihn auf."]
+  handcuffs:
+    name: "<gray><bold>Handschellen</bold>"
+    lore: ["<gray>Rechtsklick auf einen Spieler: Er folgt", "<gray>dir und kann nichts tun.", "<gray>Nochmal Rechtsklick lässt ihn los."]
+  inspector:
+    name: "<gold><bold>Inspektor</bold>"
+    lore: ["<gray>Rechtsklick auf einen Spieler zeigt", "<gray>Notizen, Strafen und Tickets."]
+  compass:
+    name: "<light_purple><bold>Teleport-Kompass</bold>"
+    lore: ["<gray>Rechtsklick: Spieler wählen und", "<gray>unsichtbar zu ihm springen."]
+  vanish:
+    name: "<white><bold>Vanish-Umhang</bold>"
+    lore: ["<gray>Rechtsklick macht dich", "<gray>unsichtbar oder sichtbar."]
+  xray:
+    name: "<green><bold>X-Ray-Brille</bold>"
+    lore: ["<gray>Rechtsklick: Erze im Umkreis von 20", "<gray>Blöcken leuchten 15 Sekunden durch", "<gray>Wände. Nur du siehst sie."]
+
 admin:
+  cuffed: "<gray><white>{player}</white> trägt Handschellen und folgt dir."
+  uncuffed: "<gray><white>{player}</white> ist wieder frei."
+  uncuffed-you: "<green>Die Handschellen sind ab."
+  cuffed-title: "<gray><bold>HANDSCHELLEN</bold>"
+  cuffed-subtitle: "<gray>von {staff}"
   not-online: "<red><white>{player}</white> ist nicht online."
   tpadmin: "<gray>Unsichtbar bei <white>{player}</white>. Mit <#ffc371>/tpback</#ffc371> kommst du zurück."
   tphere: "<gray><white>{player}</white> zu dir geholt."
@@ -605,6 +642,9 @@ menu:
 
   main:
     title: "<gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>"
+    tools:
+      name: "<#ffc371><bold>Admin-Items</bold>"
+      lore: ["<gray>Bannhammer, Freeze-Stab, Handschellen,", "<gray>X-Ray und mehr.", "", "<#ffc371>Klicken zum Öffnen"]
     ranks:
       name: "<#ffc371><bold>Ränge</bold>"
       lore: ["<gray>Ränge: <white>{count}", "<gray>Owner, Admin, Mod und mehr,", "<gray>und welcher Befehl welches Level braucht.", "", "<#ffc371>Klicken zum Öffnen"]

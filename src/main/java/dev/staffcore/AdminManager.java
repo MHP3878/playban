@@ -39,12 +39,15 @@ public final class AdminManager implements Listener {
     private final StaffCorePlugin plugin;
     private final Set<UUID> frozen = ConcurrentHashMap.newKeySet();
     private final Set<UUID> god = ConcurrentHashMap.newKeySet();
+    /** cuffed player -> the staff member leading them */
+    private final Map<UUID, UUID> cuffs = new ConcurrentHashMap<>();
     /** Read from the chat thread. */
     private final Set<UUID> teamChat = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Location> returnPoints = new HashMap<>();
     /** viewer -> owner of the inventory or ender chest they are looking at */
     private final Map<UUID, UUID> viewing = new HashMap<>();
     private BukkitTask ticker;
+    private BukkitTask cuffTicker;
 
     public AdminManager(StaffCorePlugin plugin) {
         this.plugin = plugin;
@@ -64,10 +67,13 @@ public final class AdminManager implements Listener {
                 p.sendActionBar(lang().msg("admin.frozen-bar"));
             }
         }, 20L, 20L);
+        // handcuffed players are pulled along behind the one leading them
+        cuffTicker = Bukkit.getScheduler().runTaskTimer(plugin, this::pullCuffed, 4L, 4L);
     }
 
     public void stop() {
         if (ticker != null) ticker.cancel();
+        if (cuffTicker != null) cuffTicker.cancel();
     }
 
     // ---------------------------------------------------------------- teleport
@@ -109,6 +115,65 @@ public final class AdminManager implements Listener {
             target.setFreezeTicks(0);
             target.playSound(target.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1.2f);
             lang().send(target, "admin.unfrozen-you");
+        }
+    }
+
+    // ---------------------------------------------------------------- handcuffs
+
+    public boolean isCuffed(UUID id) {
+        return cuffs.containsKey(id);
+    }
+
+    /** Frozen or cuffed: the player cannot act on their own. */
+    public boolean isRestrained(UUID id) {
+        return frozen.contains(id) || cuffs.containsKey(id);
+    }
+
+    public void cuff(Player target, Player staff) {
+        cuffs.put(target.getUniqueId(), staff.getUniqueId());
+        target.playSound(target.getLocation(), Sound.BLOCK_CHAIN_PLACE, 1f, 0.8f);
+        staff.playSound(staff.getLocation(), Sound.BLOCK_CHAIN_PLACE, 1f, 0.8f);
+        target.showTitle(Title.title(lang().msg("admin.cuffed-title"), lang().msg("admin.cuffed-subtitle", "staff", staff.getName())));
+        lang().send(staff, "admin.cuffed", "player", target.getName());
+    }
+
+    public void uncuff(UUID target) {
+        UUID staffId = cuffs.remove(target);
+        Player t = Bukkit.getPlayer(target);
+        if (t != null) {
+            t.playSound(t.getLocation(), Sound.BLOCK_CHAIN_BREAK, 1f, 1f);
+            lang().send(t, "admin.uncuffed-you");
+        }
+        Player staff = staffId == null ? null : Bukkit.getPlayer(staffId);
+        if (staff != null && t != null) lang().send(staff, "admin.uncuffed", "player", t.getName());
+    }
+
+    private void pullCuffed() {
+        for (Map.Entry<UUID, UUID> e : cuffs.entrySet()) {
+            Player target = Bukkit.getPlayer(e.getKey());
+            Player staff = Bukkit.getPlayer(e.getValue());
+            if (target == null || staff == null) {
+                if (target != null) uncuff(e.getKey());
+                else cuffs.remove(e.getKey());
+                continue;
+            }
+            Location lead = staff.getLocation();
+            if (target.getWorld() != lead.getWorld() || target.getLocation().distanceSquared(lead) > 6.25) {
+                Location behind = lead.clone().subtract(lead.getDirection().setY(0).normalize().multiply(1.5));
+                behind.setYaw(target.getLocation().getYaw());
+                behind.setPitch(target.getLocation().getPitch());
+                target.teleport(behind);
+            }
+            try {
+                Location a = target.getLocation().add(0, 1, 0);
+                Location b = staff.getLocation().add(0, 1, 0);
+                org.bukkit.util.Vector step = b.toVector().subtract(a.toVector()).multiply(0.2);
+                for (int i = 0; i <= 5; i++) {
+                    target.getWorld().spawnParticle(org.bukkit.Particle.CRIT, a.clone().add(step.clone().multiply(i)), 1, 0, 0, 0, 0);
+                }
+            } catch (RuntimeException ignored) {
+                // only the chain look
+            }
         }
     }
 
@@ -173,7 +238,7 @@ public final class AdminManager implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
-        if (!isFrozen(e.getPlayer().getUniqueId())) return;
+        if (!isRestrained(e.getPlayer().getUniqueId())) return;
         Location from = e.getFrom();
         Location to = e.getTo();
         if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) return;
@@ -185,22 +250,22 @@ public final class AdminManager implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent e) {
-        if (isFrozen(e.getPlayer().getUniqueId())) e.setCancelled(true);
+        if (isRestrained(e.getPlayer().getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent e) {
-        if (isFrozen(e.getPlayer().getUniqueId())) e.setCancelled(true);
+        if (isRestrained(e.getPlayer().getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW)
     public void onInteract(PlayerInteractEvent e) {
-        if (isFrozen(e.getPlayer().getUniqueId())) e.setCancelled(true);
+        if (isRestrained(e.getPlayer().getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onHit(EntityDamageByEntityEvent e) {
-        if (e.getDamager() instanceof Player p && isFrozen(p.getUniqueId())) e.setCancelled(true);
+        if (e.getDamager() instanceof Player p && isRestrained(p.getUniqueId())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -218,7 +283,7 @@ public final class AdminManager implements Listener {
     /** Frozen players may still write a ticket or an appeal, nothing else. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onCommand(PlayerCommandPreprocessEvent e) {
-        if (!isFrozen(e.getPlayer().getUniqueId())) return;
+        if (!isRestrained(e.getPlayer().getUniqueId())) return;
         String label = e.getMessage().substring(1).split(" ")[0].toLowerCase();
         if (label.contains(":")) label = label.substring(label.indexOf(':') + 1);
         if (label.equals("ticket") || label.equals("appeal") || label.equals("msg") || label.equals("tell")) return;
@@ -258,6 +323,12 @@ public final class AdminManager implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         UUID id = e.getPlayer().getUniqueId();
         viewing.remove(id);
+        if (isCuffed(id)) {
+            uncuff(id);
+            plugin.punishments().notifyStaff(lang().prefixed("admin.frozen-quit", "player", e.getPlayer().getName()));
+        }
+        // whoever was leading someone lets go when they leave
+        cuffs.entrySet().removeIf(c -> c.getValue().equals(id));
         if (isFrozen(id)) {
             // logging out while frozen is the classic way to dodge a check, so the team hears about it
             plugin.punishments().notifyStaff(lang().prefixed("admin.frozen-quit", "player", e.getPlayer().getName()));

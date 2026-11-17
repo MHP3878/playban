@@ -29,6 +29,8 @@ permissions:
       staffcore.fly: true
       staffcore.heal: true
       staffcore.god: true
+      staffcore.tool.banhammer: true
+      staffcore.tool.xray: true
   staffcore.staff:
     description: Punish players, handle reviews and tickets
     default: op
@@ -45,6 +47,12 @@ permissions:
       staffcore.invsee: true
       staffcore.teamchat: true
       staffcore.clearchat: true
+      staffcore.tools: true
+      staffcore.tool.freeze: true
+      staffcore.tool.handcuffs: true
+      staffcore.tool.inspector: true
+      staffcore.tool.compass: true
+      staffcore.tool.vanish: true
   staffcore.see:
     description: Can still see punished players
     default: op
@@ -95,6 +103,30 @@ permissions:
     default: op
   staffcore.god:
     description: /god
+    default: op
+  staffcore.tools:
+    description: "/tools: the menu with the admin items"
+    default: op
+  staffcore.tool.banhammer:
+    description: "Bannhammer: a hit opens the punish menu"
+    default: op
+  staffcore.tool.freeze:
+    description: "Freeze wand: freezes the player you aim at"
+    default: op
+  staffcore.tool.handcuffs:
+    description: "Handcuffs: lead a player behind you"
+    default: op
+  staffcore.tool.inspector:
+    description: "Inspector: a click shows a player's profile"
+    default: op
+  staffcore.tool.compass:
+    description: "Teleport compass: jump to any player, invisible"
+    default: op
+  staffcore.tool.vanish:
+    description: "Vanish cloak: turn invisible with a click"
+    default: op
+  staffcore.tool.xray:
+    description: "X-ray glasses: ores nearby glow through walls, only for you"
     default: op
   staffcore.ranks:
     description: Can open /rank and give ranks below their own level

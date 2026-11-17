@@ -87,6 +87,7 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  tools: ["<gray>Opens the admin items: bannhammer,", "<gray>freeze wand, handcuffs, inspector,", "<gray>teleport compass, vanish cloak, x-ray."]
   tpadmin: ["<gray>Turns you invisible and takes you", "<gray>to a player. /tpback takes you back.", "", "<dark_gray>Example: /tpadmin Steve"]
   tphere: ["<gray>Brings a player to you."]
   freeze: ["<gray>Freezes a player in place: no moving,", "<gray>building or fighting. Again to undo.", "<gray>Logging out is reported."]
@@ -309,7 +310,43 @@ rank:
   set: "<green><white>{player}</white> is now <white>{rank}</white>."
   set-you: "<green>Your rank is now <white>{rank}</white>."
 
+tools:
+  title: "<dark_gray>Admin items"
+  take: "<#ffc371>Click to take it"
+  locked: "<red>Your rank may not use this"
+  not-allowed: "<red>You may not use this item."
+  missed: "<gray>Missed. Aim at a player."
+  xray-found: "<gray>Ores nearby: <white>{count}</white>. They glow for 15 seconds, only for you."
+  compass-title: "<dark_gray>Teleport to"
+  compass-entry: ["<gray>{world} <white>{x} {y} {z}", "", "<#ffc371>Click to go there, invisible"]
+  banhammer:
+    name: "<dark_red><bold>Bannhammer</bold>"
+    lore: ["<gray>Hit a player to open", "<gray>the punish menu for them."]
+  freeze:
+    name: "<aqua><bold>Freeze wand</bold>"
+    lore: ["<gray>Right-click while aiming at a player", "<gray>up to 40 blocks away to freeze or", "<gray>unfreeze them."]
+  handcuffs:
+    name: "<gray><bold>Handcuffs</bold>"
+    lore: ["<gray>Right-click a player: they follow", "<gray>you and cannot do anything.", "<gray>Right-click again to let go."]
+  inspector:
+    name: "<gold><bold>Inspector</bold>"
+    lore: ["<gray>Right-click a player to see", "<gray>notes, punishments and tickets."]
+  compass:
+    name: "<light_purple><bold>Teleport compass</bold>"
+    lore: ["<gray>Right-click: pick a player and", "<gray>jump to them, invisible."]
+  vanish:
+    name: "<white><bold>Vanish cloak</bold>"
+    lore: ["<gray>Right-click to turn", "<gray>invisible or visible."]
+  xray:
+    name: "<green><bold>X-ray glasses</bold>"
+    lore: ["<gray>Right-click: ores within 20 blocks", "<gray>glow through walls for 15 seconds.", "<gray>Only you see them."]
+
 admin:
+  cuffed: "<gray><white>{player}</white> is in handcuffs and follows you."
+  uncuffed: "<gray><white>{player}</white> is free again."
+  uncuffed-you: "<green>The handcuffs are off."
+  cuffed-title: "<gray><bold>HANDCUFFED</bold>"
+  cuffed-subtitle: "<gray>by {staff}"
   not-online: "<red><white>{player}</white> is not online."
   tpadmin: "<gray>Invisible at <white>{player}</white>. <#ffc371>/tpback</#ffc371> takes you back."
   tphere: "<gray>Brought <white>{player}</white> to you."
@@ -604,6 +641,9 @@ menu:
 
   main:
     title: "<gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>"
+    tools:
+      name: "<#ffc371><bold>Admin items</bold>"
+      lore: ["<gray>Bannhammer, freeze wand, handcuffs,", "<gray>x-ray and more.", "", "<#ffc371>Click to open"]
     ranks:
       name: "<#ffc371><bold>Ranks</bold>"
       lore: ["<gray>Ranks: <white>{count}", "<gray>Owner, Admin, Mod and more,", "<gray>and which commands need which level.", "", "<#ffc371>Click to open"]

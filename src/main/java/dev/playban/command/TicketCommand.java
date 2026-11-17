@@ -81,6 +81,11 @@ public final class TicketCommand implements TabExecutor {
             for (String s : List.of("show", "open", "stats", "back")) if (s.startsWith(last)) out.add(s);
         } else if (args.length == 2 && args[0].equalsIgnoreCase("show")) {
             for (TicketManager.Reason r : plugin.tickets().reasons()) if (r.id().startsWith(last)) out.add(r.id());
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("open")) {
+            for (var t : plugin.tickets().all()) {
+                String id = String.valueOf(t.id);
+                if (t.active() && id.startsWith(last.replace("#", ""))) out.add(id);
+            }
         }
         return out;
     }

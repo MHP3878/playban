@@ -1374,6 +1374,90 @@ class PlayBanTest {
         assertEquals("STORE", plugin.getConfig().getString("inventory-mode"), "the inventory button switches the mode");
     }
 
+    // ------------------------------------------------------------------ suggestions
+
+    private java.util.List<String> suggest(PlayerMock who, String line) {
+        String[] parts = line.split(" ", -1);
+        String label = parts[0];
+        String[] args = java.util.Arrays.copyOfRange(parts, 1, parts.length);
+        var cmd = server.getCommandMap().getCommand(label);
+        assertNotNull(cmd, "command " + label);
+        return cmd.tabComplete(who, label, args);
+    }
+
+    @Test
+    void shortCommandsSuggestPlayersNotSubcommands() {
+        var list = suggest(admin, "ban ");
+        assertTrue(list.contains("Troll"), "player names after /ban");
+        assertFalse(list.contains("menu"), "not the /playban subcommands");
+    }
+
+    @Test
+    void banSuggestsDurationsPermAndReasons() {
+        var times = suggest(admin, "ban Troll ");
+        assertTrue(times.contains("1d"));
+        assertTrue(times.contains("perm"), "permanent is offered for bans");
+        assertTrue(suggest(admin, "ban Troll 1d ").contains("Griefing"), "reason presets after the time");
+        assertTrue(suggest(admin, "ban Troll 1d ").contains("X-Ray"), "category names work as reasons too");
+        assertTrue(suggest(admin, "ban Troll 1").stream().allMatch(s -> s.startsWith("1")), "only what fits what is typed");
+    }
+
+    @Test
+    void punishSuggestsCategoriesAndAppliesThem() {
+        var list = suggest(admin, "punish Troll ");
+        assertTrue(list.contains("x-ray"), "categories are suggested");
+        assertTrue(list.contains("1h"), "durations too, for a PlayBan of your own length");
+
+        assertTrue(admin.performCommand("punish Troll griefing"));
+        Punishment p = plugin.punishments().get(troll.getUniqueId());
+        assertNotNull(p, "/punish <player> <category> punishes right away");
+        assertEquals("griefing", p.category);
+    }
+
+    @Test
+    void punishWithOnlyANameOpensTheCategoryMenu() {
+        assertTrue(admin.performCommand("punish Troll"));
+        assertInstanceOf(Menu.class, admin.getOpenInventory().getTopInventory().getHolder());
+    }
+
+    @Test
+    void unbanSuggestsNamesAndBanIds() {
+        admin.performCommand("ban Troll 1h Hacking");
+        String id = plugin.store().bans.get(troll.getUniqueId()).banId;
+        var list = suggest(admin, "unban ");
+        assertTrue(list.contains("Troll"));
+        assertTrue(list.contains(id));
+    }
+
+    @Test
+    void offlinePlayersAreSuggestedToo() {
+        admin.performCommand("playban note Troll seen once");
+        troll.disconnect();
+        assertTrue(suggest(admin, "playban profile T").contains("Troll"), "known players work while offline");
+    }
+
+    @Test
+    void timeChangeAndPardonSuggestOnlyPunishedPlayers() {
+        punish("1h");
+        var list = suggest(admin, "playban addtime ");
+        assertEquals(java.util.List.of("Troll"), list);
+        assertTrue(suggest(admin, "playban addtime Troll ").contains("30m"));
+    }
+
+    @Test
+    void playersGetOnlyTheirOwnSuggestions() {
+        var list = suggest(bystander, "playban ");
+        assertTrue(list.contains("guide"));
+        assertFalse(list.contains("ban"), "no team commands for normal players");
+        assertTrue(suggest(bystander, "ban ").isEmpty() || !suggest(bystander, "ban ").contains("Troll"));
+    }
+
+    @Test
+    void ticketOpenSuggestsTicketNumbers() {
+        bystander.performCommand("ticket help me");
+        assertTrue(suggest(admin, "ticket open ").contains("1"));
+    }
+
     @Test
     void timeParsing() {
         assertEquals(90_000_000L + 1_800_000L, TimeUtil.parse("1d 1h 30m"));

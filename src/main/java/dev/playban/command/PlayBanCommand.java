@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class PlayBanCommand implements TabExecutor {
-    private static final List<String> STAFF_SUBS = List.of("menu", "punish", "apply", "warn", "ban", "specban", "unban", "note", "profile", "pardon", "addtime", "removetime", "info", "list", "history", "help");
+    private static final List<String> STAFF_SUBS = List.of("menu", "punish", "apply", "warn", "ban", "specban", "unban", "note", "profile", "pardon", "addtime", "removetime", "info", "list", "history", "guide", "vanish");
     private static final List<String> ADMIN_SUBS = List.of("reload", "lang");
     private final PlayBanPlugin plugin;
 
@@ -36,19 +36,7 @@ public final class PlayBanCommand implements TabExecutor {
         // Short commands: /ban Steve 1d -> handled like /playban ban Steve 1d
         String used = label.toLowerCase();
         if (used.contains(":")) used = used.substring(used.indexOf(':') + 1);
-        java.util.Map<String, String> shortcuts = java.util.Map.of(
-                "ban", "ban", "tempban", "ban", "punish", "punish", "playban", "",
-                "warn", "warn", "unban", "unban", "vanish", "vanish", "guide", "guide");
-        if (!used.equals("playban") && !used.equals("pb") && shortcuts.containsKey(used)
-                && plugin.getConfig().getBoolean("short-commands", true)) {
-            String mapped = shortcuts.get(used);
-            String[] shifted = new String[args.length + (mapped.isEmpty() ? 0 : 1)];
-            if (!mapped.isEmpty()) {
-                shifted[0] = mapped;
-                System.arraycopy(args, 0, shifted, 1, args.length);
-                args = shifted;
-            }
-        }
+        args = expandShortcut(used, args);
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
 
         if (sender instanceof Player player && plugin.punishments().inLimbo(player.getUniqueId())
@@ -275,9 +263,33 @@ public final class PlayBanCommand implements TabExecutor {
                 "punishment", plugin.punishments().describe(step.type, step.durationMs));
     }
 
+    private static final java.util.Map<String, String> SHORTCUTS = java.util.Map.of(
+            "ban", "ban", "tempban", "ban", "punish", "punish",
+            "warn", "warn", "unban", "unban", "vanish", "vanish", "guide", "guide");
+
+    /** /ban Steve 1d becomes {"ban", "Steve", "1d"}, so short commands run through the same code as /playban. */
+    private String[] expandShortcut(String used, String[] args) {
+        if (used.contains(":")) used = used.substring(used.indexOf(':') + 1);
+        String mapped = SHORTCUTS.get(used);
+        if (mapped == null || !plugin.getConfig().getBoolean("short-commands", true)) return args;
+        String[] shifted = new String[args.length + 1];
+        shifted[0] = mapped;
+        System.arraycopy(args, 0, shifted, 1, args.length);
+        return shifted;
+    }
+
     private void punish(CommandSender sender, String[] args) {
+        if (args.length == 2 && sender instanceof Player player) {
+            OfflinePlayer target = target(sender, args, "usage.punish");
+            if (target != null) plugin.adminMenus().punishPlayer(player, target.getUniqueId(), target.getName());
+            return;
+        }
         if (args.length < 3) {
             lang().send(sender, "usage.punish");
+            return;
+        }
+        if (plugin.categories().get(args[2]) != null && TimeUtil.parse(args[2]) <= 0) {
+            apply(sender, new String[]{"apply", args[1], args[2]});
             return;
         }
         OfflinePlayer target = target(sender, args, "usage.punish");
@@ -306,30 +318,99 @@ public final class PlayBanCommand implements TabExecutor {
         return null;
     }
 
+    // ---------------------------------------------------------------- suggestions
+
+    private static void add(List<String> out, String value, String typed) {
+        if (value != null && !value.isEmpty() && value.toLowerCase().startsWith(typed) && !out.contains(value)) out.add(value);
+    }
+
+    /** Online players first, then everyone PlayBan has seen before. */
+    private void players(List<String> out, String typed) {
+        for (Player p : Bukkit.getOnlinePlayers()) add(out, p.getName(), typed);
+        for (String name : plugin.store().names.values()) {
+            if (out.size() >= 40) break;
+            add(out, name, typed);
+        }
+    }
+
+    private void durations(List<String> out, String typed, boolean permanent) {
+        for (String d : plugin.getConfig().getStringList("duration-presets")) add(out, d, typed);
+        for (String d : List.of("30m", "1h", "12h", "1d", "3d", "7d", "14d", "30d")) add(out, d, typed);
+        if (permanent) add(out, "perm", typed);
+    }
+
+    private void reasons(List<String> out, String typed) {
+        for (String r : plugin.getConfig().getStringList("reason-presets")) add(out, r, typed);
+        for (Category c : plugin.categories().all()) add(out, c.name, typed);
+    }
+
+    private void categories(List<String> out, String typed) {
+        for (Category c : plugin.categories().all()) add(out, c.id, typed);
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (!sender.hasPermission("playban.staff")) return out;
-        String last = args[args.length - 1].toLowerCase();
-        if (args.length == 1) {
-            for (String s : STAFF_SUBS) if (s.startsWith(last)) out.add(s);
-            for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase().startsWith(last)) out.add(p.getName());
-            if (sender.hasPermission("playban.admin")) for (String s : ADMIN_SUBS) if (s.startsWith(last)) out.add(s);
-        } else if (args.length == 2) {
-            String sub = args[0].toLowerCase();
-            if (sub.equals("unban")) {
-                for (Punishment b : plugin.store().bans.values()) if (b.name.toLowerCase().startsWith(last)) out.add(b.name);
-            } else if (List.of("punish", "apply", "warn", "ban", "specban", "note", "profile").contains(sub)) {
-                for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase().startsWith(last)) out.add(p.getName());
-            } else if (sub.equals("lang")) {
-                for (String c : lang().available()) if (c.startsWith(last)) out.add(c);
-            } else if (List.of("pardon", "addtime", "removetime", "info", "history").contains(sub)) {
-                for (Punishment p : plugin.store().active.values()) if (p.name.toLowerCase().startsWith(last)) out.add(p.name);
+        args = expandShortcut(alias.toLowerCase(), args);
+        int at = args.length - 1;
+        String typed = args[at].toLowerCase();
+        if (!sender.hasPermission("playban.staff")) {
+            if (at == 0) for (String s : List.of("tasks", "guide")) add(out, s, typed);
+            return out;
+        }
+        if (at == 0) {
+            for (String s : STAFF_SUBS) add(out, s, typed);
+            if (sender.hasPermission("playban.admin")) for (String s : ADMIN_SUBS) add(out, s, typed);
+            for (Player p : Bukkit.getOnlinePlayers()) add(out, p.getName(), typed);
+            return out;
+        }
+        String sub = args[0].toLowerCase();
+        switch (sub) {
+            case "punish" -> {
+                if (at == 1) players(out, typed);
+                else if (at == 2) {
+                    categories(out, typed);
+                    durations(out, typed, false);
+                } else if (at == 3 && TimeUtil.parse(args[2]) > 0) reasons(out, typed);
             }
-        } else if (args.length == 3 && args[0].equalsIgnoreCase("apply")) {
-            for (Category c : plugin.categories().all()) if (c.id.startsWith(last)) out.add(c.id);
-        } else if (args.length == 3 && List.of("punish", "ban", "specban", "addtime", "removetime").contains(args[0].toLowerCase())) {
-            for (String s : plugin.getConfig().getStringList("duration-presets")) if (s.startsWith(last)) out.add(s);
+            case "apply" -> {
+                if (at == 1) players(out, typed);
+                else if (at == 2) categories(out, typed);
+            }
+            case "warn" -> {
+                if (at == 1) players(out, typed);
+                else if (at == 2) reasons(out, typed);
+            }
+            case "ban", "specban" -> {
+                if (at == 1) players(out, typed);
+                else if (at == 2) durations(out, typed, true);
+                else if (at == 3) reasons(out, typed);
+            }
+            case "unban" -> {
+                if (at == 1) {
+                    for (Punishment b : plugin.store().bans.values()) {
+                        add(out, b.name, typed);
+                        add(out, b.banId, typed);
+                    }
+                    for (Punishment p : plugin.store().active.values()) add(out, p.banId, typed);
+                }
+            }
+            case "pardon", "info" -> {
+                if (at == 1) for (Punishment p : plugin.store().active.values()) add(out, p.name, typed);
+            }
+            case "addtime", "removetime" -> {
+                if (at == 1) for (Punishment p : plugin.store().active.values()) add(out, p.name, typed);
+                else if (at == 2) durations(out, typed, false);
+            }
+            case "note", "profile", "history" -> {
+                if (at == 1) players(out, typed);
+            }
+            case "lang" -> {
+                if (at == 1 && sender.hasPermission("playban.admin")) for (String c : lang().available()) add(out, c, typed);
+            }
+            default -> {
+                // "/playban <player>": nothing more to suggest
+            }
         }
         return out;
     }

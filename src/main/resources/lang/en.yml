@@ -136,7 +136,7 @@ usage:
   warn: "<gray>Usage: <white>/playban warn <player> [reason]"
   ban: "<gray>Usage: <white>/playban ban <player> <time|perm> [reason]"
   unban: "<gray>Usage: <white>/playban unban <player>"
-  punish: "<gray>Usage: <white>/playban punish <player> <time> [reason]"
+  punish: "<gray>Usage: <white>/punish <player></white>, <white>/punish <player> <category></white> or <white>/punish <player> <time> [reason]"
   pardon: "<gray>Usage: <white>/playban pardon <player>"
   addtime: "<gray>Usage: <white>/playban addtime <player> <time>"
   removetime: "<gray>Usage: <white>/playban removetime <player> <time>"

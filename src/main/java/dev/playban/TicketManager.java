@@ -325,6 +325,11 @@ public final class TicketManager {
 
     /** Invites everyone in the ticket to voice: big red text plus the Discord link. */
     public boolean voice(Ticket t, Player staff) {
+        if (plugin.voice().ticketGroup(t, staff)) {
+            system(t, "ticket.log.voice", "staff", staff.getName());
+            changed(t);
+            return true;
+        }
         String discord = plugin.punishments().discord();
         if (discord.isEmpty()) return false;
         for (Participant p : t.participants) {

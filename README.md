@@ -15,6 +15,7 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 
 - Paper 1.21 or newer, Java 21
 - Optional: Vault plus an economy plugin for the "give money" task
+- Optional: the plugin Simple Voice Chat for voice group moderation
 
 ## Install
 
@@ -47,6 +48,10 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 | `/ticket open <number>` | Open one ticket | `playban.staff` |
 | `/ticket stats` | Who handled how many tickets | `playban.staff` |
 | `/ticket back` | Return after teleporting from a ticket | `playban.staff` |
+| `/voice` | Voice groups: join unseen, kick, mute, ban, close, passwords | `playban.voice` |
+| `/voice report` | Report a voice group to the team | - |
+| `/voice manage` | Kick or ban in a voice group you created | - |
+| `/voice speak` | Switch your microphone on after the team pulled you into a ticket voice group | - |
 
 Times look like `30m`, `2h`, `1d 12h`.
 
@@ -58,6 +63,7 @@ Times look like `30m`, `2h`, `1d 12h`.
 | `playban.staff` | op | Punish, review messages, answer tickets |
 | `playban.see` | op | Still sees punished players |
 | `playban.notify` | op | Gets team notifications |
+| `playban.voice` | op | Can moderate voice groups |
 | `playban.ticket` | everyone | Can open tickets |
 | `playban.teleport` | op | Can teleport to players from a ticket and pick a game mode |
 | `playban.exempt` | nobody | Cannot be punished |
@@ -89,6 +95,17 @@ Any player can open a ticket and picks a reason (report, question, bug, appeal o
 - Closed tickets stay readable with the whole conversation, stars, remarks and results, and show up in the profile of every player who was part of them. Only admins can still add remarks to a closed ticket.
 
 Extras: new tickets can be posted to a Discord channel (webhook), the team is reminded of tickets nobody picked up, and the profile shows other players who joined from the same address. Addresses are stored as a fingerprint, not in plain text.
+
+## Voice groups
+
+With the plugin Simple Voice Chat installed, `/voice` shows the team every voice group. Players only need the normal voice chat mod. The buttons are in PlayBan's own menu, because a server plugin cannot change the mod's screens.
+
+- Join a group visibly or unseen. Unseen means players do not see the team member in the group, but talking and listening work. Each team member can set which way is the default.
+- Per player: remove from the group, mute, "hears nothing", ban from the group. Mute and "hears nothing" end when the player leaves the group.
+- Per group: close it, set or remove a password, and show a password in chat where a click copies it. PlayBan only knows passwords set through its menu.
+- Whoever created a group can kick and ban in it with `/voice manage`.
+- Players report a group with `/voice report`, which opens a ticket.
+- The "Voice" button in a ticket creates a private voice group and moves everyone into it. Players are muted until they click to speak.
 
 ## Ban screen and Discord
 

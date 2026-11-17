@@ -29,6 +29,7 @@ public final class ConnectionListener implements Listener {
         Player player = e.getPlayer();
         Punishment p = plugin.punishments().get(player.getUniqueId());
         if (p != null && plugin.getConfig().getBoolean("restrictions.hide-from-players", true)) e.joinMessage(null);
+        plugin.voice().joined(player);
         if (plugin.store().names.containsKey(player.getUniqueId())) plugin.store().names.put(player.getUniqueId(), player.getName());
         if (plugin.punishments().inLimbo(player.getUniqueId())) {
             e.joinMessage(null);
@@ -62,6 +63,7 @@ public final class ConnectionListener implements Listener {
         Player player = e.getPlayer();
         if (plugin.tickets().canReturn(player.getUniqueId())) plugin.tickets().returnBack(player);
         plugin.ticketMenus().closed(player.getUniqueId());
+        plugin.voice().quit(player.getUniqueId());
         plugin.tickets().pauseAllOf(player.getUniqueId());
         if (plugin.punishments().inLimbo(player.getUniqueId())) {
             // put everything back so the player is never left in spectator mode if the plugin is removed

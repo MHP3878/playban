@@ -108,6 +108,9 @@ public final class AdminMenus {
                 "progress", plugin.tickets().count(dev.playban.model.Ticket.Status.IN_PROGRESS)), e -> plugin.ticketMenus().list(p, "ACTIVE", null, 0));
         m.set(16, item(Material.BOOK, "menu.main.history"), e ->
                 plugin.input().ask(p, "prompt.history-name", name -> profileByName(p, name), () -> main(p)));
+        if (plugin.voice().available() && p.hasPermission("playban.voice")) {
+            m.set(22, item(Material.JUKEBOX, "menu.main.voice", "count", plugin.voice().groups().size()), e -> plugin.voiceMenus().groups(p));
+        }
         if (admin(p)) {
             m.set(28, item(Material.LECTERN, "menu.main.categories", "count", plugin.categories().all().size()), e -> categories(p, 0));
             m.set(30, item(Material.BOOKSHELF, "menu.main.tasks", "count", plugin.tasks().all().size()), e -> tasks(p, 0));

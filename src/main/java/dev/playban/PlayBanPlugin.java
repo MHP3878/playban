@@ -5,6 +5,10 @@ import dev.playban.gui.AdminMenus;
 import dev.playban.gui.MenuListener;
 import dev.playban.gui.PlayerMenus;
 import dev.playban.gui.TicketMenus;
+import dev.playban.gui.VoiceMenus;
+import dev.playban.command.VoiceCommand;
+import dev.playban.voice.SimpleVoiceChatBridge;
+import dev.playban.voice.VoiceManager;
 import dev.playban.command.TicketCommand;
 import dev.playban.listener.ConnectionListener;
 import dev.playban.listener.RestrictionListener;
@@ -24,6 +28,8 @@ public class PlayBanPlugin extends JavaPlugin {
     private PlayerMenus playerMenus;
     private TicketManager tickets;
     private TicketMenus ticketMenus;
+    private VoiceManager voice;
+    private VoiceMenus voiceMenus;
 
     @Override
     public void onEnable() {
@@ -43,6 +49,10 @@ public class PlayBanPlugin extends JavaPlugin {
         adminMenus = new AdminMenus(this);
         playerMenus = new PlayerMenus(this);
         ticketMenus = new TicketMenus(this);
+        voice = new VoiceManager(this);
+        voiceMenus = new VoiceMenus(this);
+        SimpleVoiceChatBridge bridge = new SimpleVoiceChatBridge(this, voice);
+        if (bridge.register()) voice.use(bridge);
         tickets = new TicketManager(this);
         tickets.load();
 
@@ -56,6 +66,12 @@ public class PlayBanPlugin extends JavaPlugin {
         if (main != null) {
             main.setExecutor(executor);
             main.setTabCompleter(executor);
+        }
+        VoiceCommand voiceExecutor = new VoiceCommand(this);
+        PluginCommand voiceCommand = getCommand("voice");
+        if (voiceCommand != null) {
+            voiceCommand.setExecutor(voiceExecutor);
+            voiceCommand.setTabCompleter(voiceExecutor);
         }
         TicketCommand ticketExecutor = new TicketCommand(this);
         PluginCommand ticket = getCommand("ticket");
@@ -94,4 +110,6 @@ public class PlayBanPlugin extends JavaPlugin {
     public PlayerMenus playerMenus() { return playerMenus; }
     public TicketManager tickets() { return tickets; }
     public TicketMenus ticketMenus() { return ticketMenus; }
+    public VoiceManager voice() { return voice; }
+    public VoiceMenus voiceMenus() { return voiceMenus; }
 }

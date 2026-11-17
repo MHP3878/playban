@@ -3,7 +3,7 @@ version: '${project.version}'
 main: dev.playban.PlayBanPlugin
 api-version: '1.21'
 description: Punish players without banning them. They keep playing - hidden, restricted and with tasks to shorten their time.
-softdepend: [Vault]
+softdepend: [Vault, voicechat]
 
 commands:
   playban:
@@ -12,6 +12,10 @@ commands:
   ticket:
     description: Open a ticket for the server team
     aliases: [pbticket]
+
+  voice:
+    description: Voice group moderation (needs the plugin Simple Voice Chat)
+    aliases: [pbvoice]
 
 permissions:
   playban.admin:
@@ -25,11 +29,15 @@ permissions:
     children:
       playban.see: true
       playban.notify: true
+      playban.voice: true
   playban.see:
     description: Can still see punished players
     default: op
   playban.notify:
     description: Receives staff notifications
+    default: op
+  playban.voice:
+    description: Can moderate voice groups - kick, mute, ban, close, passwords, join unseen
     default: op
   playban.ticket:
     description: Can open tickets

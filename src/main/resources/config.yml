@@ -75,6 +75,9 @@ ticket-reasons:
   appeal:
     name: "Appeal a punishment"
     icon: PAPER
+  voice:
+    name: "Voice chat"
+    icon: JUKEBOX
   other:
     name: "Other"
     icon: OAK_SIGN
@@ -91,3 +94,11 @@ ticket-reminder-minutes: 10
 
 # Discord webhook URL: new tickets are posted there. Empty = off
 discord-webhook: ""
+
+# ---- Voice chat (only with the plugin "Simple Voice Chat") ----
+# What players can pick when they report a voice group with /voice report
+voice-report-reasons:
+  - "Inappropriate group name"
+  - "Insults or inappropriate talk"
+  - "Harassment"
+  - "Other"

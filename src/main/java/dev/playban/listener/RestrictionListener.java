@@ -226,6 +226,7 @@ public final class RestrictionListener implements Listener {
         String label = e.getMessage().substring(1).split(" ")[0].toLowerCase();
         if (label.contains(":")) label = label.substring(label.indexOf(':') + 1);
         if (label.equals("playban") || label.equals("pb") || label.equals("ticket") || label.equals("pbticket")) return;
+        if ((label.equals("voice") || label.equals("pbvoice")) && e.getMessage().toLowerCase().endsWith(" speak")) return;
         if (!plugin.punishments().inLimbo(p.getUniqueId())) {
             List<String> allowed = plugin.getConfig().getStringList("allowed-commands");
             for (String a : allowed) if (a.equalsIgnoreCase(label)) return;

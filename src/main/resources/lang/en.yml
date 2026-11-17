@@ -85,6 +85,7 @@ help: |-
   <#ffc371>/ticket open <number> <dark_gray>-</dark_gray> <gray>open one ticket
   <#ffc371>/ticket stats <dark_gray>-</dark_gray> <gray>team statistics
   <#ffc371>/ticket back <dark_gray>-</dark_gray> <gray>return after a ticket teleport
+  <#ffc371>/voice <dark_gray>-</dark_gray> <gray>voice groups (needs Simple Voice Chat)
   <gray>Times look like <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
@@ -188,6 +189,32 @@ review:
   rejected: "<gray>Message from <white>{player}</white> rejected."
   rejected-you: "<red>The team rejected your message. You can try the task again."
   delivered: "<gray>A message for you from <white>{player}</white>:</gray> <white>{text}"
+
+voice:
+  "yes": "<green>yes"
+  "no": "<gray>no"
+  seen: "visible"
+  unseen: "unseen"
+  not-installed: "<red>This server has no voice chat. PlayBan needs the plugin <white>Simple Voice Chat</white> for this."
+  failed: "<red>The voice chat refused that. Look at the server log for details."
+  bad-password: "<red>A password has no spaces and at most 64 characters."
+  not-owner: "<red>You can only manage a voice group you created and are in."
+  kicked-you: "<red><white>{staff}</white> removed you from the voice group."
+  banned-you: "<red><white>{staff}</white> banned you from the voice group."
+  closed-you: "<gray>The voice group <white>{group}</white> was closed by <white>{staff}</white>."
+  muted-you: "<red>Your microphone was muted by <white>{staff}</white>."
+  unmuted-you: "<green>Your microphone is free again."
+  deafened-you: "<red>You cannot hear the voice chat for now. Set by <white>{staff}</white>."
+  undeafened-you: "<green>You can hear the voice chat again."
+  password: "<gray>Password of <white>{group}</white>:</gray> <#ffc371>{password}</#ffc371> <dark_gray>[click to copy]"
+  pulled-in: "<red><white>{staff}</white> put you into a voice group. You are muted. <#ffc371><underlined>Click here to speak.</underlined>"
+  speaking: "<green>Your microphone is on. You can speak now."
+  nothing-to-agree: "<gray>There is nothing to switch on right now."
+  report-text: "Voice group \"{group}\": {reason}. In the group: {members}"
+  help: |-
+    <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- voice chat
+    <#ffc371>/voice report <dark_gray>-</dark_gray> <gray>report a voice group
+    <#ffc371>/voice manage <dark_gray>-</dark_gray> <gray>kick or ban in your own group
 
 ticket:
   sent: "<green>Ticket <white>#{id}</white> was sent to the team."
@@ -314,6 +341,7 @@ task:
       - "<gray>that you write yourself."
 
 prompt:
+  voice-password: "<#ffc371>Type the new password for the group. No spaces."
   ticket-message: "<#ffc371>Type your message to everyone in the ticket."
   ticket-message-to: "<#ffc371>Type your message to <white>{player}</white> only."
   ticket-note: "<#ffc371>Type your remark. Only the team sees it."
@@ -413,6 +441,9 @@ menu:
 
   main:
     title: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>"
+    voice:
+      name: "<#ffc371><bold>Voice groups</bold>"
+      lore: ["<gray>Groups: <white>{count}", "", "<#ffc371>Click to open"]
     bans:
       name: "<#ffc371><bold>Banned players</bold>"
       lore: ["<gray>Currently: <white>{count}", "", "<#ffc371>Click to open"]
@@ -555,6 +586,76 @@ menu:
     reset:
       name: "<red>Back to the default text"
       lore: ["<gray>Shift + click to reset."]
+
+  voice:
+    title: "<dark_gray>Voice groups"
+    group-title: "<dark_gray>Group: {group}"
+    member-title: "<dark_gray>{player}"
+    bans-title: "<dark_gray>Banned from this group"
+    manage-title: "<dark_gray>Your group: {group}"
+    report-title: "<dark_gray>Which group do you want to report?"
+    report-why: "<dark_gray>What is wrong with {group}?"
+    report-reason: "<#ffc371>{reason}"
+    report-pick: ["<#ffc371>Click to pick"]
+    unban: ["<#ffc371>Click to unban"]
+    manage-actions: ["<#ffc371>Click: remove from the group", "<red>Shift + click: ban from the group"]
+    empty:
+      name: "<gray>No voice groups right now"
+    no-bans:
+      name: "<green>Nobody is banned here"
+    alone:
+      name: "<gray>Nobody else is in your group"
+    group:
+      name: "<#ffc371><bold>{group}</bold>"
+      lore: ["<gray>Players: <white>{members}", "<gray>Password: {password}", "<gray>Hidden: {hidden}", "<gray>Created by: <white>{owner}", "", "<#ffc371>Click to open"]
+    prefer:
+      name: "<#ffc371>When I join a group"
+      lore: ["<gray>I join: <white>{value}", "", "<#ffc371>Click to switch"]
+    member:
+      owner: "<#ffc371>created this group"
+      muted: "<red>muted"
+      deaf: "<red>hears nothing"
+      unseen: "<gray>unseen"
+      actions: ["", "<#ffc371>Click for actions"]
+    join:
+      name: "<green><bold>Join</bold>"
+      lore: ["<#ffc371>Left click: join {mode}", "<#ffc371>Right click: the other way"]
+    visibility:
+      name: "<#ffc371>I am: {value}"
+      lore: ["<gray>Unseen: players do not see you", "<gray>in the group, but you can still", "<gray>talk and listen.", "", "<#ffc371>Click to switch"]
+    password-set:
+      name: "<#ffc371>Set a password"
+      lore: ["<gray>Only players with the password", "<gray>can join then.", "", "<#ffc371>Click and type it"]
+    password-change:
+      name: "<#ffc371>Password"
+      lore: ["<#ffc371>Click: new password", "<red>Shift + click: remove the password"]
+    password-send:
+      name: "<#ffc371>Show the password"
+      lore: ["<gray>Sends it to your chat,", "<gray>click there to copy it."]
+    password-unknown:
+      name: "<gray>Password unknown"
+      lore: ["<gray>A player set it. PlayBan only knows", "<gray>passwords set through this menu."]
+    bans:
+      name: "<#ffc371>Banned players"
+      lore: ["<gray>Banned from this group: <white>{count}", "", "<#ffc371>Click to open"]
+    close:
+      name: "<red><bold>Close the group</bold>"
+      lore: ["<gray>Everyone is removed from it.", "", "<red>Shift + click to close"]
+    kick:
+      name: "<#ffc371>Remove from the group"
+    mute:
+      name: "<red>Mute"
+      lore: ["<gray>Nobody hears this player until", "<gray>you undo it or they leave the group."]
+    unmute:
+      name: "<green>Unmute"
+    deafen:
+      name: "<red>Hears nothing"
+      lore: ["<gray>The player hears no voice chat until", "<gray>you undo it or they leave the group."]
+    undeafen:
+      name: "<green>May hear again"
+    ban:
+      name: "<red>Ban from the group"
+      lore: ["<gray>The player is removed and", "<gray>cannot join this group again."]
 
   select-player:
     title: "<dark_gray>Who do you want to punish?"

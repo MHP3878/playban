@@ -911,6 +911,289 @@ class PlayBanTest {
         assertFalse(plugin.store().addresses.get(alt.getUniqueId()).contains("."), "the raw address is not stored");
     }
 
+    // ------------------------------------------------------------------ voice groups
+
+    /** Stands in for Simple Voice Chat: keeps groups in memory and asks PlayBan the same questions the real one does. */
+    private final class FakeVoice implements dev.playban.voice.VoiceBackend {
+        final java.util.Map<java.util.UUID, String> names = new java.util.LinkedHashMap<>();
+        final java.util.Map<java.util.UUID, String> passwords = new java.util.HashMap<>();
+        final java.util.Map<java.util.UUID, java.util.UUID> membership = new java.util.HashMap<>();
+        final java.util.Set<java.util.UUID> hidden = new java.util.HashSet<>();
+        int refreshes;
+
+        java.util.UUID playerCreates(PlayerMock creator, String name) {
+            java.util.UUID id = java.util.UUID.randomUUID();
+            names.put(id, name);
+            plugin.voice().created(creator.getUniqueId(), id);
+            membership.put(creator.getUniqueId(), id);
+            return id;
+        }
+
+        /** A player tries to join through the voice chat's own menu. */
+        boolean playerJoins(PlayerMock player, java.util.UUID group) {
+            if (!plugin.voice().mayJoin(player.getUniqueId(), group)) return false;
+            membership.put(player.getUniqueId(), group);
+            return true;
+        }
+
+        void playerLeaves(PlayerMock player) {
+            java.util.UUID group = membership.remove(player.getUniqueId());
+            plugin.voice().left(player.getUniqueId(), group);
+        }
+
+        public boolean available() { return true; }
+
+        public java.util.List<GroupInfo> groups() {
+            java.util.List<GroupInfo> out = new java.util.ArrayList<>();
+            for (var e : names.entrySet()) {
+                java.util.List<java.util.UUID> members = new java.util.ArrayList<>();
+                for (var m : membership.entrySet()) if (m.getValue().equals(e.getKey())) members.add(m.getKey());
+                out.add(new GroupInfo(e.getKey(), e.getValue(), passwords.containsKey(e.getKey()), hidden.contains(e.getKey()), false, members));
+            }
+            return out;
+        }
+
+        public java.util.UUID groupOf(java.util.UUID player) { return membership.get(player); }
+
+        public boolean setGroup(java.util.UUID player, java.util.UUID group) {
+            java.util.UUID before = group == null ? membership.remove(player) : membership.put(player, group);
+            if (group == null) plugin.voice().left(player, before);
+            return true;
+        }
+
+        public java.util.UUID createGroup(String name, String password, boolean isHidden) {
+            java.util.UUID id = java.util.UUID.randomUUID();
+            names.put(id, name);
+            if (password != null) passwords.put(id, password);
+            if (isHidden) hidden.add(id);
+            return id;
+        }
+
+        public boolean setPassword(java.util.UUID group, String password) {
+            if (password == null) passwords.remove(group);
+            else passwords.put(group, password);
+            return true;
+        }
+
+        public void removeGroup(java.util.UUID group) {
+            names.remove(group);
+            plugin.voice().removed(group);
+        }
+
+        public void refresh(java.util.UUID player) { refreshes++; }
+    }
+
+    private FakeVoice withVoice() {
+        FakeVoice fake = new FakeVoice();
+        plugin.voice().use(fake);
+        plugin.voice().joined(admin);
+        return fake;
+    }
+
+    @Test
+    void voiceIsOffWithoutTheVoiceChatPlugin() {
+        assertFalse(plugin.voice().available());
+        admin.performCommand("voice");
+        assertFalse(admin.getOpenInventory().getTopInventory() != null
+                && admin.getOpenInventory().getTopInventory().getHolder() instanceof Menu, "no menu without a voice chat");
+    }
+
+    @Test
+    void teamCanKickMuteDeafenAndBanInAVoiceGroup() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Trolls only");
+        assertTrue(fake.playerJoins(bystander, group));
+
+        plugin.voice().setMuted(troll.getUniqueId(), true, "Admin");
+        plugin.voice().setDeaf(troll.getUniqueId(), true, "Admin");
+        assertTrue(plugin.voice().isMuted(troll.getUniqueId()));
+        assertTrue(plugin.voice().isDeaf(troll.getUniqueId()));
+        assertEquals(2, fake.refreshes, "the voice chat is told to re-check the player each time");
+
+        plugin.voice().kick(group, troll.getUniqueId(), "Admin");
+        assertNull(fake.groupOf(troll.getUniqueId()));
+        assertFalse(plugin.voice().isMuted(troll.getUniqueId()), "a mute ends when the player is out of the group");
+        assertFalse(plugin.voice().isDeaf(troll.getUniqueId()));
+        assertTrue(fake.playerJoins(troll, group), "a kicked player can come back");
+
+        plugin.voice().ban(group, troll.getUniqueId(), "Admin");
+        assertNull(fake.groupOf(troll.getUniqueId()));
+        assertFalse(fake.playerJoins(troll, group), "a banned player cannot");
+        assertTrue(fake.playerJoins(bystander, group), "others still can");
+        var other = fake.playerCreates(admin, "Another group");
+        assertTrue(fake.playerJoins(troll, other), "the ban only counts for that one group");
+
+        plugin.voice().unban(group, troll.getUniqueId());
+        assertTrue(fake.playerJoins(troll, group));
+    }
+
+    @Test
+    void closingAVoiceGroupRemovesEveryone() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Trolls only");
+        fake.playerJoins(bystander, group);
+        plugin.voice().ban(group, admin.getUniqueId(), "x");
+        plugin.voiceMenus().group(admin, group);
+        admin.simulateInventoryClick(43);
+        assertEquals(2, plugin.voice().group(group).members().size(), "a plain click does not close the group");
+        admin.simulateInventoryClick(admin.getOpenInventory(), org.bukkit.event.inventory.ClickType.SHIFT_LEFT, 43);
+        assertNull(fake.groupOf(troll.getUniqueId()));
+        assertNull(fake.groupOf(bystander.getUniqueId()));
+        assertNull(plugin.voice().group(group));
+        assertTrue(plugin.voice().banned(group).isEmpty(), "bans of a closed group are forgotten");
+    }
+
+    @Test
+    void teamJoinsUnseenButOtherTeamMembersStillSeeThem() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Trolls only");
+        plugin.voice().join(admin, group, true);
+        assertEquals(group, fake.groupOf(admin.getUniqueId()), "the team member is really in the group and can talk");
+        assertTrue(plugin.voice().isHiddenFrom(admin.getUniqueId(), troll.getUniqueId()), "players do not see them");
+        assertFalse(plugin.voice().isHiddenFrom(admin.getUniqueId(), admin.getUniqueId()));
+        PlayerMock mod = server.addPlayer("Mod");
+        mod.setOp(true);
+        plugin.voice().joined(mod);
+        assertFalse(plugin.voice().isHiddenFrom(admin.getUniqueId(), mod.getUniqueId()), "other team members do");
+
+        // the owner's own menu does not give the unseen team member away
+        fake.playerJoins(bystander, group);
+        troll.performCommand("voice manage");
+        var inv = troll.getOpenInventory().getTopInventory();
+        assertNotNull(inv.getItem(0));
+        assertTrue(plain(inv.getItem(0).getItemMeta().displayName()).contains("Bystander"));
+        assertNull(inv.getItem(1), "only Bystander is listed, not the unseen admin");
+
+        plugin.voice().setInvisible(admin, false);
+        assertFalse(plugin.voice().isHiddenFrom(admin.getUniqueId(), troll.getUniqueId()), "switching to visible while inside works");
+        fake.playerLeaves(admin);
+        plugin.voice().join(admin, group, true);
+        fake.playerLeaves(admin);
+        assertFalse(plugin.voice().isInvisible(admin.getUniqueId()), "leaving the group ends being unseen");
+    }
+
+    @Test
+    void joinPreferenceIsRemembered() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Trolls only");
+        assertFalse(plugin.voice().prefersInvisible(admin.getUniqueId()));
+        plugin.voiceMenus().groups(admin);
+        admin.simulateInventoryClick(51);
+        assertTrue(plugin.voice().prefersInvisible(admin.getUniqueId()));
+        plugin.voiceMenus().group(admin, group);
+        admin.simulateInventoryClick(37); // left click joins the preferred way
+        assertEquals(group, fake.groupOf(admin.getUniqueId()));
+        assertTrue(plugin.voice().isInvisible(admin.getUniqueId()));
+    }
+
+    @Test
+    void passwordCanBeSetShownAndRemoved() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Trolls only");
+        assertNull(plugin.voice().knownPassword(group));
+        assertTrue(plugin.voice().setPassword(group, "secret123"));
+        assertEquals("secret123", fake.passwords.get(group));
+
+        plugin.voiceMenus().group(admin, group);
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        admin.simulateInventoryClick(40);
+        Component line = admin.nextComponentMessage();
+        assertTrue(plain(line).contains("secret123"));
+        assertEquals(net.kyori.adventure.text.event.ClickEvent.Action.COPY_TO_CLIPBOARD, line.clickEvent().action(),
+                "clicking the line copies the password");
+        assertEquals("secret123", line.clickEvent().value());
+
+        assertTrue(plugin.voice().setPassword(group, null));
+        assertFalse(fake.passwords.containsKey(group));
+        assertNull(plugin.voice().knownPassword(group));
+    }
+
+    @Test
+    void groupOwnerCanKickAndBanButOnlyInTheirOwnGroup() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Trolls only");
+        fake.playerJoins(bystander, group);
+        assertEquals(troll.getUniqueId(), plugin.voice().owner(group));
+
+        bystander.performCommand("voice manage");
+        assertFalse(bystander.getOpenInventory().getTopInventory() != null
+                && bystander.getOpenInventory().getTopInventory().getHolder() instanceof Menu, "a normal member gets no menu");
+
+        troll.performCommand("voice manage");
+        troll.simulateInventoryClick(troll.getOpenInventory(), org.bukkit.event.inventory.ClickType.SHIFT_LEFT, 0);
+        assertNull(fake.groupOf(bystander.getUniqueId()));
+        assertFalse(fake.playerJoins(bystander, group), "the owner banned them");
+
+        // a team member in the group cannot be thrown out by the owner
+        plugin.voice().join(admin, group, false);
+        troll.performCommand("voice manage");
+        troll.simulateInventoryClick(0);
+        assertEquals(group, fake.groupOf(admin.getUniqueId()));
+    }
+
+    @Test
+    void reportingAVoiceGroupOpensATicket() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Bad name");
+        fake.playerJoins(bystander, group);
+        plugin.voice().join(admin, group, true);
+        bystander.performCommand("voice report");
+        bystander.simulateInventoryClick(10); // first reason
+        assertEquals(1, plugin.tickets().all().size());
+        var t = plugin.tickets().get(1);
+        assertEquals("voice", t.reason);
+        assertTrue(t.text.contains("Bad name"));
+        assertTrue(t.text.contains("Inappropriate group name"));
+        assertTrue(t.text.contains("Troll"));
+        assertFalse(t.text.contains("Admin"), "an unseen team member is not listed in the report");
+    }
+
+    @Test
+    void ticketVoiceGroupKeepsPlayersSilentUntilTheyAgree() {
+        FakeVoice fake = withVoice();
+        var t = openTicket(bystander, "report", "let us talk");
+        plugin.tickets().accept(t, admin);
+        assertTrue(plugin.tickets().voice(t, admin));
+        var group = fake.groupOf(admin.getUniqueId());
+        assertNotNull(group, "a private group was created");
+        assertEquals(group, fake.groupOf(bystander.getUniqueId()), "the player was moved into it");
+        assertTrue(fake.hidden.contains(group));
+        assertTrue(fake.passwords.containsKey(group));
+        assertTrue(plugin.voice().isMuted(bystander.getUniqueId()), "the player is silent at first");
+        assertFalse(plugin.voice().isMuted(admin.getUniqueId()));
+
+        bystander.performCommand("voice speak");
+        assertFalse(plugin.voice().isMuted(bystander.getUniqueId()), "after agreeing the player can speak");
+    }
+
+    @Test
+    void voiceMenusOpenInBothLanguages() {
+        FakeVoice fake = withVoice();
+        var group = fake.playerCreates(troll, "Trolls only");
+        fake.playerJoins(bystander, group);
+        plugin.voice().setPassword(group, "pw");
+        plugin.voice().setMuted(bystander.getUniqueId(), true, "Admin");
+        plugin.voice().ban(group, server.addPlayer("Banned").getUniqueId(), "Admin");
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.voiceMenus().groups(admin);
+            assertNoMissingTexts(admin, code);
+            plugin.voiceMenus().group(admin, group);
+            assertNoMissingTexts(admin, code);
+            admin.simulateInventoryClick(1); // member actions for the second member
+            assertNoMissingTexts(admin, code);
+            plugin.voiceMenus().group(admin, group);
+            admin.simulateInventoryClick(41); // bans
+            assertNoMissingTexts(admin, code);
+            plugin.voiceMenus().manage(troll);
+            assertNoMissingTexts(troll, code);
+            plugin.voiceMenus().report(bystander);
+            assertNoMissingTexts(bystander, code);
+            plugin.adminMenus().main(admin);
+            assertNoMissingTexts(admin, code);
+        }
+    }
+
     @Test
     void timeParsing() {
         assertEquals(90_000_000L + 1_800_000L, TimeUtil.parse("1d 1h 30m"));

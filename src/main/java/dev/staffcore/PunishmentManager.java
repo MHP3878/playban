@@ -150,6 +150,7 @@ public final class PunishmentManager {
 
     public void end(Punishment p, String endReason, String by) {
         if (store().active.remove(p.uuid) == null) return;
+        if (by != null && "PARDONED".equals(endReason)) plugin.staffLog(by, "pardon", p.name, null);
         p.endedAt = System.currentTimeMillis();
         p.endReason = endReason;
         p.remainingMs = Math.max(0, p.remainingMs);
@@ -224,6 +225,13 @@ public final class PunishmentManager {
      */
     public String execute(UUID id, String name, String type, long ms, String reason, String staff,
                           String category, UUID victim, String victimName) {
+        String result = executeInner(id, name, type, ms, reason, staff, category, victim, victimName);
+        if (result == null && !"WARN".equals(type)) plugin.staffLog(staff, type.toLowerCase(), name, (ms > 0 ? TimeUtil.format(ms) + " " : "") + reason);
+        return result;
+    }
+
+    private String executeInner(UUID id, String name, String type, long ms, String reason, String staff,
+                                String category, UUID victim, String victimName) {
         switch (type) {
             case "WARN" -> warn(id, name, reason, staff, category);
             case "BAN", "SPECBAN" -> {
@@ -302,6 +310,7 @@ public final class PunishmentManager {
 
     public void warn(UUID id, String name, String reason, String staff, String category) {
         Punishment p = record(id, name, "WARN", reason, staff, category);
+        plugin.staffLog(staff, "warn", name, reason);
         p.endedAt = p.createdAt;
         p.endReason = "WARNED";
         store().history.computeIfAbsent(id, k -> new ArrayList<>()).add(p);
@@ -352,6 +361,7 @@ public final class PunishmentManager {
 
     public void unmute(Punishment p, String by) {
         if (store().mutes.remove(p.uuid) == null) return;
+        if (by != null) plugin.staffLog(by, "unmute", p.name, null);
         p.endedAt = System.currentTimeMillis();
         p.endReason = by == null ? "SERVED" : "PARDONED";
         store().history.computeIfAbsent(p.uuid, k -> new ArrayList<>()).add(p);
@@ -373,6 +383,7 @@ public final class PunishmentManager {
 
     public void unban(Punishment p, String by) {
         if (store().bans.remove(p.uuid) == null) return;
+        if (by != null) plugin.staffLog(by, "unban", p.name, null);
         p.endedAt = System.currentTimeMillis();
         p.endReason = by == null ? "SERVED" : "PARDONED";
         store().history.computeIfAbsent(p.uuid, k -> new ArrayList<>()).add(p);

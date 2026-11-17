@@ -149,7 +149,7 @@ public final class BlockLog implements Listener, TabExecutor {
         }
     }
 
-    private static Location containerLocation(InventoryHolder holder) {
+    public static Location containerLocation(InventoryHolder holder) {
         if (holder instanceof DoubleChest dc && dc.getLeftSide() instanceof Container left) return left.getLocation();
         if (holder instanceof Container c) return c.getLocation();
         return null;
@@ -282,25 +282,48 @@ public final class BlockLog implements Listener, TabExecutor {
         CompletableFuture<Integer> done = new CompletableFuture<>();
         db.find(q).thenAccept(list -> Bukkit.getScheduler().runTask(plugin, () -> {
             List<Long> ids = new ArrayList<>();
-            for (Entry e : list) {
-                World w = Bukkit.getWorld(e.world());
-                if (w == null) continue;
-                Block b = w.getBlockAt(e.x(), e.y(), e.z());
-                try {
-                    if (e.isItem()) {
-                        if (!applyItem(b, e, restore)) continue;
-                    } else {
-                        String data = restore ? e.after() : e.before();
-                        b.setBlockData(Bukkit.createBlockData(data == null ? "minecraft:air" : data), false);
+            int[] next = {0};
+            // a few thousand blocks per tick, so a big rollback does not freeze the server
+            Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+                int end = Math.min(list.size(), next[0] + 2000);
+                for (; next[0] < end; next[0]++) {
+                    Entry e = list.get(next[0]);
+                    World w = Bukkit.getWorld(e.world());
+                    if (w == null) continue;
+                    Block b = w.getBlockAt(e.x(), e.y(), e.z());
+                    try {
+                        if (e.isItem()) {
+                            if (!applyItem(b, e, restore)) continue;
+                        } else {
+                            // only when the block still looks like after the change: later work by others stays
+                            String expected = restore ? e.before() : e.after();
+                            String now = b.getBlockData().getAsString();
+                            if (!sameBlock(now, expected)) continue;
+                            String data = restore ? e.after() : e.before();
+                            b.setBlockData(Bukkit.createBlockData(data == null ? "minecraft:air" : data), false);
+                        }
+                        ids.add(e.id());
+                    } catch (IllegalArgumentException ex) {
+                        // a block type this version does not know; leave it
                     }
-                    ids.add(e.id());
-                } catch (IllegalArgumentException ex) {
-                    // a block type this version does not know; leave it
                 }
-            }
-            db.markRolled(ids, !restore).thenRun(() -> done.complete(ids.size()));
+                if (next[0] >= list.size()) {
+                    task.cancel();
+                    db.markRolled(ids, !restore).thenRun(() -> done.complete(ids.size()));
+                }
+            }, 0L, 1L);
         }));
         return done;
+    }
+
+    private static boolean sameBlock(String now, String expected) {
+        String want = expected == null ? "minecraft:air" : expected;
+        if (now.equals(want)) return true;
+        // fire, water and the like change their state on their own; the block type is enough there
+        String a = now.contains("[") ? now.substring(0, now.indexOf('[')) : now;
+        String b = want.contains("[") ? want.substring(0, want.indexOf('[')) : want;
+        if (!a.equals(b)) return a.endsWith("air") && b.endsWith("air");
+        return true;
     }
 
     /** Puts taken items back into the chest, or takes put-in items out again. */
@@ -416,7 +439,10 @@ public final class BlockLog implements Listener, TabExecutor {
             viewer.hideBossBar(bar);
             labels.forEach(Entity::remove);
             // show the real world again
-            for (Map.Entry<Location, BlockData> r : real.entrySet()) viewer.sendBlockChange(r.getKey(), r.getKey().getBlock().getBlockData());
+            // after a world change the client already forgot the fake blocks; sending would paint the new world
+            for (Map.Entry<Location, BlockData> r : real.entrySet()) {
+                if (r.getKey().getWorld() == viewer.getWorld()) viewer.sendBlockChange(r.getKey(), r.getKey().getBlock().getBlockData());
+            }
         }
     }
 
@@ -439,6 +465,12 @@ public final class BlockLog implements Listener, TabExecutor {
 
     public boolean replaying(UUID id) {
         return replays.containsKey(id);
+    }
+
+    /** A replay belongs to one world: changing world ends it, so no fake blocks land in the new one. */
+    @org.bukkit.event.EventHandler
+    public void onWorldChange(org.bukkit.event.player.PlayerChangedWorldEvent e) {
+        if (replays.containsKey(e.getPlayer().getUniqueId())) stopReplay(e.getPlayer().getUniqueId());
     }
 
     public void stopReplay(UUID id) {
@@ -507,6 +539,11 @@ public final class BlockLog implements Listener, TabExecutor {
                 Query q = parse(sender, args, 1, 20, 86_400_000L);
                 if (q.actor == null && args.length < 2) {
                     lang().send(sender, "log.usage");
+                    return true;
+                }
+                // from the console there is no position, so without a player the whole server would be rolled back
+                if (q.actor == null && q.radius < 0) {
+                    lang().send(sender, "log.console-needs-player");
                     return true;
                 }
                 boolean restore = sub.equals("restore");

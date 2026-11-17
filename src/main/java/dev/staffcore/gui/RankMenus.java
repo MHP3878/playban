@@ -105,7 +105,8 @@ public final class RankMenus {
                 plugin.input().ask(p, "prompt.rank-level", text -> {
                     try {
                         int level = Integer.parseInt(text.trim());
-                        if (!ranks().mayManage(p, level)) lang().send(p, "rank.not-allowed");
+                        // the default rank's level counts for every player, so only the highest rank may move it
+                        if (!ranks().mayManage(p, level) || (r == ranks().defaultRank() && !ranks().isTop(p))) lang().send(p, "rank.not-allowed");
                         else {
                             r.level = Math.max(0, Math.min(999, level));
                             ranks().changed(r);
@@ -145,14 +146,21 @@ public final class RankMenus {
             lore.add(lang().msg("menu.settings.click"));
             return Items.of(has ? Material.LIME_DYE : Material.GRAY_DYE, lang().msg("menu.rank-perms.entry", "node", node), lore);
         }, (node, e) -> {
-            if (!r.permissions.remove(node)) r.permissions.add(node);
+            if (!r.permissions.remove(node)) {
+                if (!ranks().mayGrant(p, node)) {
+                    lang().send(p, "rank.grant-own-only");
+                    return;
+                }
+                r.permissions.add(node);
+            }
             ranks().changed(r);
             permissions(p, r, page);
         }, n -> permissions(p, r, n), () -> edit(p, r));
         m.set(51, item(Material.NETHER_STAR, "menu.rank-perms.add"), e ->
                 plugin.input().ask(p, "prompt.rank-permission", text -> {
                     String node = text.trim();
-                    if (!node.isEmpty() && !r.permissions.contains(node)) r.permissions.add(node);
+                    if (!node.isEmpty() && !ranks().mayGrant(p, node)) lang().send(p, "rank.grant-own-only");
+                    else if (!node.isEmpty() && !r.permissions.contains(node)) r.permissions.add(node);
                     ranks().changed(r);
                     permissions(p, r, page);
                 }, () -> permissions(p, r, page)));
@@ -186,8 +194,8 @@ public final class RankMenus {
                 rule -> Items.of(Material.COMMAND_BLOCK, lang().msg("menu.rank-levels.entry", "command", rule.getKey(), "level", rule.getValue()),
                         lang().lore("menu.rank-levels.actions")),
                 (rule, e) -> {
-                    // nobody can loosen a rule that is above their own level
-                    if (ranks().active() && rule.getValue() > own) {
+                    // command rules are the lock on everything: only the highest rank changes them
+                    if (!ranks().isTop(p)) {
                         lang().send(p, "rank.not-allowed");
                         return;
                     }
@@ -207,19 +215,24 @@ public final class RankMenus {
                         levels(p, page);
                     }, () -> levels(p, page));
                 }, n -> levels(p, n), () -> list(p));
-        m.set(51, item(Material.NETHER_STAR, "menu.rank-levels.add"), e ->
-                plugin.input().ask(p, "prompt.rank-command-level", text -> {
+        m.set(51, item(Material.NETHER_STAR, "menu.rank-levels.add"), e -> {
+            if (!ranks().isTop(p)) {
+                lang().send(p, "rank.not-allowed");
+                return;
+            }
+            plugin.input().ask(p, "prompt.rank-command-level", text -> {
                     String[] parts = text.trim().split("\\s+");
                     try {
                         int level = Integer.parseInt(parts[parts.length - 1]);
                         String cmd = String.join(" ", java.util.Arrays.copyOf(parts, parts.length - 1));
-                        if (cmd.isEmpty() || (ranks().active() && level > own)) lang().send(p, "rank.not-allowed");
+                        if (cmd.isEmpty() || !ranks().isTop(p)) lang().send(p, "rank.not-allowed");
                         else ranks().setCommandLevel(cmd, Math.max(0, level));
                     } catch (NumberFormatException ex) {
                         lang().send(p, "error.bad-number", "input", text);
                     }
                     levels(p, 0);
-                }, () -> levels(p, 0)));
+                }, () -> levels(p, 0));
+        });
         m.open(p);
     }
 }

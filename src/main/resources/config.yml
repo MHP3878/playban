@@ -189,3 +189,14 @@ lockdown:
   enabled: false
   reason: ""
   min-level: 30
+
+# /prison: how long the prison key from /tools locks a player away
+prison:
+  tool-time: 15m
+
+# Team protocol (/stafflog): also write down every command the team types (private messages are left out)
+staff-log:
+  commands: true
+
+# Chests marked as bait with the bait tool. The team is told when a player opens one.
+bait-chests: []

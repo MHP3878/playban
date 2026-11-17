@@ -170,11 +170,76 @@ public final class ModerationManager implements Listener, TabExecutor {
         s.sendMessage(lang().msg("moderation.whois-actions").clickEvent(ClickEvent.runCommand("/sc profile " + t.getName())));
     }
 
+    // ---------------------------------------------------------------- bait chests
+
+    private static String spot(org.bukkit.block.Block b) {
+        return b.getWorld().getName() + "," + b.getX() + "," + b.getY() + "," + b.getZ();
+    }
+
+    /** Marks a chest as bait, or takes the mark away again. Returns whether it is bait now. */
+    public boolean toggleBait(org.bukkit.block.Block b) {
+        List<String> baits = new ArrayList<>(plugin.getConfig().getStringList("bait-chests"));
+        boolean now = !baits.remove(spot(b));
+        if (now) baits.add(spot(b));
+        plugin.getConfig().set("bait-chests", baits);
+        plugin.saveConfig();
+        return now;
+    }
+
+    public boolean isBait(org.bukkit.block.Block b) {
+        return plugin.getConfig().getStringList("bait-chests").contains(spot(b));
+    }
+
+    /** Somebody who is not on the team opened a bait chest: the team hears about it right away. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBaitOpen(org.bukkit.event.inventory.InventoryOpenEvent e) {
+        if (!(e.getPlayer() instanceof Player p) || staff(p)) return;
+        org.bukkit.Location at = dev.staffcore.log.BlockLog.containerLocation(e.getInventory().getHolder());
+        if (at == null || !isBait(at.getBlock())) return;
+        plugin.punishments().notifyStaff(lang().prefixed("tools.bait-alert", "player", p.getName(),
+                "x", at.getBlockX(), "y", at.getBlockY(), "z", at.getBlockZ())
+                .clickEvent(ClickEvent.runCommand("/tpadmin " + p.getName())));
+        plugin.staffLog(p.getName(), "bait-opened", null, spot(at.getBlock()));
+    }
+
+    // ---------------------------------------------------------------- team protocol
+
+    private static final java.util.Set<String> PRIVATE = java.util.Set.of("msg", "tell", "w", "r", "reply", "teamchat", "tc", "m", "whisper");
+
+    /** Every command a team member types goes into the team protocol, except private messages. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onStaffCommand(org.bukkit.event.player.PlayerCommandPreprocessEvent e) {
+        if (!plugin.getConfig().getBoolean("staff-log.commands", true) || !staff(e.getPlayer())) return;
+        String label = e.getMessage().substring(1).split(" ")[0].toLowerCase();
+        if (label.contains(":")) label = label.substring(label.indexOf(':') + 1);
+        if (PRIVATE.contains(label)) return;
+        plugin.staffLog(e.getPlayer().getName(), "command", null, e.getMessage());
+    }
+
+    private void showStaffLog(CommandSender s, String name) {
+        var db = plugin.blockLog() == null ? null : plugin.blockLog().db();
+        if (db == null || !db.ready()) {
+            lang().send(s, "log.not-ready");
+            return;
+        }
+        db.staffActions(name, 20).thenAccept(list -> Bukkit.getScheduler().runTask(plugin, () -> {
+            lang().send(s, "stafflog.header", "player", name == null ? lang().raw("stafflog.everyone") : name, "count", list.size());
+            if (list.isEmpty()) lang().send(s, "stafflog.empty");
+            java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("dd.MM. HH:mm");
+            for (int i = list.size() - 1; i >= 0; i--) {
+                var a = list.get(i);
+                s.sendMessage(lang().msg("stafflog.line", "time", f.format(new java.util.Date(a.time())), "actor", a.actor(),
+                        "action", a.action(), "target", a.target() == null ? "" : a.target(), "detail", a.detail() == null ? "" : a.detail()));
+            }
+        }));
+    }
+
     // ---------------------------------------------------------------- command
 
     @Override
     public boolean onCommand(CommandSender s, Command command, String label, String[] args) {
         switch (command.getName().toLowerCase()) {
+            case "stafflog" -> showStaffLog(s, args.length > 0 ? args[0] : null);
             case "lockdown" -> {
                 boolean on = args.length == 0 ? !lockdown() : !args[0].equalsIgnoreCase("off");
                 String reason = args.length > 1 ? String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length)) : null;
@@ -289,7 +354,7 @@ public final class ModerationManager implements Listener, TabExecutor {
             case "slowchat" -> {
                 if (args.length == 1) for (String o : List.of("3", "5", "10", "30", "off")) if (o.startsWith(typed)) out.add(o);
             }
-            case "whois", "seen", "alts", "report" -> {
+            case "whois", "seen", "alts", "report", "stafflog" -> {
                 if (args.length == 1) {
                     for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase().startsWith(typed)) out.add(p.getName());
                     if (!command.getName().equals("report")) {

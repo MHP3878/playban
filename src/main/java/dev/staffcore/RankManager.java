@@ -183,7 +183,7 @@ public final class RankManager implements Listener {
         if (level == null) commandLevels.remove(key);
         else commandLevels.put(key, level);
         save();
-        for (Player p : Bukkit.getOnlinePlayers()) p.updateCommands();
+        for (Player p : Bukkit.getOnlinePlayers()) apply(p);
     }
 
     // ---------------------------------------------------------------- changing
@@ -193,6 +193,21 @@ public final class RankManager implements Listener {
         if (!(sender instanceof Player p)) return true;
         if (!active()) return p.isOp();
         return level < level(p.getUniqueId());
+    }
+
+    /** May change command rules, the default rank and wildcard permissions: only the highest rank (or an op while ranks are not set up). */
+    public boolean isTop(org.bukkit.command.CommandSender sender) {
+        if (!(sender instanceof Player p)) return true;
+        if (!active()) return p.isOp();
+        Rank top = top();
+        return top != null && level(p.getUniqueId()) >= top.level;
+    }
+
+    /** A rank editor may only hand out what they have themselves; "*" and "x.*" only the highest rank. */
+    public boolean mayGrant(org.bukkit.command.CommandSender sender, String node) {
+        if (isTop(sender)) return true;
+        if (node.equals("*") || node.endsWith(".*")) return false;
+        return sender.hasPermission(node);
     }
 
     public void set(UUID player, Rank rank) {
@@ -262,15 +277,19 @@ public final class RankManager implements Listener {
         }
         if (!enabled()) return;
         Rank rank = of(p.getUniqueId());
-        if (rank != null && !rank.permissions.isEmpty()) {
+        java.util.Set<String> denied = deniedPermissions(p);
+        if ((rank != null && !rank.permissions.isEmpty()) || !denied.isEmpty()) {
             PermissionAttachment a = p.addAttachment(plugin);
-            for (String node : rank.permissions) for (String n : expand(node)) a.setPermission(n, true);
+            if (rank != null) for (String node : rank.permissions) for (String n : expand(node)) a.setPermission(n, true);
+            // the permission of every command above the player's level is taken away, ops included:
+            // so the rule also holds when a plugin, a menu or a command alias runs the command
+            for (String n : denied) a.setPermission(n, false);
             attachments.put(p.getUniqueId(), a);
         }
         p.recalculatePermissions();
         p.updateCommands();
         if (cfg.getBoolean("tab-list", true) && rank != null) {
-            Component prefix = MM.deserialize(rank.prefix);
+            Component prefix = prefix(rank);
             p.playerListName(prefix.append(Component.text(p.getName())));
             try {
                 Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
@@ -286,6 +305,34 @@ public final class RankManager implements Listener {
                 // another plugin owns the main scoreboard; the tab list name above is still set
             }
         }
+    }
+
+    private java.util.Set<String> deniedPermissions(Player p) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (!active() || !cfg.getBoolean("enforce-permissions", true)) return out;
+        int own = level(p.getUniqueId());
+        for (Map.Entry<String, Integer> rule : commandLevels.entrySet()) {
+            if (rule.getKey().contains(" ") || own >= rule.getValue()) continue;
+            Command cmd = Bukkit.getCommandMap().getCommand(rule.getKey());
+            if (cmd == null || cmd.getPermission() == null) continue;
+            for (String perm : cmd.getPermission().split(";")) {
+                // our own broad nodes stay: StaffCore checks its commands itself
+                if (!perm.isBlank() && !perm.startsWith("staffcore.")) out.add(perm.trim());
+            }
+        }
+        return out;
+    }
+
+    /** Rank prefixes may only use colors and text styles: no click or hover actions in somebody's name. */
+    private static final MiniMessage PREFIX_MM = MiniMessage.builder().tags(net.kyori.adventure.text.minimessage.tag.resolver.TagResolver.resolver(
+            net.kyori.adventure.text.minimessage.tag.standard.StandardTags.color(),
+            net.kyori.adventure.text.minimessage.tag.standard.StandardTags.decorations(),
+            net.kyori.adventure.text.minimessage.tag.standard.StandardTags.gradient(),
+            net.kyori.adventure.text.minimessage.tag.standard.StandardTags.rainbow(),
+            net.kyori.adventure.text.minimessage.tag.standard.StandardTags.reset())).build();
+
+    public static Component prefix(Rank rank) {
+        return PREFIX_MM.deserialize(rank.prefix);
     }
 
     public void unapply(Player p) {
@@ -372,9 +419,9 @@ public final class RankManager implements Listener {
         if (!enabled() || !cfg.getBoolean("chat-format", true)) return;
         Rank rank = of(e.getPlayer().getUniqueId());
         String layout = cfg.getString("chat-layout", "<prefix><name><dark_gray>:</dark_gray> <white><message>");
-        String prefix = rank == null ? "" : rank.prefix;
+        Component prefix = rank == null ? Component.empty() : prefix(rank);
         e.renderer(ChatRenderer.viewerUnaware((source, name, message) -> MM.deserialize(layout,
-                Placeholder.parsed("prefix", prefix),
+                Placeholder.component("prefix", prefix),
                 Placeholder.component("name", Component.text(source.getName())),
                 // what the player typed is inserted as plain text, so nobody can sneak colors or click events in
                 Placeholder.component("message", message))));

@@ -75,6 +75,10 @@ public final class LogDatabase {
                     s.execute("CREATE INDEX IF NOT EXISTS changes_pos ON changes (world, x, z, y)");
                     s.execute("CREATE INDEX IF NOT EXISTS changes_time ON changes (time)");
                     s.execute("CREATE INDEX IF NOT EXISTS changes_actor ON changes (actor, time)");
+                    s.execute("CREATE TABLE IF NOT EXISTS staff_actions (id INTEGER PRIMARY KEY AUTOINCREMENT, time INTEGER NOT NULL,"
+                            + " actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT, detail TEXT)");
+                    s.execute("CREATE INDEX IF NOT EXISTS staff_actor ON staff_actions (actor COLLATE NOCASE, time)");
+                    s.execute("CREATE INDEX IF NOT EXISTS staff_target ON staff_actions (target COLLATE NOCASE, time)");
                     if (keepDays > 0) {
                         s.execute("DELETE FROM changes WHERE time < " + (System.currentTimeMillis() - keepDays * 86_400_000L));
                     }
@@ -82,6 +86,8 @@ public final class LogDatabase {
                 return true;
             } catch (ClassNotFoundException | SQLException e) {
                 log.severe("The block log could not open its database: " + e.getMessage());
+                failed = true;
+                pending.clear();
                 return false;
             }
         }, worker);
@@ -91,8 +97,56 @@ public final class LogDatabase {
         return db != null;
     }
 
+    private volatile boolean failed;
+
     public void add(Entry e) {
-        pending.add(e);
+        // without a database nothing would ever take them out again
+        if (!failed) pending.add(e);
+    }
+
+    /** One line of the team protocol: who did what to whom. */
+    public record StaffAction(long time, String actor, String action, String target, String detail) {}
+
+    public void staffAction(String actor, String action, String target, String detail) {
+        if (failed) return;
+        long now = System.currentTimeMillis();
+        worker.execute(() -> {
+            if (db == null) return;
+            try (PreparedStatement ps = db.prepareStatement("INSERT INTO staff_actions (time, actor, action, target, detail) VALUES (?,?,?,?,?)")) {
+                ps.setLong(1, now);
+                ps.setString(2, actor);
+                ps.setString(3, action);
+                ps.setString(4, target);
+                ps.setString(5, detail == null ? null : (detail.length() > 300 ? detail.substring(0, 300) : detail));
+                ps.executeUpdate();
+            } catch (SQLException ex) {
+                log.warning("Could not write to the team protocol: " + ex.getMessage());
+            }
+        });
+    }
+
+    /** The newest team actions, by or against this name (null: everybody). */
+    public CompletableFuture<List<StaffAction>> staffActions(String name, int limit) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<StaffAction> out = new java.util.ArrayList<>();
+            if (db == null) return out;
+            String sql = "SELECT time, actor, action, target, detail FROM staff_actions"
+                    + (name == null ? "" : " WHERE actor = ? COLLATE NOCASE OR target = ? COLLATE NOCASE") + " ORDER BY time DESC, id DESC LIMIT ?";
+            try (PreparedStatement ps = db.prepareStatement(sql)) {
+                int i = 1;
+                if (name != null) {
+                    ps.setString(i++, name);
+                    ps.setString(i++, name);
+                }
+                ps.setInt(i, limit);
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) out.add(new StaffAction(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5)));
+                }
+            } catch (SQLException ex) {
+                log.warning("Could not read the team protocol: " + ex.getMessage());
+            }
+            return out;
+        }, worker);
     }
 
     /** Writes everything queued so far. */

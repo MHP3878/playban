@@ -106,6 +106,7 @@ public final class AdminManager implements Listener {
     public void setFrozen(Player target, boolean value, String by) {
         if (value) {
             frozen.add(target.getUniqueId());
+            target.leaveVehicle();
             target.showTitle(Title.title(lang().msg("admin.frozen-title"), lang().msg("admin.frozen-subtitle", "staff", by),
                     Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(3), Duration.ofMillis(500))));
             target.playSound(target.getLocation(), Sound.BLOCK_GLASS_BREAK, 1f, 0.6f);
@@ -131,6 +132,7 @@ public final class AdminManager implements Listener {
 
     public void cuff(Player target, Player staff) {
         cuffs.put(target.getUniqueId(), staff.getUniqueId());
+        target.leaveVehicle();
         target.playSound(target.getLocation(), Sound.BLOCK_CHAIN_PLACE, 1f, 0.8f);
         staff.playSound(staff.getLocation(), Sound.BLOCK_CHAIN_PLACE, 1f, 0.8f);
         target.showTitle(Title.title(lang().msg("admin.cuffed-title"), lang().msg("admin.cuffed-subtitle", "staff", staff.getName())));
@@ -159,9 +161,17 @@ public final class AdminManager implements Listener {
             }
             Location lead = staff.getLocation();
             if (target.getWorld() != lead.getWorld() || target.getLocation().distanceSquared(lead) > 6.25) {
-                Location behind = lead.clone().subtract(lead.getDirection().setY(0).normalize().multiply(1.5));
+                // looking straight up or down leaves no direction: then go by the body's yaw
+                double yaw = Math.toRadians(lead.getYaw());
+                org.bukkit.util.Vector dir = new org.bukkit.util.Vector(-Math.sin(yaw), 0, Math.cos(yaw));
+                Location behind = lead.clone().subtract(dir.multiply(1.5));
+                // a flying leader does not pull the player up into the air: they stay on the ground below
+                int ground = lead.getWorld().getHighestBlockYAt(behind.getBlockX(), behind.getBlockZ());
+                if (ground + 1 < behind.getY() && ground > lead.getWorld().getMinHeight()) behind.setY(ground + 1);
+                if (behind.getBlock().getType().isSolid()) behind = lead.clone();
                 behind.setYaw(target.getLocation().getYaw());
                 behind.setPitch(target.getLocation().getPitch());
+                target.setFallDistance(0);
                 target.teleport(behind);
             }
             try {
@@ -272,7 +282,31 @@ public final class AdminManager implements Listener {
     public void onDamage(EntityDamageEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         // frozen players are not hurt either, and the frost overlay must not damage them
-        if (isGod(p.getUniqueId()) || isFrozen(p.getUniqueId())) e.setCancelled(true);
+        if (isGod(p.getUniqueId()) || isRestrained(p.getUniqueId())) e.setCancelled(true);
+    }
+
+    /** Frozen or cuffed players cannot ride away on a boat or a horse either. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onRide(org.bukkit.event.vehicle.VehicleEnterEvent e) {
+        if (e.getEntered() instanceof Player p && isRestrained(p.getUniqueId())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onMount(org.bukkit.event.entity.EntityMountEvent e) {
+        if (e.getEntity() instanceof Player p && isRestrained(p.getUniqueId())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onEntityClick(org.bukkit.event.player.PlayerInteractEntityEvent e) {
+        if (isRestrained(e.getPlayer().getUniqueId())) e.setCancelled(true);
+    }
+
+    /** An ender pearl thrown just before the freeze does not carry them away. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPearl(org.bukkit.event.player.PlayerTeleportEvent e) {
+        if (isRestrained(e.getPlayer().getUniqueId()) && e.getCause() == org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.ENDER_PEARL) {
+            e.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)

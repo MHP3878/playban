@@ -34,6 +34,7 @@ permissions:
       staffcore.blocklog.rollback: true
       staffcore.ipban: true
       staffcore.lockdown: true
+      staffcore.troll: true
   staffcore.staff:
     description: Punish players, handle reviews and tickets
     default: op
@@ -64,6 +65,11 @@ permissions:
       staffcore.staffmode: true
       staffcore.blocklog: true
       staffcore.chatcontrol: true
+      staffcore.prison: true
+      staffcore.stafflog: true
+      staffcore.tool.kbstick: true
+      staffcore.tool.spectate: true
+      staffcore.tool.bait: true
   staffcore.see:
     description: Can still see punished players
     default: op
@@ -171,6 +177,24 @@ permissions:
     default: op
   staffcore.lockdown:
     description: "/lockdown - only the team may join"
+    default: op
+  staffcore.prison:
+    description: "/prison and /unprison - wall a player into a bedrock cell, prison key"
+    default: op
+  staffcore.troll:
+    description: "/troll - harmless jokes like chicken rain or a fake stash, troll wand"
+    default: op
+  staffcore.stafflog:
+    description: "/stafflog - the team protocol: who punished, jailed or trolled whom, and which commands the team typed"
+    default: op
+  staffcore.tool.kbstick:
+    description: "Knockback stick - pushes a player like a hit without damage and shows how far they moved (anti-knockback check)"
+    default: op
+  staffcore.tool.spectate:
+    description: "Spectate eye - look through a player's eyes, sneak to come back"
+    default: op
+  staffcore.tool.bait:
+    description: "Bait chest - mark a chest; the team is told when a player opens it"
     default: op
   staffcore.ranks:
     description: Can open /rank and give ranks below their own level

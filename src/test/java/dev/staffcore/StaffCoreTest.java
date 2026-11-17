@@ -2517,4 +2517,234 @@ class StaffCoreTest {
         assertEquals(-1, TimeUtil.parse("1h banana"));
         assertEquals("1d 1h 30m", TimeUtil.format(91_800_000L));
     }
+
+    // ------------------------------------------------------------------ 0.11: prison, trolls, new tools, review fixes
+
+    @Test
+    void prisonWallsInLocksTheInventoryAndGivesEverythingBack() {
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 100.5, 70, 100.5));
+        w.getBlockAt(100, 69, 100).setType(Material.GRASS_BLOCK);
+        w.getBlockAt(101, 70, 100).setType(Material.OAK_LOG);
+        troll.getInventory().setItem(0, new ItemStack(Material.DIAMOND_SWORD));
+        troll.getInventory().setItem(5, new ItemStack(Material.BREAD, 7));
+        assertTrue(admin.performCommand("prison Troll 10m Griefing"));
+        assertTrue(plugin.prison().isJailed(troll.getUniqueId()));
+        assertEquals(Material.BEDROCK, w.getBlockAt(100, 69, 100).getType(), "floor");
+        assertEquals(Material.BEDROCK, w.getBlockAt(101, 70, 100).getType(), "walls");
+        assertEquals(Material.BEDROCK, w.getBlockAt(100, 72, 100).getType(), "roof");
+        assertEquals(Material.AIR, w.getBlockAt(100, 71, 100).getType(), "room for the head");
+        assertEquals(Material.GRAY_STAINED_GLASS_PANE, troll.getInventory().getItem(0).getType(), "the sword is locked away");
+        assertEquals(Material.GRAY_STAINED_GLASS_PANE, troll.getInventory().getItem(20).getType());
+
+        var scroll = new org.bukkit.event.player.PlayerItemHeldEvent(troll, 0, 3);
+        server.getPluginManager().callEvent(scroll);
+        assertTrue(scroll.isCancelled(), "no scrolling through the hotbar");
+        var cmd = new org.bukkit.event.player.PlayerCommandPreprocessEvent(troll, "/spawn");
+        server.getPluginManager().callEvent(cmd);
+        assertTrue(cmd.isCancelled(), "no commands");
+        var ticket = new org.bukkit.event.player.PlayerCommandPreprocessEvent(troll, "/ticket help");
+        server.getPluginManager().callEvent(ticket);
+        assertFalse(ticket.isCancelled(), "tickets still work");
+        var breakCage = new BlockBreakEvent(w.getBlockAt(101, 70, 100), admin);
+        server.getPluginManager().callEvent(breakCage);
+        assertTrue(breakCage.isCancelled(), "nobody breaks the cage");
+
+        assertTrue(admin.performCommand("unprison Troll"));
+        assertFalse(plugin.prison().isJailed(troll.getUniqueId()));
+        assertEquals(Material.GRASS_BLOCK, w.getBlockAt(100, 69, 100).getType(), "the ground is back");
+        assertEquals(Material.OAK_LOG, w.getBlockAt(101, 70, 100).getType(), "the tree is back");
+        assertEquals(Material.DIAMOND_SWORD, troll.getInventory().getItem(0).getType(), "the sword is back");
+        assertEquals(7, troll.getInventory().getItem(5).getAmount());
+    }
+
+    @Test
+    void prisonSurvivesARestartAndEndsOnItsOwn() {
+        troll.teleport(new org.bukkit.Location(troll.getWorld(), 50.5, 70, 50.5));
+        troll.getInventory().setItem(0, new ItemStack(Material.EMERALD, 3));
+        admin.performCommand("prison Troll 2s");
+        // a fresh manager reads the cell from disk, as after a restart
+        var again = new PrisonManager(plugin);
+        again.load();
+        assertTrue(again.isJailed(troll.getUniqueId()));
+        plugin.prison().release(troll.getUniqueId(), "Admin");
+        plugin.prison().jail(troll, 1, "test", "Admin");
+        try {
+            Thread.sleep(10);
+        } catch (InterruptedException ignored) {
+            // fine
+        }
+        server.getScheduler().performTicks(25);
+        assertFalse(plugin.prison().isJailed(troll.getUniqueId()), "the time ran out");
+        assertEquals(Material.EMERALD, troll.getInventory().getItem(0).getType());
+    }
+
+    @Test
+    void exemptPlayersCannotBeJailedOrTrolled() {
+        bystander.addAttachment(plugin, "staffcore.exempt", true);
+        PlayerMock mod = server.addPlayer("Moderator");
+        mod.addAttachment(plugin, "staffcore.prison", true);
+        mod.addAttachment(plugin, "staffcore.troll", true);
+        mod.performCommand("prison Bystander 5m");
+        assertFalse(plugin.prison().isJailed(bystander.getUniqueId()));
+        int before = bystander.getWorld().getEntities().size();
+        mod.performCommand("troll Bystander chickens");
+        server.getScheduler().performTicks(40);
+        assertEquals(before, bystander.getWorld().getEntities().size(), "no chickens for protected players");
+    }
+
+    @Test
+    void chickenRainComesAndGoesWithoutDrops() {
+        int before = troll.getWorld().getEntities().size();
+        assertTrue(admin.performCommand("troll Troll chickens"));
+        server.getScheduler().performTicks(40);
+        assertTrue(troll.getWorld().getEntities().size() > before, "chickens fell");
+        server.getScheduler().performTicks(200);
+        assertEquals(before, troll.getWorld().getEntities().size(), "and are gone again");
+        assertTrue(admin.performCommand("troll Troll fakeop"));
+        boolean fake = false;
+        Component m;
+        while ((m = troll.nextComponentMessage()) != null) if (plain(m).contains("Made Troll a server operator")) fake = true;
+        assertTrue(fake);
+        assertFalse(troll.isOp(), "only the message, of course");
+        admin.performCommand("troll Troll");
+        assertTrue(admin.getOpenInventory().getTopInventory().getHolder() instanceof dev.staffcore.gui.Menu, "without a joke the menu opens");
+    }
+
+    @Test
+    void rankEditorsCannotHandOutMoreThanTheyHave() {
+        admin.performCommand("rank setup");
+        PlayerMock mod = server.addPlayer("Moderator");
+        admin.performCommand("rank set Moderator admin");
+        assertFalse(plugin.ranks().mayGrant(mod, "*"), "only the top rank hands out everything");
+        assertFalse(plugin.ranks().mayGrant(mod, "luckperms.*"));
+        assertFalse(plugin.ranks().mayGrant(mod, "some.plugin.secret"), "nothing they do not have");
+        assertTrue(plugin.ranks().mayGrant(admin, "*"), "the owner may");
+        assertFalse(plugin.ranks().isTop(mod));
+        assertTrue(plugin.ranks().isTop(admin));
+    }
+
+    @Test
+    void commandRulesAlsoHoldWhenAPluginRunsTheCommand() {
+        admin.performCommand("rank setup");
+        bystander.setOp(true);
+        org.bukkit.command.Command cmd = server.getCommandMap().getCommand("gamemode");
+        if (cmd == null || cmd.getPermission() == null) return; // the test server has no vanilla commands
+        plugin.ranks().apply(bystander);
+        assertFalse(bystander.hasPermission(cmd.getPermission()), "an op below the level loses the permission itself");
+        assertTrue(admin.hasPermission(cmd.getPermission()));
+    }
+
+    @Test
+    void rollbackLeavesLaterChangesOfOthersAlone() throws Exception {
+        logDb();
+        breakBlock(troll, 0, Material.STONE);
+        // someone else builds a chest there afterwards
+        troll.getWorld().getBlockAt(0, 10, 0).setType(Material.CHEST);
+        var q = new dev.staffcore.log.LogDatabase.Query();
+        q.actor = troll.getUniqueId().toString();
+        q.world = troll.getWorld().getName();
+        q.radius = -1;
+        assertEquals(0, (int) await(plugin.blockLog().rollback(q, false)));
+        assertEquals(Material.CHEST, troll.getWorld().getBlockAt(0, 10, 0).getType(), "the chest stays");
+    }
+
+    @Test
+    void consoleCannotRollBackTheWholeServer() throws Exception {
+        logDb();
+        breakBlock(troll, 0, Material.STONE);
+        server.dispatchCommand(server.getConsoleSender(), "blocklog rollback 1h");
+        server.getScheduler().performTicks(20);
+        assertEquals(Material.AIR, troll.getWorld().getBlockAt(0, 10, 0).getType());
+    }
+
+    @Test
+    void teamProtocolRecordsPunishmentsAndCommands() throws Exception {
+        logDb();
+        admin.performCommand("warn Troll spam");
+        // the test server does not send typed commands through the event, so it is sent here
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerCommandPreprocessEvent(admin, "/warn Troll spam"));
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerCommandPreprocessEvent(admin, "/msg Troll secret"));
+        admin.performCommand("prison Bystander 5m");
+        var list = await(plugin.blockLog().db().staffActions("Troll", 10));
+        assertTrue(list.stream().anyMatch(a -> a.action().equals("warn") && a.actor().equals("Admin")), "the warning is in the protocol");
+        var all = await(plugin.blockLog().db().staffActions(null, 50));
+        assertTrue(all.stream().anyMatch(a -> a.action().equals("prison")));
+        assertTrue(all.stream().anyMatch(a -> a.action().equals("command") && a.detail().startsWith("/warn")), "typed commands too");
+        assertFalse(all.stream().anyMatch(a -> a.detail() != null && a.detail().contains("secret")), "private messages stay private");
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        admin.performCommand("stafflog Troll");
+        server.getScheduler().performTicks(5);
+        Thread.sleep(50);
+        server.getScheduler().performTicks(5);
+        boolean shown = false;
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("warn")) shown = true;
+        assertTrue(shown);
+    }
+
+    @Test
+    void baitChestTellsTheTeam() {
+        Block b = troll.getWorld().getBlockAt(8, 10, 8);
+        b.setType(Material.CHEST);
+        assertTrue(plugin.moderation().toggleBait(b));
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        troll.openInventory(((org.bukkit.block.Container) b.getState()).getInventory());
+        boolean told = false;
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll") && plain(m).contains("bait")) told = true;
+        assertTrue(told, "the team hears about it");
+        assertFalse(plugin.moderation().toggleBait(b), "a second click takes the mark away");
+    }
+
+    @Test
+    void adminItemsNeverDropAndStayOutOfChests() {
+        admin.getInventory().setItem(0, tool("banhammer"));
+        var drops = new java.util.ArrayList<ItemStack>(java.util.List.of(tool("banhammer"), new ItemStack(Material.DIRT)));
+        var death = new org.bukkit.event.entity.PlayerDeathEvent(admin, org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.GENERIC).build(),
+                drops, 0, (net.kyori.adventure.text.Component) null);
+        server.getPluginManager().callEvent(death);
+        assertEquals(1, death.getDrops().size(), "only the dirt drops");
+        assertEquals(Material.DIRT, death.getDrops().get(0).getType());
+    }
+
+    @Test
+    void staffModeKeepsWhatWasPickedUpMeanwhile() {
+        admin.getInventory().setItem(0, new ItemStack(Material.APPLE));
+        admin.performCommand("staffmode");
+        admin.getInventory().setItem(30, new ItemStack(Material.GOLD_INGOT, 5));
+        assertTrue(plugin.tools().inStaffMode(admin.getUniqueId()));
+        admin.performCommand("staffmode");
+        assertFalse(plugin.tools().inStaffMode(admin.getUniqueId()));
+        assertTrue(admin.getInventory().contains(Material.APPLE));
+        assertTrue(admin.getInventory().contains(Material.GOLD_INGOT, 5), "taken from a chest during staff mode, kept");
+        for (ItemStack i : admin.getInventory().getContents()) assertNull(plugin.tools().toolOf(i), "no admin items left");
+    }
+
+    @Test
+    void newToolsWork() {
+        admin.getInventory().setItemInMainHand(tool("prisonkey"));
+        troll.teleport(new org.bukkit.Location(troll.getWorld(), 200.5, 70, 200.5));
+        rightClickPlayer(admin, troll);
+        assertTrue(plugin.prison().isJailed(troll.getUniqueId()), "the key locks up");
+        rightClickPlayer(admin, troll);
+        assertFalse(plugin.prison().isJailed(troll.getUniqueId()), "and opens again");
+        admin.getInventory().setItemInMainHand(tool("trollwand"));
+        rightClickPlayer(admin, troll);
+        assertTrue(admin.getOpenInventory().getTopInventory().getHolder() instanceof dev.staffcore.gui.Menu, "the troll menu");
+        admin.closeInventory();
+        admin.getInventory().setItemInMainHand(tool("spectate"));
+        rightClickPlayer(admin, troll);
+        assertEquals(org.bukkit.GameMode.SPECTATOR, admin.getGameMode());
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerToggleSneakEvent(admin, true));
+        server.getScheduler().performTicks(2);
+        assertNotEquals(org.bukkit.GameMode.SPECTATOR, admin.getGameMode(), "sneaking brings you back");
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.tools().menu(admin);
+            assertNoMissingTexts(admin, code);
+            plugin.trolls().menu(admin, troll);
+            assertNoMissingTexts(admin, code);
+        }
+    }
 }

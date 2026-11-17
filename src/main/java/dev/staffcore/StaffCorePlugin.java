@@ -33,6 +33,8 @@ public class StaffCorePlugin extends JavaPlugin {
     private AdminManager admin;
     private ToolManager tools;
     private ModerationManager moderation;
+    private PrisonManager prison;
+    private TrollManager trolls;
     private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
@@ -117,6 +119,17 @@ public class StaffCorePlugin extends JavaPlugin {
         register("mutechat", "Only the team may write in chat", "staffcore.chatcontrol", moderation);
         register("slowchat", "Players may only write every few seconds", "staffcore.chatcontrol", moderation);
         register("lockdown", "Only the team may join", "staffcore.lockdown", moderation);
+        register("stafflog", "Team protocol: who did what", "staffcore.stafflog", moderation);
+        prison = new PrisonManager(this);
+        prison.load();
+        prison.loadPending();
+        getServer().getPluginManager().registerEvents(prison, this);
+        prison.start();
+        register("prison", "Wall a player into a bedrock cell, their inventory locked", "staffcore.prison", prison);
+        register("unprison", "Let a player out of the prison", "staffcore.prison", prison);
+        trolls = new TrollManager(this);
+        getServer().getPluginManager().registerEvents(trolls, this);
+        register("troll", "Harmless jokes on a player", "staffcore.troll", trolls);
         tools = new ToolManager(this);
         getServer().getPluginManager().registerEvents(tools, this);
         register("tools", "Admin items: bannhammer, freeze wand, handcuffs and more", "staffcore.tools", tools);
@@ -191,6 +204,8 @@ public class StaffCorePlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (admin != null) admin.stop();
+        if (prison != null) prison.stop();
+        if (ranks != null) for (org.bukkit.entity.Player online : getServer().getOnlinePlayers()) ranks.unapply(online);
         if (tools != null) tools.leaveAll();
         if (blockLog != null) blockLog.stop();
         // take the runtime commands away again, so /reload does not leave copies behind
@@ -237,6 +252,15 @@ public class StaffCorePlugin extends JavaPlugin {
     public AdminManager admin() { return admin; }
     public ToolManager tools() { return tools; }
     public ModerationManager moderation() { return moderation; }
+
+    public PrisonManager prison() { return prison; }
+
+    public TrollManager trolls() { return trolls; }
+
+    /** One line in the team protocol (/stafflog). */
+    public void staffLog(String actor, String action, String target, String detail) {
+        if (blockLog != null && blockLog.db() != null) blockLog.db().staffAction(actor, action, target, detail);
+    }
     public dev.staffcore.log.BlockLog blockLog() { return blockLog; }
     public dev.staffcore.gui.RankMenus rankMenus() { return rankMenus; }
     public TicketMenus ticketMenus() { return ticketMenus; }

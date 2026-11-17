@@ -57,11 +57,16 @@ public final class ToolManager implements Listener, TabExecutor {
             new Tool("invsee", Material.CHEST, "staffcore.tool.invsee"),
             new Tool("randomtp", Material.ENDER_PEARL, "staffcore.tool.randomtp"),
             new Tool("fly", Material.FEATHER, "staffcore.tool.fly"),
+            new Tool("kbstick", Material.STICK, "staffcore.tool.kbstick"),
+            new Tool("spectate", Material.ENDER_EYE, "staffcore.tool.spectate"),
+            new Tool("prisonkey", Material.TRIPWIRE_HOOK, "staffcore.prison"),
+            new Tool("trollwand", Material.AMETHYST_SHARD, "staffcore.troll"),
+            new Tool("bait", Material.TRAPPED_CHEST, "staffcore.tool.bait"),
             new Tool("exit", Material.BARRIER, "staffcore.staffmode"));
 
     /** Where each item goes in staff mode: the hotbar first, then the row above it. */
     private static final List<String> KIT = List.of("compass", "vanish", "inspector", "freeze", "handcuffs", "warnstick", "banhammer", "brush", "xray",
-            "invsee", "randomtp", "fly", "", "", "", "", "", "exit");
+            "invsee", "randomtp", "fly", "kbstick", "spectate", "prisonkey", "bait", "trollwand", "exit");
 
     private static final Map<Material, Color> ORES = new EnumMap<>(Material.class);
 
@@ -180,6 +185,10 @@ public final class ToolManager implements Listener, TabExecutor {
             if (usable(staff) != null && !exempt(staff, target)) warn(staff, target);
             return;
         }
+        if (tool.id().equals("kbstick")) {
+            if (usable(staff) != null) knockbackTest(staff, target);
+            return;
+        }
         if (!tool.id().equals("banhammer") || usable(staff) == null) return;
         try {
             target.getWorld().strikeLightningEffect(target.getLocation());
@@ -207,6 +216,17 @@ public final class ToolManager implements Listener, TabExecutor {
             case "freeze" -> freeze(staff, target);
             case "invsee" -> plugin.admin().openInventory(staff, target, staff.isSneaking());
             case "warnstick" -> takeBackWarning(staff, target);
+            case "spectate" -> spectate(staff, target);
+            case "prisonkey" -> {
+                if (plugin.prison().isJailed(target.getUniqueId())) plugin.prison().release(target.getUniqueId(), staff.getName());
+                else if (!exempt(staff, target)) {
+                    long ms = TimeUtil.parse(plugin.getConfig().getString("prison.tool-time", "15m"));
+                    plugin.prison().jail(target, ms, lang().raw("prison.tool-reason"), staff.getName());
+                }
+            }
+            case "trollwand" -> {
+                if (!exempt(staff, target)) plugin.trolls().menu(staff, target);
+            }
             default -> {
                 // the others work by right-clicking the air
             }
@@ -246,6 +266,16 @@ public final class ToolManager implements Listener, TabExecutor {
             plugin.blockLog().inspect(p, b);
             return;
         }
+        if (held.id().equals("bait") && e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null) {
+            e.setCancelled(true);
+            if (usable(p) == null) return;
+            if (!(e.getClickedBlock().getState() instanceof org.bukkit.block.Container)) {
+                lang().send(p, "tools.bait-no-container");
+                return;
+            }
+            lang().send(p, plugin.moderation().toggleBait(e.getClickedBlock()) ? "tools.bait-set" : "tools.bait-removed");
+            return;
+        }
         if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         e.setCancelled(true);
         Tool tool = usable(p);
@@ -269,6 +299,7 @@ public final class ToolManager implements Listener, TabExecutor {
                 else freeze(p, target);
             }
             case "xray" -> xray(p);
+            case "bait" -> lang().send(p, "tools.bait-how");
             case "compass" -> compass(p);
             case "vanish" -> plugin.punishments().setVanished(p, !plugin.punishments().isVanished(p.getUniqueId()));
             default -> {
@@ -360,13 +391,24 @@ public final class ToolManager implements Listener, TabExecutor {
     public void leaveStaffMode(Player p) {
         String saved = plugin.store().staffModeInventories.remove(p.getUniqueId());
         plugin.store().markDirty();
+        stopSpectating(p);
+        // things taken while in staff mode (from a chest or someone's inventory) are kept, only the admin items go
+        List<ItemStack> gathered = new ArrayList<>();
+        for (ItemStack item : p.getInventory().getContents()) {
+            if (item != null && !item.getType().isAir() && toolOf(item) == null) gathered.add(item.clone());
+        }
         p.getInventory().clear();
         if (saved != null) {
             try {
-                p.getInventory().setContents(ItemStack.deserializeItemsFromBytes(java.util.Base64.getDecoder().decode(saved)));
+                ItemStack[] back = ItemStack.deserializeItemsFromBytes(java.util.Base64.getDecoder().decode(saved));
+                for (int i = 0; i < back.length; i++) if (back[i] != null && back[i].getType().isAir()) back[i] = null;
+                p.getInventory().setContents(back);
             } catch (RuntimeException ex) {
                 plugin.getLogger().warning("Could not give " + p.getName() + " their inventory back after staff mode: " + ex.getMessage());
             }
+        }
+        for (ItemStack left : p.getInventory().addItem(gathered.toArray(new ItemStack[0])).values()) {
+            p.getWorld().dropItemNaturally(p.getLocation(), left);
         }
         plugin.store().saveIfDirty();
         if (!wasVanished.remove(p.getUniqueId()) && plugin.punishments().isVanished(p.getUniqueId())) plugin.punishments().setVanished(p, false);
@@ -405,10 +447,34 @@ public final class ToolManager implements Listener, TabExecutor {
     /** Admin items stay in the staff member's own inventory, they cannot be put into chests. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onMoveItem(org.bukkit.event.inventory.InventoryClickEvent e) {
-        if (!(e.getWhoClicked() instanceof Player p) || !inStaffMode(p.getUniqueId())) return;
+        if (!(e.getWhoClicked() instanceof Player p)) return;
         if (e.getView().getTopInventory().getHolder() instanceof Menu) return;
         if (e.getView().getTopInventory().getType() == org.bukkit.event.inventory.InventoryType.CRAFTING) return;
-        if (toolOf(e.getCurrentItem()) != null || toolOf(e.getCursor()) != null) e.setCancelled(true);
+        ItemStack hotbar = e.getHotbarButton() >= 0 ? p.getInventory().getItem(e.getHotbarButton()) : null;
+        boolean tool = toolOf(e.getCurrentItem()) != null || toolOf(e.getCursor()) != null || toolOf(hotbar) != null
+                || (e.getClick() == org.bukkit.event.inventory.ClickType.SWAP_OFFHAND && toolOf(p.getInventory().getItemInOffHand()) != null);
+        if (tool) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onDragTool(org.bukkit.event.inventory.InventoryDragEvent e) {
+        if (e.getView().getTopInventory().getHolder() instanceof Menu) return;
+        if (toolOf(e.getOldCursor()) != null && e.getRawSlots().stream().anyMatch(slot -> slot < e.getView().getTopInventory().getSize())) e.setCancelled(true);
+    }
+
+    /** Admin items never drop on death, not even the bannhammer. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onDeath(org.bukkit.event.entity.PlayerDeathEvent e) {
+        e.getDrops().removeIf(item -> toolOf(item) != null);
+        if (inStaffMode(e.getPlayer().getUniqueId())) e.getDrops().clear();
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onFrame(PlayerInteractEntityEvent e) {
+        if (e.getRightClicked() instanceof org.bukkit.entity.ItemFrame || e.getRightClicked() instanceof org.bukkit.entity.ArmorStand
+                || e.getRightClicked() instanceof org.bukkit.entity.Allay) {
+            if (toolOf(e.getPlayer().getInventory().getItem(e.getHand())) != null) e.setCancelled(true);
+        }
     }
 
     /** The player the staff member is looking at, with a frost trail to show the shot. */
@@ -463,7 +529,19 @@ public final class ToolManager implements Listener, TabExecutor {
     }
 
     /** Glowing copies of nearby ores that only this staff member sees, through walls, for 15 seconds. */
+    private final Map<java.util.UUID, List<Entity>> xrayShown = new java.util.HashMap<>();
+    private final Map<java.util.UUID, Long> xrayUsed = new java.util.HashMap<>();
+
     private void xray(Player p) {
+        long now = System.currentTimeMillis();
+        Long last = xrayUsed.get(p.getUniqueId());
+        if (last != null && now - last < 3000) {
+            lang().send(p, "tools.xray-wait");
+            return;
+        }
+        xrayUsed.put(p.getUniqueId(), now);
+        List<Entity> before = xrayShown.remove(p.getUniqueId());
+        if (before != null) before.forEach(Entity::remove);
         List<Block> ores = findOres(p.getLocation(), 20, 200);
         lang().send(p, "tools.xray-found", "count", ores.size());
         p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.8f, 1.6f);
@@ -485,6 +563,73 @@ public final class ToolManager implements Listener, TabExecutor {
                 // a server that cannot spawn displays still gets the count above
             }
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> shown.forEach(Entity::remove), 20L * 15);
+        xrayShown.put(p.getUniqueId(), shown);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            shown.forEach(Entity::remove);
+            xrayShown.remove(p.getUniqueId(), shown);
+        }, 20L * 15);
+    }
+
+    // ---------------------------------------------------------------- knockback test
+
+    /**
+     * Pushes the player like a normal hit would, without damage, and measures how far they really moved.
+     * Somebody with an anti-knockback cheat barely moves.
+     */
+    private void knockbackTest(Player staff, Player target) {
+        Location start = target.getLocation();
+        double yaw = Math.toRadians(staff.getLocation().getYaw());
+        target.setVelocity(new org.bukkit.util.Vector(-Math.sin(yaw) * 0.42, 0.36, Math.cos(yaw) * 0.42));
+        target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 0.6f, 1f);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!target.isOnline() || target.getWorld() != start.getWorld()) return;
+            Location end = target.getLocation();
+            double moved = Math.hypot(end.getX() - start.getX(), end.getZ() - start.getZ());
+            String key = moved < 0.3 ? "tools.kb-suspicious" : "tools.kb-ok";
+            lang().send(staff, key, "player", target.getName(), "blocks", String.format(java.util.Locale.ROOT, "%.2f", moved));
+            if (moved < 0.3) plugin.staffLog(staff.getName(), "kb-test", target.getName(), "moved " + String.format(java.util.Locale.ROOT, "%.2f", moved));
+        }, 10L);
+    }
+
+    // ---------------------------------------------------------------- spectate eye
+
+    private record Watch(org.bukkit.GameMode mode, Location from) {}
+
+    private final Map<java.util.UUID, Watch> watching = new java.util.HashMap<>();
+
+    /** Looks through the player's eyes; sneaking ends it and brings you back. */
+    private void spectate(Player staff, Player target) {
+        watching.putIfAbsent(staff.getUniqueId(), new Watch(staff.getGameMode(), staff.getLocation()));
+        if (!plugin.punishments().isVanished(staff.getUniqueId())) plugin.punishments().setVanished(staff, true);
+        staff.setGameMode(org.bukkit.GameMode.SPECTATOR);
+        staff.teleport(target.getLocation());
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (staff.isOnline() && target.isOnline() && staff.getGameMode() == org.bukkit.GameMode.SPECTATOR) staff.setSpectatorTarget(target);
+        }, 2L);
+        lang().send(staff, "tools.spectating", "player", target.getName());
+    }
+
+    public void stopSpectating(Player staff) {
+        Watch w = watching.remove(staff.getUniqueId());
+        if (w == null) return;
+        staff.setSpectatorTarget(null);
+        staff.teleport(w.from());
+        staff.setGameMode(w.mode());
+    }
+
+    @EventHandler
+    public void onSneak(org.bukkit.event.player.PlayerToggleSneakEvent e) {
+        if (e.isSneaking() && watching.containsKey(e.getPlayer().getUniqueId())) {
+            Player p = e.getPlayer();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                stopSpectating(p);
+                lang().send(p, "tools.spectate-end");
+            });
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onQuitWatching(org.bukkit.event.player.PlayerQuitEvent e) {
+        stopSpectating(e.getPlayer());
     }
 }

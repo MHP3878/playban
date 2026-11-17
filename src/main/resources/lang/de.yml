@@ -89,6 +89,11 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  prison: ["<gray>Mauert den Spieler in eine Grundstein-", "<gray>Zelle ein. Das Inventar wird zu grauen", "<gray>Schlössern: keine Items, kein Scrollen,", "<gray>keine Befehle. Danach kommt alles zurück.", "", "<dark_gray>Beispiel: /prison Steve 30m Griefing"]
+  unprison: ["<gray>Lässt einen Spieler aus dem Gefängnis.", "<gray>Die Blöcke drumherum und die Items", "<gray>kommen zurück wie vorher."]
+  troll: ["<gray>Harmlose Späße: Hühnerregen, Fake-", "<gray>Stash, Fake-OP-Nachricht, Drehen.", "<gray>Niemand wird verletzt oder verliert was.", "", "<dark_gray>Beispiel: /troll Steve chickens"]
+  stafflog: ["<gray>Das Team-Protokoll: wer wen bestraft,", "<gray>eingesperrt oder getrollt hat und", "<gray>welche Befehle das Team benutzt hat.", "", "<dark_gray>Beispiel: /stafflog Steve"]
+
   mute: ["<gray>Der Spieler kann nicht chatten und", "<gray>kein /msg nutzen. Ohne Zeit für immer.", "", "<dark_gray>Beispiel: /mute Steve 1h Spam"]
   ipban: ["<gray>Bannt den Spieler und die Adresse,", "<gray>von der er spielt. Ein Zweit-Account", "<gray>hilft dann nicht."]
   lockdown: ["<gray>Nur das Team kann beitreten, alle", "<gray>anderen werden gekickt. Nochmal zum Öffnen.", "", "<dark_gray>Beispiel: /lockdown on Wartung"]
@@ -317,6 +322,8 @@ voice:
     <#ffc371>/voice manage <dark_gray>-</dark_gray> <gray>in deiner eigenen Gruppe kicken oder bannen
 
 rank:
+  grant-own-only: "<red>Du kannst nur Rechte vergeben, die du selbst hast. <white>*</white> und <white>x.*</white> darf nur der höchste Rang vergeben."
+
   too-low: "<red>Dein Rang ist zu niedrig für diesen Befehl. Er braucht Level <white>{level}</white>."
   setup-console: "<gray>Nutze <white>/rank set <Spieler> owner</white> in der Konsole oder <white>/rank setup</white> im Spiel als OP."
   setup-done-already: "<red>Es gibt schon einen Owner. Frag ihn nach einem Rang."
@@ -331,6 +338,8 @@ rank:
   set-you: "<green>Dein Rang ist jetzt <white>{rank}</white>."
 
 log:
+  console-needs-player: "<red>Von der Konsole bitte einen Spieler angeben: <white>/blocklog rollback <name> [zeit]</white>. Sonst würde der ganze Server zurückgesetzt."
+
   not-ready: "<red>Das Block-Protokoll ist nicht bereit. Schau ins Server-Log."
   usage: "<gray>Nutzung: <white>/blocklog near [Radius] [Zeit]</white>, <white>/blocklog player <Name> [Zeit]</white>, <white>/blocklog rollback <Name> [Zeit] [Radius]</white>, <white>/blocklog replay [Radius] [Zeit] [Name]</white>"
   help: |-
@@ -425,6 +434,32 @@ moderation:
   report-sent: "<green>Danke, deine Meldung über <white>{player}</white> ging an das Team."
 
 tools:
+  xray-wait: "<gray>Die Röntgenbrille braucht einen Moment."
+  kb-ok: "<gray><white>{player}</white> wurde <white>{blocks}</white> Blöcke weggestoßen. Sieht normal aus."
+  kb-suspicious: "<red><white>{player}</white> wurde nur <white>{blocks}</white> Blöcke weggestoßen. Das könnte ein Anti-Knockback-Cheat sein: nochmal testen, am besten auf freier Fläche."
+  spectating: "<gray>Du schaust <white>{player}</white> zu. <#ffc371>Schleichen</#ffc371> bringt dich zurück."
+  spectate-end: "<gray>Du bist zurück, wo du warst."
+  bait-no-container: "<gray>Klick auf eine Kiste, ein Fass oder einen anderen Behälter."
+  bait-set: "<green>Diese Kiste ist jetzt ein Köder. Das Team erfährt es, sobald ein Spieler sie öffnet."
+  bait-removed: "<gray>Diese Kiste ist kein Köder mehr."
+  bait-how: "<gray>Rechtsklick auf eine Kiste macht sie zum Köder, nochmal nimmt es zurück."
+  bait-alert: "<red><white>{player}</white> hat eine Köder-Kiste bei <white>{x} {y} {z}</white> geöffnet. <gray>Klick, um hinzugehen."
+  kbstick:
+    name: "<white><bold>Rückstoß-Stock</bold>"
+    lore: ["<gray>Ein Schlag stößt den Spieler weg wie", "<gray>ein normaler Treffer, ohne Schaden,", "<gray>und zeigt, wie weit er wirklich flog.", "<gray>Findet Anti-Knockback-Cheats."]
+  spectate:
+    name: "<dark_aqua><bold>Zuschauer-Auge</bold>"
+    lore: ["<gray>Rechtsklick auf einen Spieler:", "<gray>durch seine Augen schauen.", "<gray>Schleichen bringt dich zurück."]
+  prisonkey:
+    name: "<dark_gray><bold>Gefängnisschlüssel</bold>"
+    lore: ["<gray>Rechtsklick auf einen Spieler: ab ins", "<gray>Grundstein-Gefängnis. Rechtsklick auf", "<gray>einen Gefangenen: rauslassen."]
+  trollwand:
+    name: "<light_purple><bold>Troll-Stab</bold>"
+    lore: ["<gray>Rechtsklick auf einen Spieler öffnet", "<gray>das Troll-Menü. Nur harmlose Späße."]
+  bait:
+    name: "<gold><bold>Köder-Kiste</bold>"
+    lore: ["<gray>Rechtsklick auf eine Kiste macht sie", "<gray>zum Köder. Öffnet ein Spieler sie,", "<gray>erfährt das Team es sofort. Gut gegen", "<gray>X-Rayer und Diebe."]
+
   nobody: "<gray>Kein Spieler, zu dem du springen kannst."
   warn-reason: "Verwarnt durch das Team"
   warn-taken-back: "<gray>Die neueste Verwarnung von <white>{player}</white> wurde zurückgenommen."
@@ -1515,3 +1550,65 @@ menu:
     question-line: "<white>{text}"
     answer: "<white>{text}"
     answer-lore: ["<#ffc371>Klicken zum Antworten"]
+
+prison:
+  title: "<dark_gray><bold>GEFÄNGNIS</bold>"
+  subtitle: "<gray>{time}"
+  you: "<gray>Du wurdest von <white>{staff}</white> für <white>{time}</white> ins Gefängnis gesteckt. Grund: <white>{reason}</white>. <white>/ticket</white> geht weiterhin."
+  bar: "<dark_gray>🔒 <gray>Gefängnis: <white>{time}</white>"
+  broadcast: "<gray><white>{player}</white> wurde von <white>{staff}</white> für <white>{time}</white> ins Gefängnis gesteckt."
+  broadcast-free: "<gray><white>{player}</white> wurde von <white>{staff}</white> aus dem Gefängnis gelassen."
+  free: "<green>Du bist wieder frei. Deine Items sind zurück."
+  locked-slot: "<dark_gray>🔒 <gray>Gesperrt"
+  locked-lore: ["<dark_gray>Du bist im Gefängnis."]
+  no-commands: "<red>Im Gefängnis gehen nur <white>/ticket</white> und <white>/appeal</white>."
+  usage: "<gray>Benutzung: <white>/prison <spieler> [zeit|perm] [grund]</white>"
+  usage-free: "<gray>Benutzung: <white>/unprison <spieler></white>"
+  not-jailed: "<gray><white>{player}</white> ist nicht im Gefängnis."
+  already: "<gray><white>{player}</white> ist schon im Gefängnis."
+  jailed: "<green><white>{player}</white> ist jetzt im Gefängnis."
+  released: "<green><white>{player}</white> ist wieder frei."
+  no-reason: "Kein Grund angegeben"
+  tool-reason: "Gefängnisschlüssel"
+
+troll:
+  title: "<light_purple>Trollen: {player}"
+  harmless: ["<gray>Nur harmlose Späße:", "<gray>kein Schaden, keine verlorenen Items."]
+  done: "<light_purple>{troll}</light_purple> <gray>bei <white>{player}</white>."
+  usage: "<gray>Benutzung: <white>/troll <spieler> [chickens|launch|creeper|explosion|stash|fakeop|spin|lightning|demo|sneeze]</white>"
+  chickens:
+    name: "<yellow><bold>Hühnerregen</bold>"
+    lore: ["<gray>Hühner fallen vom Himmel.", "<gray>Nach 8 Sekunden wieder weg."]
+  launch:
+    name: "<red><bold>Hochschießen</bold>"
+    lore: ["<gray>Ab in die Luft.", "<gray>Kein Fallschaden."]
+  creeper:
+    name: "<green><bold>Creeper-Zischen</bold>"
+    lore: ["<gray>Nur das Geräusch, direkt hinter ihm."]
+  explosion:
+    name: "<gold><bold>Fake-Explosion</bold>"
+    lore: ["<gray>Knall und Rauch, nur für ihn.", "<gray>Nichts geht kaputt."]
+  stash:
+    name: "<aqua><bold>Fake-Stash</bold>"
+    lore: ["<gray>Kisten und Diamantblöcke erscheinen", "<gray>vor ihm, nur für ihn.", "<gray>Weg, sobald er sie anfasst."]
+  fakeop:
+    name: "<white><bold>Fake-OP</bold>"
+    lore: ["<gray>Er liest, dass er OP bekommen hat."]
+  spin:
+    name: "<blue><bold>Drehen</bold>"
+    lore: ["<gray>Dreht seine Sicht zweimal herum."]
+  lightning:
+    name: "<yellow><bold>Blitz</bold>"
+    lore: ["<gray>Ein Blitzeinschlag, ohne Schaden."]
+  demo:
+    name: "<white><bold>Demo-Bildschirm</bold>"
+    lore: ["<gray>Zeigt den \"Kauf das Spiel\"-Bildschirm."]
+  sneeze:
+    name: "<green><bold>Niesen</bold>"
+    lore: ["<gray>Ein Panda-Nieser ins Gesicht."]
+
+stafflog:
+  header: "<gradient:#ff5f6d:#ffc371>Team-Protokoll</gradient> <gray>({player}, {count})"
+  everyone: "alle"
+  empty: "<gray>Noch nichts."
+  line: "<dark_gray>{time} <white>{actor}</white> <#ffc371>{action}</#ffc371> <white>{target}</white> <gray>{detail}"

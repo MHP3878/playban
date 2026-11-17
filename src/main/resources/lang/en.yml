@@ -89,6 +89,11 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  prison: ["<gray>Walls the player into a bedrock cell.", "<gray>Their inventory turns into grey locks:", "<gray>no items, no scrolling, no commands.", "<gray>Everything comes back on release.", "", "<dark_gray>Example: /prison Steve 30m Griefing"]
+  unprison: ["<gray>Lets a player out of the prison.", "<gray>The blocks around and the items", "<gray>come back as they were."]
+  troll: ["<gray>Harmless jokes: chicken rain, a fake", "<gray>stash, a fake op message, a spin.", "<gray>Nobody gets hurt or loses items.", "", "<dark_gray>Example: /troll Steve chickens"]
+  stafflog: ["<gray>The team protocol: who punished,", "<gray>jailed or trolled whom, and which", "<gray>commands the team typed.", "", "<dark_gray>Example: /stafflog Steve"]
+
   mute: ["<gray>The player cannot chat or use /msg.", "<gray>Without a time it is permanent.", "", "<dark_gray>Example: /mute Steve 1h Spam"]
   ipban: ["<gray>Bans the player and the address", "<gray>they play from, so a second account", "<gray>does not help."]
   lockdown: ["<gray>Only the team can join, everyone", "<gray>else is kicked. Again to open.", "", "<dark_gray>Example: /lockdown on Maintenance"]
@@ -317,6 +322,8 @@ voice:
     <#ffc371>/voice manage <dark_gray>-</dark_gray> <gray>kick or ban in your own group
 
 rank:
+  grant-own-only: "<red>You can only give permissions you have yourself. <white>*</white> and <white>x.*</white> only the highest rank may give."
+
   too-low: "<red>Your rank is too low for this command. It needs level <white>{level}</white>."
   setup-console: "<gray>Run <white>/rank set <player> owner</white> from the console, or <white>/rank setup</white> in-game as an op."
   setup-done-already: "<red>There is already an owner. Ask them for a rank."
@@ -331,6 +338,8 @@ rank:
   set-you: "<green>Your rank is now <white>{rank}</white>."
 
 log:
+  console-needs-player: "<red>From the console, name a player: <white>/blocklog rollback <name> [time]</white>. Otherwise the whole server would be rolled back."
+
   not-ready: "<red>The block log is not ready. Look at the server log."
   usage: "<gray>Usage: <white>/blocklog near [radius] [time]</white>, <white>/blocklog player <name> [time]</white>, <white>/blocklog rollback <name> [time] [radius]</white>, <white>/blocklog replay [radius] [time] [name]</white>"
   help: |-
@@ -425,6 +434,32 @@ moderation:
   report-sent: "<green>Thanks, your report about <white>{player}</white> went to the team."
 
 tools:
+  xray-wait: "<gray>The x-ray glasses need a moment."
+  kb-ok: "<gray><white>{player}</white> was pushed <white>{blocks}</white> blocks. That looks normal."
+  kb-suspicious: "<red><white>{player}</white> was pushed only <white>{blocks}</white> blocks. That could be an anti-knockback cheat: test again, ideally while they stand on open ground."
+  spectating: "<gray>You are watching <white>{player}</white>. <#ffc371>Sneak</#ffc371> to come back."
+  spectate-end: "<gray>You are back where you were."
+  bait-no-container: "<gray>Click a chest, barrel or other container."
+  bait-set: "<green>This chest is bait now. The team is told when a player opens it."
+  bait-removed: "<gray>This chest is no longer bait."
+  bait-how: "<gray>Right-click a chest to make it bait, again to undo."
+  bait-alert: "<red><white>{player}</white> opened a bait chest at <white>{x} {y} {z}</white>. <gray>Click to go there."
+  kbstick:
+    name: "<white><bold>Knockback stick</bold>"
+    lore: ["<gray>A hit pushes the player like a", "<gray>normal hit, without damage, and", "<gray>shows how far they really moved.", "<gray>Finds anti-knockback cheats."]
+  spectate:
+    name: "<dark_aqua><bold>Spectate eye</bold>"
+    lore: ["<gray>Right-click a player to see", "<gray>through their eyes.", "<gray>Sneak to come back."]
+  prisonkey:
+    name: "<dark_gray><bold>Prison key</bold>"
+    lore: ["<gray>Right-click a player: into the", "<gray>bedrock prison. Right-click a", "<gray>prisoner: let them out."]
+  trollwand:
+    name: "<light_purple><bold>Troll wand</bold>"
+    lore: ["<gray>Right-click a player for the", "<gray>troll menu. Only harmless jokes."]
+  bait:
+    name: "<gold><bold>Bait chest</bold>"
+    lore: ["<gray>Right-click a chest to make it bait.", "<gray>When a player opens it, the team", "<gray>is told at once. Good against", "<gray>x-rayers and thieves."]
+
   nobody: "<gray>No player to jump to."
   warn-reason: "Warned by the team"
   warn-taken-back: "<gray>The newest warning of <white>{player}</white> was taken back."
@@ -1515,3 +1550,65 @@ menu:
     question-line: "<white>{text}"
     answer: "<white>{text}"
     answer-lore: ["<#ffc371>Click to answer"]
+
+prison:
+  title: "<dark_gray><bold>PRISON</bold>"
+  subtitle: "<gray>{time}"
+  you: "<gray>You were put into the prison by <white>{staff}</white> for <white>{time}</white>. Reason: <white>{reason}</white>. You can still write <white>/ticket</white>."
+  bar: "<dark_gray>🔒 <gray>Prison: <white>{time}</white>"
+  broadcast: "<gray><white>{player}</white> was put into the prison by <white>{staff}</white> for <white>{time}</white>."
+  broadcast-free: "<gray><white>{player}</white> was let out of the prison by <white>{staff}</white>."
+  free: "<green>You are free again. Your items are back."
+  locked-slot: "<dark_gray>🔒 <gray>Locked"
+  locked-lore: ["<dark_gray>You are in prison."]
+  no-commands: "<red>In prison only <white>/ticket</white> and <white>/appeal</white> work."
+  usage: "<gray>Usage: <white>/prison <player> [time|perm] [reason]</white>"
+  usage-free: "<gray>Usage: <white>/unprison <player></white>"
+  not-jailed: "<gray><white>{player}</white> is not in prison."
+  already: "<gray><white>{player}</white> is already in prison."
+  jailed: "<green><white>{player}</white> is in prison now."
+  released: "<green><white>{player}</white> is free again."
+  no-reason: "No reason given"
+  tool-reason: "Prison key"
+
+troll:
+  title: "<light_purple>Troll: {player}"
+  harmless: ["<gray>Only harmless jokes:", "<gray>no damage, no lost items."]
+  done: "<light_purple>{troll}</light_purple> <gray>on <white>{player}</white>."
+  usage: "<gray>Usage: <white>/troll <player> [chickens|launch|creeper|explosion|stash|fakeop|spin|lightning|demo|sneeze]</white>"
+  chickens:
+    name: "<yellow><bold>Chicken rain</bold>"
+    lore: ["<gray>Chickens fall from the sky.", "<gray>Gone again after 8 seconds."]
+  launch:
+    name: "<red><bold>Launch</bold>"
+    lore: ["<gray>Up into the air.", "<gray>No fall damage."]
+  creeper:
+    name: "<green><bold>Creeper hiss</bold>"
+    lore: ["<gray>Only the sound, right behind them."]
+  explosion:
+    name: "<gold><bold>Fake explosion</bold>"
+    lore: ["<gray>Bang and smoke, only for them.", "<gray>Nothing breaks."]
+  stash:
+    name: "<aqua><bold>Fake stash</bold>"
+    lore: ["<gray>Chests and diamond blocks appear", "<gray>in front of them, only for them.", "<gray>Gone when touched."]
+  fakeop:
+    name: "<white><bold>Fake OP</bold>"
+    lore: ["<gray>They read that they got OP."]
+  spin:
+    name: "<blue><bold>Spin</bold>"
+    lore: ["<gray>Turns their view around twice."]
+  lightning:
+    name: "<yellow><bold>Lightning</bold>"
+    lore: ["<gray>A lightning strike, without damage."]
+  demo:
+    name: "<white><bold>Demo screen</bold>"
+    lore: ["<gray>Shows the \"buy the game\" screen."]
+  sneeze:
+    name: "<green><bold>Sneeze</bold>"
+    lore: ["<gray>A panda sneeze in their face."]
+
+stafflog:
+  header: "<gradient:#ff5f6d:#ffc371>Team protocol</gradient> <gray>({player}, {count})"
+  everyone: "everyone"
+  empty: "<gray>Nothing yet."
+  line: "<dark_gray>{time} <white>{actor}</white> <#ffc371>{action}</#ffc371> <white>{target}</white> <gray>{detail}"

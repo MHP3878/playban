@@ -104,6 +104,8 @@ Owner, Co-Owner, Admin, Dev, Mod, Supporter and Player come ready-made (`ranks.y
 
 Command levels say from which level a command may be used, ops included, so OP alone is no longer enough: by default `/gamemode` needs 70, `/give` 80, `/execute` 90 and `/op` 100. A rule can also name part of a command, like `sc reload`. The levels start once someone holds the highest rank, which an op claims once with `/rank setup`, so nobody locks themselves out. Nobody can give, change or remove a rank at or above their own level. Command blocks are not covered, so set `enable-command-block=false`.
 
+The rules hold on every way a command can be run: below the level the command's own permission (for example `minecraft.command.gamemode`) is taken away as well, so a menu, an alias or another plugin running the command for the player does not get around it (`enforce-permissions: false` in `ranks.yml` turns that off). Only the highest rank may change command rules, the default rank's level and wildcard permissions (`*`, `x.*`); everybody else can only hand out permissions they have themselves. Rank prefixes take colors and text styles, no click or hover actions.
+
 | Command | What it does | Permission |
 |---|---|---|
 | `/rank set <player> <rank>` | Give a rank below your own level | `staffcore.ranks` |
@@ -123,8 +125,19 @@ Command levels say from which level a command may be used, ops included, so OP a
 | `/clearchat` | Clear the chat for players | `staffcore.clearchat` |
 | `/fly`, `/heal`, `/god [player]` | For staff | `staffcore.fly`, `.heal`, `.god` |
 | `/tools` | Admin items | `staffcore.tools` |
+| `/prison <player> [time] [reason]` | Wall the player into a bedrock cell; `/unprison` lets them out | `staffcore.prison` |
+| `/troll <player> [joke]` | Harmless jokes, menu without a joke | `staffcore.troll` |
+| `/stafflog [player]` | Team protocol: who did what | `staffcore.stafflog` |
 
-The items from `/tools`, each with its own permission `staffcore.tool.<name>`: bannhammer (a hit opens the punish menu), freeze wand (aim and right-click), handcuffs (the player follows you and cannot act), inspector (right-click shows the profile), teleport compass (jump to anyone, invisible), vanish cloak and x-ray glasses (ores within 20 blocks glow through walls for 15 seconds, only for you).
+**Prison.** The player is walled in with bedrock where they stand. Their inventory turns into grey lock panes: no items, no scrolling through the hotbar, no opening inventories, no commands except `/ticket` and `/appeal`. The blocks of the cell and the items are stored in `prisons.yml` and come back exactly as they were on release, also after a restart; someone released while offline gets their items on the next join. Nobody can break the cage.
+
+**Trolls.** Chicken rain (gone after 8 seconds, no drops), launch (no fall damage), creeper hiss, fake explosion, fake stash (chests and diamond blocks only the player sees), fake OP message, spin, lightning effect, demo screen, sneeze. Nothing hurts, nothing is taken, nobody else sees it. Protected players cannot be trolled.
+
+**Team protocol.** Punishments, pardons, prison, trolls, failed knockback tests, opened bait chests and every command a team member types (private messages left out, `staff-log.commands`) are written to `blocklog.db`. `/stafflog Steve` shows what was done by or to Steve.
+
+The items from `/tools`, each with its own permission `staffcore.tool.<name>`: bannhammer (a hit opens the punish menu), freeze wand (aim and right-click), handcuffs (the player follows you and cannot act), inspector (right-click shows the profile), teleport compass (jump to anyone, invisible), vanish cloak, x-ray glasses (ores within 20 blocks glow through walls for 15 seconds, only for you), knockback stick (a hit pushes like a normal hit without damage and tells you how far the player really moved: barely moving points to an anti-knockback cheat), spectate eye (look through a player's eyes, sneak to come back), prison key (right-click: into the prison for `prison.tool-time`, again: out), troll wand (opens the troll menu) and bait chest (right-click a chest to make it bait: the team is told the moment a player opens it, good against x-rayers and thieves).
+
+Admin items never drop on death and cannot be put into chests, item frames or armor stands, not even with the number keys.
 
 ## Block log and replay
 
@@ -138,11 +151,13 @@ Every broken, placed, burned or blown-up block (TNT is put down to whoever lit i
 | `/blocklog restore <name> [time] [radius]` | Redo them | `staffcore.blocklog.rollback` |
 | `/blocklog replay [radius] [time] [name]` | Watch the changes happen again, with names, only for you | `staffcore.blocklog` |
 
+A rollback only touches blocks that still look like right after the logged change, so things other players built there later stay. Big rollbacks run in steps of 2,000 blocks per tick. From the console a player has to be named, so the whole server cannot be rolled back by accident.
+
 The replay shows the area as it was, then plays every change with the player's name floating above the block, with pause, slower, faster and stop in chat and a progress bar. Player movement is not recorded, only blocks and chests. The block-log brush from `/tools` shows the history of the block or chest you click.
 
 ## Staff mode
 
-`/staffmode` stores your inventory safely (also on disk, so a crash cannot lose it), turns you invisible, lets you fly and fills your inventory with every admin item you may use. The barrier item or `/staffmode` again gives everything back, and so does leaving the server. Admin items cannot be dropped or put into chests. The warn stick warns a player with a hit and takes the newest warning back with a right-click.
+`/staffmode` stores your inventory safely (also on disk, so a crash cannot lose it), turns you invisible, lets you fly and fills your inventory with every admin item you may use. The barrier item or `/staffmode` again gives everything back, and so does leaving the server. Things you picked up while in staff mode (from a chest or someone's inventory) are kept. Admin items cannot be dropped or put into chests. The warn stick warns a player with a hit and takes the newest warning back with a right-click.
 
 ## Hidden commands
 
@@ -196,6 +211,9 @@ Messages are only delivered and only count after a team member approved them in 
 - `lang/en.yml`, `lang/de.yml` - all texts; copy one to add your own language
 - `data.yml` - punishments, bans, history, notes and open reviews
 - `tickets.yml` - all tickets with their conversations
+- `ranks.yml` - ranks, who has which, command levels
+- `prisons.yml`, `prisons-return.yml` - prison cells and items waiting for their owner
+- `blocklog.db` - block log and team protocol (SQLite)
 
 ## Build
 

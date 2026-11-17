@@ -37,6 +37,17 @@ public final class AdminCommand implements TabExecutor {
         return p;
     }
 
+    /** Exempt players, and players of the same or a higher rank, cannot be pulled around or looked into. */
+    private boolean shielded(Player staff, Player target) {
+        if (staff == target) return false;
+        boolean shield = (target.hasPermission("staffcore.exempt") && !staff.hasPermission("staffcore.exempt.bypass"))
+                || (plugin.ranks() != null && plugin.ranks().active()
+                && plugin.ranks().level(target.getUniqueId()) >= plugin.ranks().level(staff.getUniqueId())
+                && !plugin.ranks().isTop(staff));
+        if (shield) lang().send(staff, "error.exempt", "player", target.getName());
+        return shield;
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String cmd = command.getName().toLowerCase();
@@ -77,7 +88,7 @@ public final class AdminCommand implements TabExecutor {
             }
             case "tphere" -> {
                 Player target = online(staff, args[0]);
-                if (target == null) return true;
+                if (target == null || shielded(staff, target)) return true;
                 target.teleport(staff.getLocation());
                 lang().send(staff, "admin.tphere", "player", target.getName());
             }
@@ -95,7 +106,7 @@ public final class AdminCommand implements TabExecutor {
             }
             case "invsee", "endersee" -> {
                 Player target = online(staff, args[0]);
-                if (target == null) return true;
+                if (target == null || shielded(staff, target)) return true;
                 admin().openInventory(staff, target, cmd.equals("endersee"));
                 if (!staff.hasPermission("staffcore.invsee.edit")) lang().send(staff, "admin.view-only");
             }

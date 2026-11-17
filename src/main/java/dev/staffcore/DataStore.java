@@ -39,6 +39,8 @@ public final class DataStore {
     };
     /** Punishments that ended while the player was offline: game mode and items still to give back. */
     public final Map<UUID, Punishment> restores = new LinkedHashMap<>();
+    /** Inventories of staff in staff mode, kept on disk so a crash cannot eat them. */
+    public final Map<UUID, String> staffModeInventories = new LinkedHashMap<>();
     /** Players who had playban.exempt the last time they were online, so they stay protected while offline. */
     public final java.util.Set<UUID> exempt = new java.util.HashSet<>();
     /** true when data.yml could not be read: then nothing is saved, so the broken file is not overwritten. */
@@ -180,6 +182,8 @@ public final class DataStore {
             if (p != null) restores.put(p.uuid, p);
         }
         for (String k : cfg.getStringList("exempt")) if (uuid(k) != null) exempt.add(uuid(k));
+        ConfigurationSection sm = cfg.getConfigurationSection("staff-mode");
+        if (sm != null) for (String k : sm.getKeys(false)) if (uuid(k) != null) staffModeInventories.put(uuid(k), sm.getString(k));
         addressSalt = cfg.getString("address-salt", addressSalt);
         ConfigurationSection ad = cfg.getConfigurationSection("addresses");
         if (ad != null) for (String k : ad.getKeys(false)) if (uuid(k) != null) addresses.put(uuid(k), ad.getString(k));
@@ -313,6 +317,7 @@ public final class DataStore {
         List<String> exemptList = new ArrayList<>();
         for (UUID id : exempt) exemptList.add(id.toString());
         cfg.set("exempt", exemptList);
+        for (Map.Entry<UUID, String> e : staffModeInventories.entrySet()) cfg.set("staff-mode." + e.getKey(), e.getValue());
         for (Map.Entry<UUID, List<Punishment>> e : history.entrySet()) {
             int i = 0;
             for (Punishment p : e.getValue()) writePunishment(cfg, "history." + e.getKey() + "." + (i++), p);

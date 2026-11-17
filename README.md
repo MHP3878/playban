@@ -126,6 +126,24 @@ Command levels say from which level a command may be used, ops included, so OP a
 
 The items from `/tools`, each with its own permission `staffcore.tool.<name>`: bannhammer (a hit opens the punish menu), freeze wand (aim and right-click), handcuffs (the player follows you and cannot act), inspector (right-click shows the profile), teleport compass (jump to anyone, invisible), vanish cloak and x-ray glasses (ores within 20 blocks glow through walls for 15 seconds, only for you).
 
+## Block log and replay
+
+Every broken, placed, burned or blown-up block (TNT is put down to whoever lit it) and every item taken out of or put into a chest is written to `blocklog.db`, an SQLite file. Paper ships the driver, nothing needs to be installed. Writing happens in the background in batches, entries older than `block-log.keep-days` are removed on start.
+
+| Command | What it does | Permission |
+|---|---|---|
+| `/blocklog near [radius] [time]` | Changes around you (also `/log`, `/bl`) | `staffcore.blocklog` |
+| `/blocklog player <name> [time]` | Everything one player did | `staffcore.blocklog` |
+| `/blocklog rollback <name> [time] [radius]` | Undo a player's blocks and chest takings | `staffcore.blocklog.rollback` |
+| `/blocklog restore <name> [time] [radius]` | Redo them | `staffcore.blocklog.rollback` |
+| `/blocklog replay [radius] [time] [name]` | Watch the changes happen again, with names, only for you | `staffcore.blocklog` |
+
+The replay shows the area as it was, then plays every change with the player's name floating above the block, with pause, slower, faster and stop in chat and a progress bar. Player movement is not recorded, only blocks and chests. The block-log brush from `/tools` shows the history of the block or chest you click.
+
+## Staff mode
+
+`/staffmode` stores your inventory safely (also on disk, so a crash cannot lose it), turns you invisible, lets you fly and fills your inventory with every admin item you may use. The barrier item or `/staffmode` again gives everything back, and so does leaving the server. Admin items cannot be dropped or put into chests. The warn stick warns a player with a hit and takes the newest warning back with a right-click.
+
 ## Hidden commands
 
 Players without `staffcore.commands.all` do not see team commands in their suggestions, and the commands listed under `command-hiding` (by default `plugins`, `pl`, `version` and similar) are hidden and answer like an unknown command. Forms like `bukkit:plugins` are hidden too. The list can be changed in Settings.

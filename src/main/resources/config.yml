@@ -166,3 +166,17 @@ spawn:
 # /tpadmin, /tphere, /tpback, /freeze, /unfreeze, /invsee, /endersee, /teamchat, /clearchat, /fly, /heal, /god.
 # false = not registered at all, so another plugin can use these names. Takes effect after a restart.
 admin-commands: true
+
+# ---- Block log (/blocklog, also /log and /bl) ----
+# Records who broke, placed or blew up blocks and who took what out of chests.
+block-log:
+  enabled: true
+  # entries older than this are deleted on start
+  keep-days: 30
+  # largest radius for lookups, rollbacks and replays
+  max-radius: 100
+
+# ---- Staff mode (/staffmode) ----
+staff-mode:
+  # reason for warnings given with the warn stick. Empty = the text from the language file
+  warn-reason: ""

@@ -87,6 +87,8 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  blocklog: ["<gray>Wer welchen Block abgebaut, gesetzt oder", "<gray>gesprengt hat, wer was aus Kisten nahm.", "<gray>Rückgängig machen oder als Replay ansehen.", "", "<dark_gray>Beispiel: /bl near 10 2h"]
+  staffmode: ["<gray>Verwahrt dein Inventar und gibt dir", "<gray>alle Admin-Items. Nochmal zum Verlassen."]
   tools: ["<gray>Öffnet die Admin-Items: Bannhammer,", "<gray>Freeze-Stab, Handschellen, Inspektor,", "<gray>Teleport-Kompass, Vanish-Umhang, X-Ray."]
   tpadmin: ["<gray>Macht dich unsichtbar und bringt dich", "<gray>zu einem Spieler. /tpback bringt dich zurück.", "", "<dark_gray>Beispiel: /tpadmin Steve"]
   tphere: ["<gray>Holt einen Spieler zu dir."]
@@ -310,7 +312,79 @@ rank:
   set: "<green><white>{player}</white> ist jetzt <white>{rank}</white>."
   set-you: "<green>Dein Rang ist jetzt <white>{rank}</white>."
 
+log:
+  not-ready: "<red>Das Block-Protokoll ist nicht bereit. Schau ins Server-Log."
+  usage: "<gray>Nutzung: <white>/blocklog near [Radius] [Zeit]</white>, <white>/blocklog player <Name> [Zeit]</white>, <white>/blocklog rollback <Name> [Zeit] [Radius]</white>, <white>/blocklog replay [Radius] [Zeit] [Name]</white>"
+  help: |-
+    <gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient> <gray>- Block-Protokoll
+    <#ffc371>/blocklog near [Radius] [Zeit]</#ffc371> <dark_gray>-</dark_gray> <gray>Änderungen um dich herum
+    <#ffc371>/blocklog player <Name> [Zeit]</#ffc371> <dark_gray>-</dark_gray> <gray>alles, was ein Spieler getan hat
+    <#ffc371>/blocklog rollback <Name> [Zeit] [Radius]</#ffc371> <dark_gray>-</dark_gray> <gray>rückgängig machen
+    <#ffc371>/blocklog restore <Name> [Zeit] [Radius]</#ffc371> <dark_gray>-</dark_gray> <gray>wiederherstellen
+    <#ffc371>/blocklog replay [Radius] [Zeit] [Name]</#ffc371> <dark_gray>-</dark_gray> <gray>noch einmal ablaufen sehen
+    <gray>Der Pinsel aus <#ffc371>/tools</#ffc371> zeigt den Verlauf eines Blocks. Beispiele: <white>/bl near 10 2h</white>, <white>/bl rollback Steve 1d 30</white>
+  nothing: "<gray>Dort wurde nichts gefunden."
+  header: "<gray>Änderungen: <white>{count}</white> <dark_gray>(Seite {page}/{pages}, neueste zuerst)"
+  at: "<gray>Verlauf von <white>{x} {y} {z}</white>:"
+  more: "<#ffc371>[nächste Seite {next}]"
+  line: "<dark_gray>vor {ago}</dark_gray> <white>{player}</white> <gray>{action}</gray> <white>{what}</white> <dark_gray>({x} {y} {z})"
+  line-rolled: "<dark_gray><st>vor {ago} {player} {action} {what}</st> (rückgängig)"
+  hover: "<gray>Welt {world}. Klicken, um hinzugehen."
+  rolled-back: "<green>Rückgängig gemacht: <white>{count}</white> Änderungen."
+  restored: "<green>Wiederhergestellt: <white>{count}</white> Änderungen."
+  replay-start: "<gray>Replay von <white>{count}</white> Änderungen. Nur du siehst es."
+  replay-end: "<gray>Das Replay ist am Ende. <#ffc371>/blocklog stop</#ffc371> zeigt wieder die echte Welt."
+  replay-stopped: "<gray>Replay beendet, du siehst wieder die echte Welt."
+  no-replay: "<red>Es läuft kein Replay."
+  replay-bar: "<light_purple>Replay</light_purple> <white>{n}/{total}</white> <dark_gray>|</dark_gray> <gray>vor {ago}</gray> <dark_gray>|</dark_gray> <white>{speed}x"
+  replay-bar-paused: "<light_purple>Replay</light_purple> <yellow>pausiert</yellow> <white>{n}/{total}</white> <dark_gray>|</dark_gray> <gray>vor {ago}"
+  replay-label: "<white>{player}</white> <gray>{action}</gray> <white>{what}"
+  replay-controls: "<gray>Replay: "
+  replay-pause: "<#ffc371>[Pause / Weiter]"
+  replay-slower: "<#ffc371>[langsamer]"
+  replay-faster: "<#ffc371>[schneller]"
+  replay-stop: "<red>[Stopp]"
+  action:
+    BREAK: "baute ab"
+    PLACE: "setzte"
+    EXPLODE: "sprengte"
+    BURN: "verbrannte"
+    TAKE: "nahm"
+    PUT: "legte rein"
+  actor:
+    fire: "Feuer"
+    tnt: "TNT"
+    creeper: "Creeper"
+
 tools:
+  nobody: "<gray>Kein Spieler, zu dem du springen kannst."
+  warn-reason: "Verwarnt durch das Team"
+  warn-taken-back: "<gray>Die neueste Verwarnung von <white>{player}</white> wurde zurückgenommen."
+  warn-taken-back-you: "<green><white>{staff}</white> hat deine neueste Verwarnung zurückgenommen."
+  no-warning: "<gray><white>{player}</white> hat keine Verwarnung, die du zurücknehmen kannst."
+  staffmode-on: "<gray>Staff-Modus ist <white>an</white>. Deine Sachen sind sicher verwahrt, du bist unsichtbar und kannst fliegen. Die Barriere oder <#ffc371>/staffmode</#ffc371> holt dich raus."
+  staffmode-off: "<gray>Staff-Modus ist <white>aus</white>. Du hast deine Sachen zurück."
+  staffmode:
+    name: "<#ffc371><bold>Staff-Modus</bold>"
+    lore: ["<gray>Verwahrt dein Inventar und gibt dir", "<gray>alle Admin-Items auf einmal.", "", "<#ffc371>Klicken zum An- oder Ausschalten"]
+  warnstick:
+    name: "<yellow><bold>Verwarn-Stab</bold>"
+    lore: ["<gray>Schlag einen Spieler: Er wird verwarnt.", "<gray>Rechtsklick auf einen Spieler: Die neueste", "<gray>Verwarnung wird zurückgenommen."]
+  brush:
+    name: "<#c9a26b><bold>Block-Protokoll-Pinsel</bold>"
+    lore: ["<gray>Klick auf einen Block oder eine Kiste zeigt,", "<gray>wer sie wann verändert hat.", "<gray>Rechtsklick schaut auf die Stelle davor."]
+  invsee:
+    name: "<gold><bold>Inventar-Truhe</bold>"
+    lore: ["<gray>Rechtsklick auf einen Spieler zeigt sein", "<gray>Inventar. Beim Schleichen die", "<gray>Enderkiste."]
+  randomtp:
+    name: "<dark_purple><bold>Zufalls-Teleport</bold>"
+    lore: ["<gray>Rechtsklick: Unsichtbar zu einem", "<gray>zufälligen Spieler springen."]
+  fly:
+    name: "<white><bold>Flug-Feder</bold>"
+    lore: ["<gray>Rechtsklick: Fliegen an oder aus."]
+  exit:
+    name: "<red><bold>Staff-Modus verlassen</bold>"
+    lore: ["<gray>Rechtsklick, um dein eigenes", "<gray>Inventar zurückzubekommen."]
   title: "<dark_gray>Admin-Items"
   take: "<#ffc371>Klicken zum Nehmen"
   locked: "<red>Dein Rang darf das nicht nutzen"
@@ -338,7 +412,7 @@ tools:
     name: "<white><bold>Vanish-Umhang</bold>"
     lore: ["<gray>Rechtsklick macht dich", "<gray>unsichtbar oder sichtbar."]
   xray:
-    name: "<green><bold>X-Ray-Brille</bold>"
+    name: "<green><bold>X-Ray-Glas</bold>"
     lore: ["<gray>Rechtsklick: Erze im Umkreis von 20", "<gray>Blöcken leuchten 15 Sekunden durch", "<gray>Wände. Nur du siehst sie."]
 
 admin:

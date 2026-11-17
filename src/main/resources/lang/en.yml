@@ -87,6 +87,8 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  blocklog: ["<gray>Who broke, placed or blew up which", "<gray>block, who took what from chests.", "<gray>Undo it or watch it as a replay.", "", "<dark_gray>Example: /bl near 10 2h"]
+  staffmode: ["<gray>Stores your inventory and gives you", "<gray>every admin item. Again to leave."]
   tools: ["<gray>Opens the admin items: bannhammer,", "<gray>freeze wand, handcuffs, inspector,", "<gray>teleport compass, vanish cloak, x-ray."]
   tpadmin: ["<gray>Turns you invisible and takes you", "<gray>to a player. /tpback takes you back.", "", "<dark_gray>Example: /tpadmin Steve"]
   tphere: ["<gray>Brings a player to you."]
@@ -310,7 +312,79 @@ rank:
   set: "<green><white>{player}</white> is now <white>{rank}</white>."
   set-you: "<green>Your rank is now <white>{rank}</white>."
 
+log:
+  not-ready: "<red>The block log is not ready. Look at the server log."
+  usage: "<gray>Usage: <white>/blocklog near [radius] [time]</white>, <white>/blocklog player <name> [time]</white>, <white>/blocklog rollback <name> [time] [radius]</white>, <white>/blocklog replay [radius] [time] [name]</white>"
+  help: |-
+    <gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient> <gray>- block log
+    <#ffc371>/blocklog near [radius] [time]</#ffc371> <dark_gray>-</dark_gray> <gray>changes around you
+    <#ffc371>/blocklog player <name> [time]</#ffc371> <dark_gray>-</dark_gray> <gray>everything one player did
+    <#ffc371>/blocklog rollback <name> [time] [radius]</#ffc371> <dark_gray>-</dark_gray> <gray>undo it
+    <#ffc371>/blocklog restore <name> [time] [radius]</#ffc371> <dark_gray>-</dark_gray> <gray>redo it
+    <#ffc371>/blocklog replay [radius] [time] [name]</#ffc371> <dark_gray>-</dark_gray> <gray>watch it happen again
+    <gray>The brush from <#ffc371>/tools</#ffc371> shows the history of one block. Examples: <white>/bl near 10 2h</white>, <white>/bl rollback Steve 1d 30</white>
+  nothing: "<gray>Nothing found there."
+  header: "<gray>Changes: <white>{count}</white> <dark_gray>(page {page}/{pages}, newest first)"
+  at: "<gray>History of <white>{x} {y} {z}</white>:"
+  more: "<#ffc371>[next page {next}]"
+  line: "<dark_gray>{ago} ago</dark_gray> <white>{player}</white> <gray>{action}</gray> <white>{what}</white> <dark_gray>({x} {y} {z})"
+  line-rolled: "<dark_gray><st>{ago} ago {player} {action} {what}</st> (undone)"
+  hover: "<gray>World {world}. Click to go there."
+  rolled-back: "<green>Undone: <white>{count}</white> changes."
+  restored: "<green>Redone: <white>{count}</white> changes."
+  replay-start: "<gray>Replay of <white>{count}</white> changes. Only you see it."
+  replay-end: "<gray>The replay is at the end. <#ffc371>/blocklog stop</#ffc371> shows the real world again."
+  replay-stopped: "<gray>Replay stopped, you see the real world again."
+  no-replay: "<red>No replay is running."
+  replay-bar: "<light_purple>Replay</light_purple> <white>{n}/{total}</white> <dark_gray>|</dark_gray> <gray>{ago} ago</gray> <dark_gray>|</dark_gray> <white>{speed}x"
+  replay-bar-paused: "<light_purple>Replay</light_purple> <yellow>paused</yellow> <white>{n}/{total}</white> <dark_gray>|</dark_gray> <gray>{ago} ago"
+  replay-label: "<white>{player}</white> <gray>{action}</gray> <white>{what}"
+  replay-controls: "<gray>Replay: "
+  replay-pause: "<#ffc371>[pause / play]"
+  replay-slower: "<#ffc371>[slower]"
+  replay-faster: "<#ffc371>[faster]"
+  replay-stop: "<red>[stop]"
+  action:
+    BREAK: "broke"
+    PLACE: "placed"
+    EXPLODE: "blew up"
+    BURN: "burned"
+    TAKE: "took"
+    PUT: "put in"
+  actor:
+    fire: "Fire"
+    tnt: "TNT"
+    creeper: "Creeper"
+
 tools:
+  nobody: "<gray>No player to jump to."
+  warn-reason: "Warned by the team"
+  warn-taken-back: "<gray>The newest warning of <white>{player}</white> was taken back."
+  warn-taken-back-you: "<green><white>{staff}</white> took back your newest warning."
+  no-warning: "<gray><white>{player}</white> has no warning you can take back."
+  staffmode-on: "<gray>Staff mode is <white>on</white>. Your things are stored safely, you are invisible and can fly. The barrier or <#ffc371>/staffmode</#ffc371> takes you out."
+  staffmode-off: "<gray>Staff mode is <white>off</white>. You have your things back."
+  staffmode:
+    name: "<#ffc371><bold>Staff mode</bold>"
+    lore: ["<gray>Stores your inventory and gives you", "<gray>every admin item at once.", "", "<#ffc371>Click to switch it on or off"]
+  warnstick:
+    name: "<yellow><bold>Warn stick</bold>"
+    lore: ["<gray>Hit a player: they get a warning.", "<gray>Right-click a player: the newest", "<gray>warning is taken back."]
+  brush:
+    name: "<#c9a26b><bold>Block-log brush</bold>"
+    lore: ["<gray>Click a block or chest to see who", "<gray>changed it and when.", "<gray>Right-click looks at the spot in front."]
+  invsee:
+    name: "<gold><bold>Inventory chest</bold>"
+    lore: ["<gray>Right-click a player to look into", "<gray>their inventory. Sneak for the", "<gray>ender chest."]
+  randomtp:
+    name: "<dark_purple><bold>Random teleport</bold>"
+    lore: ["<gray>Right-click: jump to a random", "<gray>player, invisible."]
+  fly:
+    name: "<white><bold>Fly feather</bold>"
+    lore: ["<gray>Right-click: flying on or off."]
+  exit:
+    name: "<red><bold>Leave staff mode</bold>"
+    lore: ["<gray>Right-click to get your", "<gray>own inventory back."]
   title: "<dark_gray>Admin items"
   take: "<#ffc371>Click to take it"
   locked: "<red>Your rank may not use this"
@@ -338,7 +412,7 @@ tools:
     name: "<white><bold>Vanish cloak</bold>"
     lore: ["<gray>Right-click to turn", "<gray>invisible or visible."]
   xray:
-    name: "<green><bold>X-ray glasses</bold>"
+    name: "<green><bold>X-ray glass</bold>"
     lore: ["<gray>Right-click: ores within 20 blocks", "<gray>glow through walls for 15 seconds.", "<gray>Only you see them."]
 
 admin:

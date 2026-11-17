@@ -32,6 +32,7 @@ public class StaffCorePlugin extends JavaPlugin {
     private RankManager ranks;
     private AdminManager admin;
     private ToolManager tools;
+    private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
     private VoiceManager voice;
@@ -95,9 +96,19 @@ public class StaffCorePlugin extends JavaPlugin {
             register("heal", "Heal and feed", "staffcore.heal", adminExecutor);
             register("god", "Take no damage", "staffcore.god", adminExecutor);
         }
+        blockLog = new dev.staffcore.log.BlockLog(this);
+        getServer().getPluginManager().registerEvents(blockLog, this);
+        blockLog.start();
+        if (blockLog.enabled()) {
+            dev.staffcore.command.DelegateCommand logCmd = new dev.staffcore.command.DelegateCommand(this, "blocklog",
+                    "Who changed which block or chest: look up, roll back, replay", "staffcore.blocklog", blockLog, java.util.List.of("log", "bl"));
+            getServer().getCommandMap().register("staffcore", logCmd);
+            registered.add(logCmd);
+        }
         tools = new ToolManager(this);
         getServer().getPluginManager().registerEvents(tools, this);
         register("tools", "Admin items: bannhammer, freeze wand, handcuffs and more", "staffcore.tools", tools);
+        register("staffmode", "Swap your inventory for a full set of admin items", "staffcore.staffmode", tools);
         spawn = new SpawnManager(this);
         getServer().getPluginManager().registerEvents(spawn, this);
         if (getConfig().getBoolean("spawn.enabled", true)) {
@@ -165,6 +176,8 @@ public class StaffCorePlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (admin != null) admin.stop();
+        if (tools != null) tools.leaveAll();
+        if (blockLog != null) blockLog.stop();
         // take the runtime commands away again, so /reload does not leave copies behind
         var known = getServer().getCommandMap().getKnownCommands();
         for (var cmd : registered) {
@@ -208,6 +221,7 @@ public class StaffCorePlugin extends JavaPlugin {
     public RankManager ranks() { return ranks; }
     public AdminManager admin() { return admin; }
     public ToolManager tools() { return tools; }
+    public dev.staffcore.log.BlockLog blockLog() { return blockLog; }
     public dev.staffcore.gui.RankMenus rankMenus() { return rankMenus; }
     public TicketMenus ticketMenus() { return ticketMenus; }
     public VoiceManager voice() { return voice; }

@@ -17,7 +17,11 @@ public final class DelegateCommand extends Command implements PluginIdentifiable
     private final TabExecutor executor;
 
     public DelegateCommand(Plugin plugin, String name, String description, String permission, TabExecutor executor) {
-        super(name, description, "/" + name, List.of());
+        this(plugin, name, description, permission, executor, List.of());
+    }
+
+    public DelegateCommand(Plugin plugin, String name, String description, String permission, TabExecutor executor, List<String> aliases) {
+        super(name, description, "/" + name, aliases);
         this.plugin = plugin;
         this.executor = executor;
         if (permission != null) setPermission(permission);

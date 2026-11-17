@@ -11,6 +11,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -2162,6 +2163,220 @@ class StaffCoreTest {
         assertEquals(Material.DIAMOND_ORE, ores.get(0).getType(), "nearest first");
         admin.getInventory().setItemInMainHand(tool("xray"));
         rightClickAir(admin);
+    }
+
+    // ------------------------------------------------------------------ block log
+
+    private dev.staffcore.log.LogDatabase logDb() throws Exception {
+        var db = plugin.blockLog().db();
+        for (int i = 0; i < 100 && !db.ready(); i++) Thread.sleep(20);
+        assertTrue(db.ready(), "the block log database opened");
+        return db;
+    }
+
+    private java.util.List<dev.staffcore.log.LogDatabase.Entry> logAround(Block b, String actor) throws Exception {
+        var q = new dev.staffcore.log.LogDatabase.Query();
+        q.world = b.getWorld().getName();
+        q.x = b.getX();
+        q.y = b.getY();
+        q.z = b.getZ();
+        q.radius = 10;
+        q.actor = actor;
+        return logDb().find(q).get(5, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    /** Waits for work that ends on the main thread, letting the test server tick meanwhile. */
+    private <T> T await(java.util.concurrent.CompletableFuture<T> f) throws Exception {
+        for (int i = 0; i < 500 && !f.isDone(); i++) {
+            server.getScheduler().performTicks(1);
+            Thread.sleep(5);
+        }
+        return f.get(1, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    private Block breakBlock(PlayerMock who, int x, Material type) {
+        Block b = who.getWorld().getBlockAt(x, 10, 0);
+        b.setType(type);
+        server.getPluginManager().callEvent(new BlockBreakEvent(b, who));
+        b.setType(Material.AIR);
+        return b;
+    }
+
+    @Test
+    void brokenAndPlacedBlocksAreLogged() throws Exception {
+        logDb();
+        Block b = breakBlock(troll, 0, Material.DIAMOND_ORE);
+        Block placed = troll.getWorld().getBlockAt(1, 10, 0);
+        var replaced = placed.getState();
+        placed.setType(Material.TNT);
+        server.getPluginManager().callEvent(new BlockPlaceEvent(placed, replaced, b, new ItemStack(Material.TNT), troll, true,
+                org.bukkit.inventory.EquipmentSlot.HAND));
+        var entries = logAround(b, troll.getUniqueId().toString());
+        assertEquals(2, entries.size());
+        assertEquals(dev.staffcore.log.LogDatabase.Action.PLACE, entries.get(0).action(), "newest first");
+        assertEquals(dev.staffcore.log.LogDatabase.Action.BREAK, entries.get(1).action());
+        assertTrue(entries.get(1).before().contains("diamond_ore"));
+        assertTrue(plain(plugin.blockLog().line(entries.get(1))).contains("Troll"), "the line names the player");
+        assertTrue(plain(plugin.blockLog().line(entries.get(1))).contains("Diamond Ore"));
+    }
+
+    @Test
+    void rollbackAndRestoreAPlayersChanges() throws Exception {
+        logDb();
+        breakBlock(troll, 0, Material.STONE);
+        breakBlock(troll, 1, Material.OAK_PLANKS);
+        breakBlock(bystander, 2, Material.GLASS);
+        var q = new dev.staffcore.log.LogDatabase.Query();
+        q.actor = troll.getUniqueId().toString();
+        q.world = troll.getWorld().getName();
+        q.radius = -1;
+        q.since = 0;
+        int undone = await(plugin.blockLog().rollback(q, false));
+        assertEquals(2, undone);
+        assertEquals(Material.STONE, troll.getWorld().getBlockAt(0, 10, 0).getType(), "Troll's blocks are back");
+        assertEquals(Material.OAK_PLANKS, troll.getWorld().getBlockAt(1, 10, 0).getType());
+        assertEquals(Material.AIR, troll.getWorld().getBlockAt(2, 10, 0).getType(), "Bystander's change is left alone");
+        var q2 = new dev.staffcore.log.LogDatabase.Query();
+        q2.actor = troll.getUniqueId().toString();
+        q2.world = troll.getWorld().getName();
+        q2.radius = -1;
+        await(plugin.blockLog().rollback(q2, true));
+        assertEquals(Material.AIR, troll.getWorld().getBlockAt(0, 10, 0).getType(), "restore puts the griefing back");
+    }
+
+    @Test
+    void chestTakingIsLogged() throws Exception {
+        logDb();
+        Block b = troll.getWorld().getBlockAt(5, 10, 5);
+        b.setType(Material.CHEST);
+        var chest = (org.bukkit.block.Container) b.getState();
+        chest.getInventory().addItem(new ItemStack(Material.DIAMOND, 20));
+        troll.openInventory(chest.getInventory());
+        chest.getInventory().removeItem(new ItemStack(Material.DIAMOND, 12));
+        troll.closeInventory();
+        var entries = logAround(b, troll.getUniqueId().toString());
+        assertEquals(1, entries.size());
+        assertEquals(dev.staffcore.log.LogDatabase.Action.TAKE, entries.get(0).action());
+        assertEquals(12, entries.get(0).amount());
+        assertTrue(plain(plugin.blockLog().line(entries.get(0))).contains("12x Diamond"));
+    }
+
+    @Test
+    void lookupCommandsAndBrushAnswer() throws Exception {
+        logDb();
+        breakBlock(troll, 0, Material.STONE);
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        assertTrue(admin.performCommand("bl near 20 1h"));
+        Thread.sleep(200);
+        server.getScheduler().performTicks(2);
+        boolean found = false;
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll")) found = true;
+        assertTrue(found, "/bl near lists Troll's change");
+
+        admin.getInventory().setItemInMainHand(tool("brush"));
+        Block b = troll.getWorld().getBlockAt(0, 10, 0);
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerInteractEvent(admin, org.bukkit.event.block.Action.LEFT_CLICK_BLOCK,
+                admin.getInventory().getItemInMainHand(), b, org.bukkit.block.BlockFace.UP, org.bukkit.inventory.EquipmentSlot.HAND));
+        Thread.sleep(200);
+        server.getScheduler().performTicks(2);
+        found = false;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll")) found = true;
+        assertTrue(found, "the brush shows the history of the block");
+    }
+
+    @Test
+    void replayRunsAndStops() throws Exception {
+        logDb();
+        breakBlock(troll, 0, Material.STONE);
+        breakBlock(troll, 1, Material.STONE);
+        admin.performCommand("bl replay 20 1h");
+        Thread.sleep(200);
+        server.getScheduler().performTicks(2);
+        assertTrue(plugin.blockLog().replaying(admin.getUniqueId()));
+        admin.performCommand("bl faster");
+        admin.performCommand("bl pause");
+        server.getScheduler().performTicks(60);
+        admin.performCommand("bl stop");
+        assertFalse(plugin.blockLog().replaying(admin.getUniqueId()));
+    }
+
+    // ------------------------------------------------------------------ staff mode
+
+    @Test
+    void staffModeSwapsTheInventoryAndBack() {
+        admin.getInventory().addItem(new ItemStack(Material.DIAMOND_SWORD));
+        admin.performCommand("staffmode");
+        assertTrue(plugin.tools().inStaffMode(admin.getUniqueId()));
+        assertNotNull(plugin.tools().toolOf(admin.getInventory().getItem(0)), "the hotbar is full of admin items");
+        assertEquals("compass", plugin.tools().toolOf(admin.getInventory().getItem(0)).id());
+        assertFalse(admin.getInventory().contains(Material.DIAMOND_SWORD), "the own things are stored away");
+        assertTrue(plugin.punishments().isVanished(admin.getUniqueId()));
+        assertTrue(admin.getAllowFlight());
+        var drop = new org.bukkit.event.player.PlayerDropItemEvent(admin, admin.getWorld().dropItem(admin.getLocation(), admin.getInventory().getItem(0)));
+        server.getPluginManager().callEvent(drop);
+        assertTrue(drop.isCancelled(), "admin items cannot be dropped");
+        admin.performCommand("staffmode");
+        assertTrue(admin.getInventory().contains(Material.DIAMOND_SWORD), "back again");
+        assertFalse(plugin.punishments().isVanished(admin.getUniqueId()));
+        assertNull(plugin.tools().toolOf(admin.getInventory().getItem(0)));
+    }
+
+    @Test
+    void staffModeGivesThingsBackOnQuitAndAfterACrash() {
+        admin.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 3));
+        admin.performCommand("staffmode");
+        admin.disconnect();
+        assertTrue(admin.getInventory().contains(Material.GOLDEN_APPLE), "leaving the server ends staff mode");
+        admin.reconnect();
+        // a crash: the stored inventory is on disk, the player joins with the admin items
+        admin.performCommand("staffmode");
+        admin.disconnect();
+        plugin.store().staffModeInventories.put(admin.getUniqueId(),
+                java.util.Base64.getEncoder().encodeToString(ItemStack.serializeItemsAsBytes(new ItemStack[]{new ItemStack(Material.EMERALD, 4)})));
+        admin.getInventory().clear();
+        admin.reconnect();
+        assertTrue(admin.getInventory().contains(Material.EMERALD), "given back on the next join");
+        assertFalse(plugin.tools().inStaffMode(admin.getUniqueId()));
+    }
+
+    @Test
+    void warnStickWarnsAndTakesItBack() {
+        admin.getInventory().setItemInMainHand(tool("warnstick"));
+        var hit = new org.bukkit.event.entity.EntityDamageByEntityEvent(admin, troll, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).withCausingEntity(admin).withDirectEntity(admin).build(), 6);
+        server.getPluginManager().callEvent(hit);
+        assertTrue(hit.isCancelled());
+        var history = plugin.store().history.get(troll.getUniqueId());
+        assertEquals(1, history.size());
+        assertEquals("WARN", history.get(0).type);
+        server.getPluginManager().callEvent(hit);
+        assertEquals(1, history.size(), "a double hit is still one warning");
+        rightClickPlayer(admin, troll);
+        assertTrue(history.isEmpty(), "right-click takes it back");
+    }
+
+    @Test
+    void modCannotTakeBackSomeoneElsesWarning() {
+        admin.performCommand("warn Troll spam");
+        PlayerMock mod = server.addPlayer("Moderator");
+        mod.addAttachment(plugin, "staffcore.tool.warnstick", true);
+        mod.getInventory().setItemInMainHand(tool("warnstick"));
+        rightClickPlayer(mod, troll);
+        assertEquals(1, plugin.store().history.get(troll.getUniqueId()).size());
+    }
+
+    @Test
+    void newToolsAndStaffModeShowInBothLanguages() {
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.tools().menu(admin);
+            assertNoMissingTexts(admin, code);
+            plugin.adminMenus().guide(admin, 0);
+            assertNoMissingTexts(admin, code);
+            plugin.adminMenus().guide(admin, 1);
+            assertNoMissingTexts(admin, code);
+        }
     }
 
     @Test

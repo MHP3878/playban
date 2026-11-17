@@ -51,7 +51,17 @@ public final class ToolManager implements Listener, TabExecutor {
             new Tool("inspector", Material.BOOK, "staffcore.tool.inspector"),
             new Tool("compass", Material.RECOVERY_COMPASS, "staffcore.tool.compass"),
             new Tool("vanish", Material.PHANTOM_MEMBRANE, "staffcore.tool.vanish"),
-            new Tool("xray", Material.SPYGLASS, "staffcore.tool.xray"));
+            new Tool("xray", Material.TINTED_GLASS, "staffcore.tool.xray"),
+            new Tool("warnstick", Material.BLAZE_ROD, "staffcore.tool.warnstick"),
+            new Tool("brush", Material.BRUSH, "staffcore.tool.brush"),
+            new Tool("invsee", Material.CHEST, "staffcore.tool.invsee"),
+            new Tool("randomtp", Material.ENDER_PEARL, "staffcore.tool.randomtp"),
+            new Tool("fly", Material.FEATHER, "staffcore.tool.fly"),
+            new Tool("exit", Material.BARRIER, "staffcore.staffmode"));
+
+    /** Where each item goes in staff mode: the hotbar first, then the row above it. */
+    private static final List<String> KIT = List.of("compass", "vanish", "inspector", "freeze", "handcuffs", "warnstick", "banhammer", "brush", "xray",
+            "invsee", "randomtp", "fly", "", "", "", "", "", "exit");
 
     private static final Map<Material, Color> ORES = new EnumMap<>(Material.class);
 
@@ -120,9 +130,11 @@ public final class ToolManager implements Listener, TabExecutor {
     // ---------------------------------------------------------------- the /tools menu
 
     public void menu(Player p) {
-        Menu m = new Menu(3, lang().msg("tools.title"));
+        Menu m = new Menu(4, lang().msg("tools.title"));
         int slot = 10;
         for (Tool t : TOOLS) {
+            if (t.id().equals("exit")) continue;
+            if (slot % 9 == 8) slot += 2;
             boolean may = p.hasPermission(t.permission());
             List<Component> lore = new ArrayList<>(lang().lore("tools." + t.id() + ".lore"));
             lore.add(Component.empty());
@@ -133,13 +145,20 @@ public final class ToolManager implements Listener, TabExecutor {
                 p.playSound(p.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.7f, 1.2f);
             });
         }
+        if (p.hasPermission("staffcore.staffmode")) {
+            m.set(31, Items.of(Material.NETHERITE_CHESTPLATE, lang().msg("tools.staffmode.name"), lang().lore("tools.staffmode.lore")), e -> {
+                p.closeInventory();
+                toggleStaffMode(p);
+            });
+        }
         m.fill().open(p);
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (sender instanceof Player p) menu(p);
-        else lang().send(sender, "error.players-only");
+        if (!(sender instanceof Player p)) lang().send(sender, "error.players-only");
+        else if (command.getName().equalsIgnoreCase("staffmode")) toggleStaffMode(p);
+        else menu(p);
         return true;
     }
 
@@ -157,6 +176,10 @@ public final class ToolManager implements Listener, TabExecutor {
         Tool tool = toolOf(staff.getInventory().getItemInMainHand());
         if (tool == null) return;
         e.setCancelled(true);
+        if (tool.id().equals("warnstick")) {
+            if (usable(staff) != null && !exempt(staff, target)) warn(staff, target);
+            return;
+        }
         if (!tool.id().equals("banhammer") || usable(staff) == null) return;
         try {
             target.getWorld().strikeLightningEffect(target.getLocation());
@@ -182,6 +205,8 @@ public final class ToolManager implements Listener, TabExecutor {
             }
             case "inspector" -> plugin.adminMenus().profile(staff, target.getUniqueId(), target.getName());
             case "freeze" -> freeze(staff, target);
+            case "invsee" -> plugin.admin().openInventory(staff, target, staff.isSneaking());
+            case "warnstick" -> takeBackWarning(staff, target);
             default -> {
                 // the others work by right-clicking the air
             }
@@ -207,13 +232,37 @@ public final class ToolManager implements Listener, TabExecutor {
     @EventHandler(priority = EventPriority.LOW)
     public void onUse(PlayerInteractEvent e) {
         if (e.getHand() != EquipmentSlot.HAND) return;
-        if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         Player p = e.getPlayer();
-        if (toolOf(p.getInventory().getItemInMainHand()) == null) return;
+        Tool held = toolOf(p.getInventory().getItemInMainHand());
+        if (held == null) return;
+        // the block-log brush works with both buttons on a block
+        if (held.id().equals("brush") && e.getClickedBlock() != null
+                && (e.getAction() == Action.LEFT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+            e.setCancelled(true);
+            if (usable(p) == null) return;
+            Block b = e.getClickedBlock();
+            // right-click on a non-container looks at the spot in front of it, where something was placed or broken
+            if (e.getAction() == Action.RIGHT_CLICK_BLOCK && !(b.getState() instanceof org.bukkit.block.Container)) b = b.getRelative(e.getBlockFace());
+            plugin.blockLog().inspect(p, b);
+            return;
+        }
+        if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         e.setCancelled(true);
         Tool tool = usable(p);
         if (tool == null) return;
         switch (tool.id()) {
+            case "randomtp" -> {
+                List<Player> others = new ArrayList<>();
+                for (Player o : Bukkit.getOnlinePlayers()) if (!o.equals(p) && !o.hasPermission("staffcore.staff")) others.add(o);
+                if (others.isEmpty()) lang().send(p, "tools.nobody");
+                else {
+                    Player o = others.get(new java.util.Random().nextInt(others.size()));
+                    plugin.admin().tpAdmin(p, o);
+                    lang().send(p, "admin.tpadmin", "player", o.getName());
+                }
+            }
+            case "fly" -> lang().send(p, plugin.admin().toggleFly(p) ? "admin.fly-on" : "admin.fly-off", "player", p.getName());
+            case "exit" -> toggleStaffMode(p);
             case "freeze" -> {
                 Player target = aim(p, 40);
                 if (target == null) lang().send(p, "tools.missed");
@@ -232,6 +281,134 @@ public final class ToolManager implements Listener, TabExecutor {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent e) {
         if (toolOf(e.getItemInHand()) != null) e.setCancelled(true);
+    }
+
+    // ---------------------------------------------------------------- warn stick
+
+    private final Map<java.util.UUID, Long> lastWarn = new java.util.HashMap<>();
+
+    /** A hit with the warn stick gives a warning; a second hit right after does not give a second one. */
+    private void warn(Player staff, Player target) {
+        long now = System.currentTimeMillis();
+        Long last = lastWarn.get(target.getUniqueId());
+        if (last != null && now - last < 3000) return;
+        lastWarn.put(target.getUniqueId(), now);
+        String reason = plugin.getConfig().getString("staff-mode.warn-reason", "");
+        if (reason.isBlank()) reason = lang().raw("tools.warn-reason");
+        plugin.punishments().warn(target.getUniqueId(), target.getName(), reason, staff.getName(), null);
+        try {
+            target.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, target.getLocation().add(0, 2, 0), 5, 0.3, 0.2, 0.3, 0);
+        } catch (RuntimeException ignored) {
+            // only the effect
+        }
+    }
+
+    /** Right-click with the warn stick takes back the newest warning of that player. */
+    private void takeBackWarning(Player staff, Player target) {
+        List<dev.staffcore.model.Punishment> history = plugin.store().history.get(target.getUniqueId());
+        if (history != null) {
+            for (int i = history.size() - 1; i >= 0; i--) {
+                dev.staffcore.model.Punishment w = history.get(i);
+                if (!"WARN".equals(w.type)) continue;
+                // your own warnings, or anybody's for admins
+                if (!w.staff.equals(staff.getName()) && !staff.hasPermission("staffcore.admin")) break;
+                history.remove(i);
+                plugin.store().markDirty();
+                lang().send(staff, "tools.warn-taken-back", "player", target.getName());
+                lang().send(target, "tools.warn-taken-back-you", "staff", staff.getName());
+                return;
+            }
+        }
+        lang().send(staff, "tools.no-warning", "player", target.getName());
+    }
+
+    // ---------------------------------------------------------------- staff mode
+
+    public boolean inStaffMode(java.util.UUID id) {
+        return plugin.store().staffModeInventories.containsKey(id);
+    }
+
+    private final java.util.Set<java.util.UUID> wasVanished = new java.util.HashSet<>();
+
+    public void toggleStaffMode(Player p) {
+        if (inStaffMode(p.getUniqueId())) leaveStaffMode(p);
+        else enterStaffMode(p);
+    }
+
+    /** Puts the player's things away safely and gives them every admin item they may use. */
+    public void enterStaffMode(Player p) {
+        java.util.Base64.Encoder b64 = java.util.Base64.getEncoder();
+        String saved = b64.encodeToString(ItemStack.serializeItemsAsBytes(p.getInventory().getContents()));
+        plugin.store().staffModeInventories.put(p.getUniqueId(), saved);
+        plugin.store().markDirty();
+        plugin.store().saveIfDirty();
+        p.getInventory().clear();
+        for (int slot = 0; slot < KIT.size(); slot++) {
+            String id = KIT.get(slot);
+            if (id.isEmpty()) continue;
+            for (Tool t : TOOLS) {
+                if (t.id().equals(id) && p.hasPermission(t.permission())) p.getInventory().setItem(slot, create(t));
+            }
+        }
+        if (plugin.punishments().isVanished(p.getUniqueId())) wasVanished.add(p.getUniqueId());
+        else plugin.punishments().setVanished(p, true);
+        if (!p.getAllowFlight()) plugin.admin().toggleFly(p);
+        p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_NETHERITE, 1f, 1f);
+        lang().send(p, "tools.staffmode-on");
+    }
+
+    public void leaveStaffMode(Player p) {
+        String saved = plugin.store().staffModeInventories.remove(p.getUniqueId());
+        plugin.store().markDirty();
+        p.getInventory().clear();
+        if (saved != null) {
+            try {
+                p.getInventory().setContents(ItemStack.deserializeItemsFromBytes(java.util.Base64.getDecoder().decode(saved)));
+            } catch (RuntimeException ex) {
+                plugin.getLogger().warning("Could not give " + p.getName() + " their inventory back after staff mode: " + ex.getMessage());
+            }
+        }
+        plugin.store().saveIfDirty();
+        if (!wasVanished.remove(p.getUniqueId()) && plugin.punishments().isVanished(p.getUniqueId())) plugin.punishments().setVanished(p, false);
+        if (p.getAllowFlight() && p.getGameMode() != org.bukkit.GameMode.CREATIVE && p.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
+            plugin.admin().toggleFly(p);
+        }
+        lang().send(p, "tools.staffmode-off");
+    }
+
+    /** On shutdown everybody gets their things back, so removing the plugin never loses anything. */
+    public void leaveAll() {
+        for (Player p : Bukkit.getOnlinePlayers()) if (inStaffMode(p.getUniqueId())) leaveStaffMode(p);
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) {
+        if (inStaffMode(e.getPlayer().getUniqueId())) leaveStaffMode(e.getPlayer());
+    }
+
+    /** After a crash the stored inventory is still on disk: give it back on the next join. */
+    @EventHandler
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        if (inStaffMode(e.getPlayer().getUniqueId())) leaveStaffMode(e.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onDrop(org.bukkit.event.player.PlayerDropItemEvent e) {
+        if (inStaffMode(e.getPlayer().getUniqueId()) || toolOf(e.getItemDrop().getItemStack()) != null) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPickup(org.bukkit.event.entity.EntityPickupItemEvent e) {
+        if (e.getEntity() instanceof Player p && inStaffMode(p.getUniqueId())) e.setCancelled(true);
+    }
+
+    /** Admin items stay in the staff member's own inventory, they cannot be put into chests. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onMoveItem(org.bukkit.event.inventory.InventoryClickEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p) || !inStaffMode(p.getUniqueId())) return;
+        if (e.getView().getTopInventory().getHolder() instanceof Menu) return;
+        if (e.getView().getTopInventory().getType() == org.bukkit.event.inventory.InventoryType.CRAFTING) return;
+        if (toolOf(e.getCurrentItem()) != null || toolOf(e.getCursor()) != null) e.setCancelled(true);
     }
 
     /** The player the staff member is looking at, with a frost trail to show the shot. */

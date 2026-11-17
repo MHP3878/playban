@@ -31,6 +31,7 @@ permissions:
       staffcore.god: true
       staffcore.tool.banhammer: true
       staffcore.tool.xray: true
+      staffcore.blocklog.rollback: true
   staffcore.staff:
     description: Punish players, handle reviews and tickets
     default: op
@@ -53,6 +54,13 @@ permissions:
       staffcore.tool.inspector: true
       staffcore.tool.compass: true
       staffcore.tool.vanish: true
+      staffcore.tool.warnstick: true
+      staffcore.tool.brush: true
+      staffcore.tool.invsee: true
+      staffcore.tool.randomtp: true
+      staffcore.tool.fly: true
+      staffcore.staffmode: true
+      staffcore.blocklog: true
   staffcore.see:
     description: Can still see punished players
     default: op
@@ -127,6 +135,30 @@ permissions:
     default: op
   staffcore.tool.xray:
     description: "X-ray glasses: ores nearby glow through walls, only for you"
+    default: op
+  staffcore.tool.warnstick:
+    description: "Warn stick - a hit warns, right-click takes the newest warning back"
+    default: op
+  staffcore.tool.brush:
+    description: "Block-log brush - click a block or chest to see who changed it"
+    default: op
+  staffcore.tool.invsee:
+    description: "Inventory chest - right-click a player to look into their inventory"
+    default: op
+  staffcore.tool.randomtp:
+    description: "Random teleport - jump to a random player, invisible"
+    default: op
+  staffcore.tool.fly:
+    description: "Fly feather - flying on or off"
+    default: op
+  staffcore.staffmode:
+    description: "/staffmode - swap your inventory for the admin items"
+    default: op
+  staffcore.blocklog:
+    description: "/blocklog - look up who changed blocks and chests, and replay it"
+    default: op
+  staffcore.blocklog.rollback:
+    description: "/blocklog rollback and restore"
     default: op
   staffcore.ranks:
     description: Can open /rank and give ranks below their own level

@@ -405,6 +405,8 @@ public final class AdminMenus {
             new GuideEntry("vanish", "/vanish", Material.GLASS, "staffcore.vanish"),
             new GuideEntry("ticket-show", "/ticket show [reason]", Material.HOPPER, "staffcore.staff"),
             new GuideEntry("tools", "/tools", Material.MACE, "staffcore.tools"),
+            new GuideEntry("staffmode", "/staffmode", Material.NETHERITE_CHESTPLATE, "staffcore.staffmode"),
+            new GuideEntry("blocklog", "/blocklog near [radius] [time]", Material.BRUSH, "staffcore.blocklog"),
             new GuideEntry("tpadmin", "/tpadmin <player>", Material.ENDER_PEARL, "staffcore.tpadmin"),
             new GuideEntry("tphere", "/tphere <player>", Material.LEAD, "staffcore.tpadmin"),
             new GuideEntry("freeze", "/freeze <player>", Material.ICE, "staffcore.freeze"),

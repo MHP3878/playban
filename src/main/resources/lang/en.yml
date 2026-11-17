@@ -282,6 +282,7 @@ voice:
     <#ffc371>/voice manage <dark_gray>-</dark_gray> <gray>kick or ban in your own group
 
 ticket:
+  cooldown: "<red>Please wait <white>{time}</white> before opening another ticket."
   sent: "<green>Ticket <white>#{id}</white> was sent to the team."
   too-many: "<red>You already have 3 open tickets. Please wait for an answer."
   new: "<gray>New ticket <white>#{id}</white> from <white>{player}</white> <dark_gray>({reason})</dark_gray><gray>:</gray> <white>{text}</white> <#ffc371>[click to open]"
@@ -360,7 +361,8 @@ task:
   payment-failed: "<red>The payment did not work. Nothing was taken."
   gift-received: "<green><white>{player}</white> gave you <white>{amount}</white> as an apology."
   not-enough-items: "<red>You need <white>{amount}x {item}</white> in your inventory."
-  quiz-wrong: "<red>That was wrong. Open the task again to retry."
+  quiz-wrong: "<red>That was wrong. Tries left: <white>{left}</white>. Open the task again to retry."
+  quiz-failed: "<red>That was wrong <white>{max}</white> times, so the quiz is no longer available."
   STAFF_MESSAGE:
     name: "<#ffc371>Apologize to the team"
     desc:
@@ -499,7 +501,7 @@ setting:
       lore: ["<gray>The player cannot even", "<gray>move their head."]
   short-commands:
     name: "<#ffc371>Short commands"
-    lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish without /playban in front."]
+    lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish without /playban in front.", "<gray>Off: the names are free for", "<gray>other plugins. <white>Needs a restart."]
   vanish:
     staff-chat-only:
       name: "<#ffc371>Vanish: chat to the team only"
@@ -859,7 +861,7 @@ menu:
       lore: ["<gray>Click and type <white>+30m</white> or <white>-30m</white>."]
     pardon:
       name: "<green><bold>End punishment</bold>"
-      lore: ["<gray>The player is free at once."]
+      lore: ["<gray>The player is free at once.", "", "<#ffc371>Shift + click to end it"]
 
   history:
     title: "<dark_gray>History: {player}"

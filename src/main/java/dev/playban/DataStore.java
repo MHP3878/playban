@@ -22,7 +22,27 @@ import java.util.UUID;
 /** Everything PlayBan remembers, kept in data.yml. */
 public final class DataStore {
     private final PlayBanPlugin plugin;
-    public final Map<UUID, Punishment> active = new LinkedHashMap<>();
+    /** UUIDs of everyone with a running PlayBan, readable from the chat thread. */
+    private final java.util.Set<UUID> punishedIds = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    public final Map<UUID, Punishment> active = new LinkedHashMap<>() {
+        @Override
+        public Punishment put(UUID key, Punishment value) {
+            punishedIds.add(key);
+            return super.put(key, value);
+        }
+
+        @Override
+        public Punishment remove(Object key) {
+            punishedIds.remove(key);
+            return super.remove(key);
+        }
+    };
+    /** Punishments that ended while the player was offline: game mode and items still to give back. */
+    public final Map<UUID, Punishment> restores = new LinkedHashMap<>();
+    /** Players who had playban.exempt the last time they were online, so they stay protected while offline. */
+    public final java.util.Set<UUID> exempt = new java.util.HashSet<>();
+    /** true when data.yml could not be read: then nothing is saved, so the broken file is not overwritten. */
+    private boolean loadFailed;
     /** Real bans. Read from the login thread, so this one is thread-safe. */
     public final Map<UUID, Punishment> bans = new java.util.concurrent.ConcurrentHashMap<>();
     public final Map<UUID, List<Punishment>> history = new LinkedHashMap<>();
@@ -56,9 +76,43 @@ public final class DataStore {
         return Long.toString(System.currentTimeMillis(), 36) + Long.toString(counter++, 36);
     }
 
+    public boolean isPunished(UUID id) {
+        return punishedIds.contains(id);
+    }
+
+    public boolean loadFailed() {
+        return loadFailed;
+    }
+
     public void load() {
         if (!file().exists()) return;
-        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file());
+        YamlConfiguration cfg = new YamlConfiguration();
+        try {
+            cfg.load(file());
+            read(cfg);
+        } catch (Exception e) {
+            loadFailed = true;
+            File backup = new File(plugin.getDataFolder(), "data.yml.broken-" + System.currentTimeMillis());
+            try {
+                Files.copy(file().toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException ignored) {
+                // the original stays untouched anyway, because nothing is saved
+            }
+            plugin.getLogger().severe("data.yml could not be read: " + e.getMessage());
+            plugin.getLogger().severe("PlayBan will NOT save anything until this is fixed, so no data is lost. A copy is in "
+                    + backup.getName() + ". Fix the file and restart.");
+        }
+    }
+
+    private static UUID uuid(String s) {
+        try {
+            return UUID.fromString(s);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private void read(YamlConfiguration cfg) {
         ConfigurationSection a = cfg.getConfigurationSection("active");
         if (a != null) for (String k : a.getKeys(false)) {
             Punishment p = readPunishment(a.getConfigurationSection(k));
@@ -86,11 +140,12 @@ public final class DataStore {
             if (s == null) continue;
             Review rv = new Review();
             rv.id = k;
-            rv.author = UUID.fromString(s.getString("author", ""));
+            rv.author = uuid(s.getString("author", ""));
+            if (rv.author == null) continue;
             rv.authorName = s.getString("author-name", "?");
             rv.taskId = s.getString("task", "");
             String target = s.getString("target");
-            rv.target = target == null ? null : UUID.fromString(target);
+            rv.target = target == null ? null : uuid(target);
             rv.targetName = s.getString("target-name");
             rv.text = s.getString("text", "");
             rv.createdAt = s.getLong("created");
@@ -115,15 +170,21 @@ public final class DataStore {
                 n.createdAt = per.getLong(id + ".created");
                 list.add(n);
             }
-            notes.put(UUID.fromString(k), list);
+            if (uuid(k) != null) notes.put(uuid(k), list);
         }
         ConfigurationSection nm = cfg.getConfigurationSection("names");
-        if (nm != null) for (String k : nm.getKeys(false)) names.put(UUID.fromString(k), nm.getString(k));
+        if (nm != null) for (String k : nm.getKeys(false)) if (uuid(k) != null) names.put(uuid(k), nm.getString(k));
+        ConfigurationSection rs = cfg.getConfigurationSection("restores");
+        if (rs != null) for (String k : rs.getKeys(false)) {
+            Punishment p = readPunishment(rs.getConfigurationSection(k));
+            if (p != null) restores.put(p.uuid, p);
+        }
+        for (String k : cfg.getStringList("exempt")) if (uuid(k) != null) exempt.add(uuid(k));
         addressSalt = cfg.getString("address-salt", addressSalt);
         ConfigurationSection ad = cfg.getConfigurationSection("addresses");
-        if (ad != null) for (String k : ad.getKeys(false)) addresses.put(UUID.fromString(k), ad.getString(k));
+        if (ad != null) for (String k : ad.getKeys(false)) if (uuid(k) != null) addresses.put(uuid(k), ad.getString(k));
         ConfigurationSection m = cfg.getConfigurationSection("mail");
-        if (m != null) for (String k : m.getKeys(false)) mail.put(UUID.fromString(k), new ArrayList<>(m.getStringList(k)));
+        if (m != null) for (String k : m.getKeys(false)) if (uuid(k) != null) mail.put(uuid(k), new ArrayList<>(m.getStringList(k)));
     }
 
     /** Names of other known players who last joined from the same address. */
@@ -178,6 +239,7 @@ public final class DataStore {
             p.prevLocation = s.getString("prev-location");
             p.prevGameMode = s.getString("prev-gamemode");
             p.storedInventory = s.getString("stored-inventory");
+            p.inventoryCleared = s.getBoolean("inventory-cleared");
             p.reason = s.getString("reason", "");
             p.staff = s.getString("staff", "?");
             p.createdAt = s.getLong("created");
@@ -197,7 +259,9 @@ public final class DataStore {
                 } catch (IllegalArgumentException e) {
                     st = TaskStatus.OPEN;
                 }
-                p.tasks.put(id, new Punishment.TaskProgress(st, ts.getLong(id + ".time-left")));
+                Punishment.TaskProgress tp = new Punishment.TaskProgress(st, ts.getLong(id + ".time-left"));
+                tp.attempts = ts.getInt(id + ".attempts");
+                p.tasks.put(id, tp);
             }
             return p;
         } catch (IllegalArgumentException e) {
@@ -219,6 +283,7 @@ public final class DataStore {
         }
         if (p.prevGameMode != null) cfg.set(path + ".prev-gamemode", p.prevGameMode);
         if (p.storedInventory != null) cfg.set(path + ".stored-inventory", p.storedInventory);
+        if (p.inventoryCleared) cfg.set(path + ".inventory-cleared", true);
         cfg.set(path + ".reason", p.reason);
         cfg.set(path + ".staff", p.staff);
         cfg.set(path + ".created", p.createdAt);
@@ -236,6 +301,7 @@ public final class DataStore {
         for (Map.Entry<String, Punishment.TaskProgress> e : p.tasks.entrySet()) {
             cfg.set(path + ".tasks." + e.getKey() + ".status", e.getValue().status.name());
             cfg.set(path + ".tasks." + e.getKey() + ".time-left", e.getValue().timeLeftMs);
+            if (e.getValue().attempts > 0) cfg.set(path + ".tasks." + e.getKey() + ".attempts", e.getValue().attempts);
         }
     }
 
@@ -243,6 +309,10 @@ public final class DataStore {
         YamlConfiguration cfg = new YamlConfiguration();
         for (Punishment p : active.values()) writePunishment(cfg, "active." + p.uuid, p);
         for (Punishment p : bans.values()) writePunishment(cfg, "bans." + p.uuid, p);
+        for (Punishment p : restores.values()) writePunishment(cfg, "restores." + p.uuid, p);
+        List<String> exemptList = new ArrayList<>();
+        for (UUID id : exempt) exemptList.add(id.toString());
+        cfg.set("exempt", exemptList);
         for (Map.Entry<UUID, List<Punishment>> e : history.entrySet()) {
             int i = 0;
             for (Punishment p : e.getValue()) writePunishment(cfg, "history." + e.getKey() + "." + (i++), p);
@@ -290,7 +360,7 @@ public final class DataStore {
 
     /** Called regularly from the main thread; the file write itself happens off-thread. */
     public void saveIfDirty() {
-        if (!dirty) return;
+        if (!dirty || loadFailed) return;
         dirty = false;
         String content = serialize();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -301,6 +371,7 @@ public final class DataStore {
     }
 
     public void saveNow() {
+        if (loadFailed) return;
         dirty = false;
         String content = serialize();
         synchronized (this) {

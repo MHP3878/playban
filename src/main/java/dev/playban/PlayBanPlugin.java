@@ -65,21 +65,26 @@ public class PlayBanPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new dev.playban.listener.StaffListener(this), this);
         spawn = new SpawnManager(this);
         getServer().getPluginManager().registerEvents(spawn, this);
-        for (String name : new String[]{"spawn", "setspawn"}) {
-            PluginCommand cmd = getCommand(name);
-            if (cmd != null) {
-                cmd.setExecutor(spawn);
-                cmd.setTabCompleter(spawn);
-            }
+        if (getConfig().getBoolean("spawn.enabled", true)) {
+            register("spawn", "Teleport to spawn", "playban.spawn", spawn);
+            register("setspawn", "Set the spawn where you stand", "playban.admin", spawn);
         }
 
         PlayBanCommand executor = new PlayBanCommand(this);
-        for (String name : new String[]{"playban", "punish", "ban", "tempban", "warn", "unban", "vanish", "guide"}) {
-            PluginCommand cmd = getCommand(name);
-            if (cmd != null) {
-                cmd.setExecutor(executor);
-                cmd.setTabCompleter(executor);
-            }
+        PluginCommand main = getCommand("playban");
+        if (main != null) {
+            main.setExecutor(executor);
+            main.setTabCompleter(executor);
+        }
+        register("guide", "Every command with what it does", null, executor);
+        // switched off, these are not registered at all, so another plugin can have the name
+        if (getConfig().getBoolean("short-commands", true)) {
+            register("punish", "Punish a player by category or with a duration", "playban.staff", executor);
+            register("ban", "Ban a player", "playban.staff", executor);
+            register("tempban", "Ban a player for a time", "playban.staff", executor);
+            register("warn", "Warn a player", "playban.staff", executor);
+            register("unban", "Lift a ban, by name or ban ID", "playban.staff", executor);
+            register("vanish", "Turn invisible to players", "playban.vanish", executor);
         }
         VoiceCommand voiceExecutor = new VoiceCommand(this);
         PluginCommand voiceCommand = getCommand("voice");
@@ -102,8 +107,23 @@ public class PlayBanPlugin extends JavaPlugin {
         punishments.start();
     }
 
+    private final java.util.List<dev.playban.command.DelegateCommand> registered = new java.util.ArrayList<>();
+
+    private void register(String name, String description, String permission, org.bukkit.command.TabExecutor executor) {
+        dev.playban.command.DelegateCommand cmd = new dev.playban.command.DelegateCommand(this, name, description, permission, executor);
+        getServer().getCommandMap().register("playban", cmd);
+        registered.add(cmd);
+    }
+
     @Override
     public void onDisable() {
+        // take the runtime commands away again, so /reload does not leave copies behind
+        var known = getServer().getCommandMap().getKnownCommands();
+        for (var cmd : registered) {
+            cmd.unregister(getServer().getCommandMap());
+            known.values().removeIf(c -> c == cmd);
+        }
+        registered.clear();
         if (tickets != null) tickets.returnEveryone();
         if (punishments != null) punishments.shutdown();
         if (store != null) store.saveNow();
@@ -112,6 +132,11 @@ public class PlayBanPlugin extends JavaPlugin {
 
     public void reload() {
         reloadConfig();
+        for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) {
+            if (!punishments.isPunished(p.getUniqueId())) continue;
+            p.removePotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS);
+            punishments.applyState(p);
+        }
         lang.load(getConfig().getString("language", "en"));
         tasks.load();
         categories.load();

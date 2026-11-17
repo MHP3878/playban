@@ -282,6 +282,7 @@ voice:
     <#ffc371>/voice manage <dark_gray>-</dark_gray> <gray>in deiner eigenen Gruppe kicken oder bannen
 
 ticket:
+  cooldown: "<red>Bitte warte noch <white>{time}</white>, bevor du ein neues Ticket öffnest."
   sent: "<green>Ticket <white>#{id}</white> ging an das Team."
   too-many: "<red>Du hast schon 3 offene Tickets. Bitte warte auf eine Antwort."
   new: "<gray>Neues Ticket <white>#{id}</white> von <white>{player}</white> <dark_gray>({reason})</dark_gray><gray>:</gray> <white>{text}</white> <#ffc371>[klicken zum Öffnen]"
@@ -360,7 +361,8 @@ task:
   payment-failed: "<red>Die Zahlung hat nicht geklappt. Es wurde nichts abgezogen."
   gift-received: "<green><white>{player}</white> hat dir <white>{amount}</white> als Entschuldigung geschenkt."
   not-enough-items: "<red>Du brauchst <white>{amount}x {item}</white> im Inventar."
-  quiz-wrong: "<red>Das war falsch. Öffne die Aufgabe noch einmal und versuch es erneut."
+  quiz-wrong: "<red>Das war falsch. Versuche übrig: <white>{left}</white>. Öffne die Aufgabe noch einmal."
+  quiz-failed: "<red>Das war <white>{max}</white> Mal falsch, das Quiz ist nicht mehr verfügbar."
   STAFF_MESSAGE:
     name: "<#ffc371>Beim Team entschuldigen"
     desc:
@@ -500,7 +502,7 @@ setting:
       lore: ["<gray>Der Spieler kann nicht einmal", "<gray>den Kopf bewegen."]
   short-commands:
     name: "<#ffc371>Kurze Befehle"
-    lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish ohne /playban davor."]
+    lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish ohne /playban davor.", "<gray>Aus: Die Namen sind frei für", "<gray>andere Plugins. <white>Braucht Neustart."]
   vanish:
     staff-chat-only:
       name: "<#ffc371>Vanish: Chat nur ans Team"
@@ -859,7 +861,7 @@ menu:
       lore: ["<gray>Klicken und <white>+30m</white> oder <white>-30m</white> schreiben."]
     pardon:
       name: "<green><bold>Strafe beenden</bold>"
-      lore: ["<gray>Der Spieler ist sofort frei."]
+      lore: ["<gray>Der Spieler ist sofort frei.", "", "<#ffc371>Shift + Klick zum Beenden"]
 
   history:
     title: "<dark_gray>Verlauf: {player}"

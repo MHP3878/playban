@@ -126,7 +126,15 @@ public final class PlayerMenus {
                 } else {
                     player.closeInventory();
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-                    lang().send(player, "task.quiz-wrong");
+                    TaskProgress progress = p.tasks.get(def.id);
+                    int max = Math.max(1, plugin.getConfig().getInt("quiz-attempts", 3));
+                    if (progress != null && ++progress.attempts >= max) {
+                        progress.status = TaskStatus.EXPIRED;
+                        lang().send(player, "task.quiz-failed", "max", max);
+                    } else {
+                        lang().send(player, "task.quiz-wrong", "left", max - (progress == null ? 0 : progress.attempts));
+                    }
+                    plugin.store().markDirty();
                 }
             });
         }

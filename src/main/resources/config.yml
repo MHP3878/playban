@@ -13,8 +13,9 @@ staff-see-punished: true
 # true = nice messages and apologies are delivered without a staff review (not recommended)
 auto-approve-messages: false
 
-# true = /ban, /punish, /warn, /unban, /vanish and /guide work without "/playban" in front.
-# If another plugin also uses one of these names, use /playban ban ... instead.
+# true = /ban, /tempban, /punish, /warn, /unban and /vanish work without "/playban" in front.
+# false = they are not registered at all, so another plugin (EssentialsX, LiteBans, ...) can use the names.
+# Takes effect after a restart.
 short-commands: true
 
 # What happens to the inventory of a punished player:
@@ -111,6 +112,12 @@ quick-replies:
 # Remind the team about tickets nobody picked up after this many minutes. 0 = never
 ticket-reminder-minutes: 10
 
+# Seconds a player has to wait between two tickets (the team is not limited). 0 = no limit
+ticket-cooldown-seconds: 60
+
+# Wrong answers allowed in the rules quiz before the task is lost
+quiz-attempts: 3
+
 # Discord webhook URL: new tickets are posted there. Empty = off
 discord-webhook: ""
 
@@ -140,7 +147,8 @@ command-hiding:
   hidden: [plugins, pl, version, ver, about, icanhasbukkit, "?"]
 
 # ---- Spawn (/spawn, /setspawn) ----
-# Switch off if another plugin (for example EssentialsX) already handles /spawn.
+# Switch off if another plugin (for example EssentialsX) already handles /spawn. Takes effect after a restart.
+# Joining and respawning at spawn only happen once a spawn was set with /setspawn.
 spawn:
   enabled: true
   # NEVER, FIRST_JOIN (new players only) or ALWAYS

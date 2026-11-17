@@ -43,6 +43,19 @@ public final class PlayBanCommand implements TabExecutor {
         args = expandShortcut(used, args);
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
 
+        // these two have their own permission, so they come before the staff check
+        if (sub.equals("guide") || sub.equals("help")) {
+            if (sender instanceof Player player) plugin.adminMenus().guide(player, 0);
+            else for (String line : lang().raw("help").split("\n")) sender.sendMessage(lang().parse(line));
+            return true;
+        }
+        if (sub.equals("vanish")) {
+            if (!(sender instanceof Player player)) lang().send(sender, "error.players-only");
+            else if (!player.hasPermission("playban.vanish")) lang().send(sender, "error.no-permission");
+            else plugin.punishments().setVanished(player, !plugin.punishments().isVanished(player.getUniqueId()));
+            return true;
+        }
+
         if (sender instanceof Player player && plugin.punishments().inLimbo(player.getUniqueId())
                 && (sub.isEmpty() || sub.equals("tasks") || sub.equals("status") || !staff)) {
             plugin.punishments().sendLimboStatus(player);
@@ -69,15 +82,6 @@ public final class PlayBanCommand implements TabExecutor {
             case "menu" -> {
                 if (sender instanceof Player player) plugin.adminMenus().main(player);
                 else lang().send(sender, "error.players-only");
-            }
-            case "vanish" -> {
-                if (!(sender instanceof Player player)) lang().send(sender, "error.players-only");
-                else if (!player.hasPermission("playban.vanish")) lang().send(sender, "error.no-permission");
-                else plugin.punishments().setVanished(player, !plugin.punishments().isVanished(player.getUniqueId()));
-            }
-            case "guide", "help" -> {
-                if (sender instanceof Player player) plugin.adminMenus().guide(player, 0);
-                else for (String line : lang().raw("help").split("\n")) sender.sendMessage(lang().parse(line));
             }
             case "punish" -> punish(sender, args);
             case "apply" -> apply(sender, args);
@@ -116,11 +120,23 @@ public final class PlayBanCommand implements TabExecutor {
                 if (target == null) return true;
                 boolean permanent = CategoryRegistry.isPermanent(args[2]);
                 long ms = permanent ? 0 : TimeUtil.parse(args[2]);
+                int reasonFrom = 3;
                 if (!permanent && ms <= 0) {
-                    lang().send(sender, "error.bad-time", "input", args[2]);
-                    return true;
+                    if (Character.isDigit(args[2].charAt(0))) {
+                        // looks like a mistyped time, better not ban someone forever by accident
+                        lang().send(sender, "error.bad-time", "input", args[2]);
+                        return true;
+                    }
+                    if (sub.equals("ban") && plugin.categories().get(args[2]) != null) {
+                        apply(sender, new String[]{"apply", args[1], args[2]});
+                        return true;
+                    }
+                    // like vanilla: /ban Steve Hacking bans for good with that reason
+                    permanent = true;
+                    ms = 0;
+                    reasonFrom = 2;
                 }
-                String reason = args.length > 3 ? String.join(" ", Arrays.copyOfRange(args, 3, args.length)) : lang().raw("no-reason");
+                String reason = args.length > reasonFrom ? String.join(" ", Arrays.copyOfRange(args, reasonFrom, args.length)) : lang().raw("no-reason");
                 String error = plugin.punishments().execute(target.getUniqueId(), target.getName(), sub.equals("ban") ? "BAN" : "SPECBAN", ms, reason, sender.getName(), null, null, null);
                 if (error != null) lang().send(sender, error, "player", target.getName());
             }
@@ -234,7 +250,9 @@ public final class PlayBanCommand implements TabExecutor {
             lang().send(sender, "error.unknown-player", "player", args[1]);
             return null;
         }
-        if (target.getPlayer() != null && target.getPlayer().hasPermission("playban.exempt")) {
+        boolean exempt = target.getPlayer() != null ? target.getPlayer().hasPermission("playban.exempt")
+                : plugin.store().exempt.contains(target.getUniqueId());
+        if (exempt && sender instanceof Player && !sender.hasPermission("playban.exempt.bypass")) {
             lang().send(sender, "error.exempt", "player", target.getName());
             return null;
         }

@@ -24,6 +24,10 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import com.destroystokyo.paper.event.player.PlayerStartSpectatingEntityEvent;
@@ -114,6 +118,35 @@ public final class RestrictionListener implements Listener {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInteractEntity(PlayerInteractEntityEvent e) {
         if (blocked(e.getPlayer(), "interact")) e.setCancelled(true);
+    }
+
+    // armor stands and "interact at" have their own events, so they need their own handlers
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onArmorStand(PlayerArmorStandManipulateEvent e) {
+        if (blocked(e.getPlayer(), "interact")) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onInteractAt(PlayerInteractAtEntityEvent e) {
+        if (blocked(e.getPlayer(), "interact")) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPortal(PlayerPortalEvent e) {
+        if (blocked(e.getPlayer(), "interact")) {
+            e.setCancelled(true);
+            hint(e.getPlayer(), "blocked.action");
+        }
+    }
+
+    /** Effects such as slowness are gone after dying, so they are put back. */
+    @EventHandler
+    public void onRespawn(PlayerRespawnEvent e) {
+        Player p = e.getPlayer();
+        if (!plugin.punishments().isPunished(p.getUniqueId())) return;
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline()) plugin.punishments().applyState(p);
+        }, 1L);
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)

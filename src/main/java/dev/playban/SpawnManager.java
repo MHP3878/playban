@@ -209,7 +209,7 @@ public final class SpawnManager implements Listener, TabExecutor {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onJoin(PlayerJoinEvent e) {
-        if (!enabled()) return;
+        if (!enabled() || !isSet()) return;
         Player p = e.getPlayer();
         if (plugin.punishments().inLimbo(p.getUniqueId())) return;
         String mode = plugin.getConfig().getString("spawn.on-join", "FIRST_JOIN").toUpperCase();
@@ -221,7 +221,8 @@ public final class SpawnManager implements Listener, TabExecutor {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onRespawn(PlayerRespawnEvent e) {
-        if (!enabled() || !plugin.getConfig().getBoolean("spawn.on-death", true)) return;
+        // only with a spawn set through PlayBan, so a world plugin's respawn points are left alone otherwise
+        if (!enabled() || !isSet() || !plugin.getConfig().getBoolean("spawn.on-death", true)) return;
         if (e.isBedSpawn() || e.isAnchorSpawn()) return;
         Location to = spawn();
         if (to != null) e.setRespawnLocation(to);

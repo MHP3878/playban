@@ -70,7 +70,7 @@ public final class PunishmentManager {
     public void shutdown() {
         if (ticker != null) ticker.cancel();
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (isPunished(p.getUniqueId())) clearState(p);
+            if (isPunished(p.getUniqueId())) clearState(p, get(p.getUniqueId()), false);
             Punishment ban = store().bans.get(p.getUniqueId());
             if (ban != null && ban.prevMode != null) leaveLimbo(p, ban);
         }
@@ -81,7 +81,7 @@ public final class PunishmentManager {
     }
 
     public boolean isPunished(UUID id) {
-        return store().active.containsKey(id);
+        return store().isPunished(id);
     }
 
     /** Spectator ban: the player may join, but is stuck in spectator mode. */
@@ -128,6 +128,7 @@ public final class PunishmentManager {
         for (TaskDef def : plugin.tasks().all()) {
             if (!def.enabled) continue;
             if (def.type == TaskType.GIFT_MONEY && !plugin.economy().available()) continue;
+            if (def.type == TaskType.GIFT_MONEY && "VICTIM".equals(def.target) && victim == null) continue;
             if (def.type == TaskType.QUIZ && def.questions.isEmpty()) continue;
             p.tasks.put(def.id, new TaskProgress(TaskStatus.OPEN, def.timeLimitMs));
         }
@@ -138,9 +139,6 @@ public final class PunishmentManager {
         Player online = Bukkit.getPlayer(id);
         if (online != null) {
             online.closeInventory();
-            if (plugin.getConfig().getString("inventory-mode", "KEEP").equalsIgnoreCase("CLEAR")) {
-                online.getInventory().clear();
-            }
             applyState(online);
             online.showTitle(Title.title(lang().msg("punish.title"), lang().msg("punish.subtitle", "time", TimeUtil.format(ms))));
             online.playSound(online.getLocation(), Sound.BLOCK_IRON_DOOR_CLOSE, 1f, 0.8f);
@@ -162,13 +160,15 @@ public final class PunishmentManager {
         Player online = Bukkit.getPlayer(p.uuid);
         if (online != null) {
             online.closeInventory();
-            clearState(online, p);
+            clearState(online, p, true);
             online.showTitle(Title.title(lang().msg("end.title"), lang().msg("end.subtitle")));
             online.playSound(online.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
             lang().send(online, "PARDONED".equals(endReason) ? "end.pardoned" : "end.served");
         } else {
             mail(p.uuid, lang().prefixed("PARDONED".equals(endReason) ? "end.pardoned" : "end.served"));
+            if (p.prevGameMode != null || p.storedInventory != null) store().restores.put(p.uuid, p);
         }
+        store().saveIfDirty();
         notifyStaff("PARDONED".equals(endReason)
                 ? lang().prefixed("end.broadcast-pardoned", "player", p.name, "staff", by)
                 : lang().prefixed("end.broadcast-served", "player", p.name));
@@ -371,6 +371,7 @@ public final class PunishmentManager {
             ban.prevMode = player.getGameMode().name();
             ban.prevLocation = l.getWorld().getName() + ";" + l.getX() + ";" + l.getY() + ";" + l.getZ() + ";" + l.getYaw() + ";" + l.getPitch();
             store().markDirty();
+            store().saveIfDirty();
         }
         player.closeInventory();
         player.setGameMode(GameMode.SPECTATOR);
@@ -449,10 +450,6 @@ public final class PunishmentManager {
 
     // ---------------------------------------------------------------- state on the player
 
-    private boolean maySee(Player viewer) {
-        return plugin.getConfig().getBoolean("staff-see-punished", true) && viewer.hasPermission("playban.see");
-    }
-
     public void applyState(Player player) {
         Punishment p = get(player.getUniqueId());
         if (p == null) return;
@@ -472,17 +469,26 @@ public final class PunishmentManager {
             p.storedInventory = serializeInventory(player);
             player.getInventory().clear();
             store().markDirty();
-        } else if (invMode.equals("CLEAR") && p.prevGameMode != null && p.storedInventory == null) {
-            // clear once, right at the start (prevGameMode is set the first time only)
+        } else if (invMode.equals("CLEAR") && !p.inventoryCleared) {
+            player.getInventory().clear();
+            p.inventoryCleared = true;
+            store().markDirty();
         }
-        if (invMode.equals("CLEAR")) {
-            // nothing to restore, but keep them empty-handed while punished is handled on join below
-        }
+        // written at once: after a crash we must still know the mode and items from before the punishment
+        store().saveIfDirty();
         if (plugin.getConfig().getBoolean("restrictions.slow", false)) {
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, PotionEffect.INFINITE_DURATION,
                     Math.max(0, plugin.getConfig().getInt("restrictions.slow-level", 1) - 1), false, false, false));
         }
         updateBar(player, p);
+    }
+
+    /** Gives back what a punishment that ended while the player was offline still holds. */
+    public void restorePending(Player player) {
+        Punishment p = store().restores.remove(player.getUniqueId());
+        if (p == null) return;
+        clearState(player, p, true);
+        store().saveIfDirty();
     }
 
     /** Paper's own item format keeps enchantments and custom items intact. Stored as "contents;armor" in base64. */
@@ -505,11 +511,14 @@ public final class PunishmentManager {
     }
 
     public void clearState(Player player) {
-        clearState(player, get(player.getUniqueId()));
+        clearState(player, get(player.getUniqueId()), true);
     }
 
-    /** Gives a player everything back. Takes the punishment directly because end() has already removed it. */
-    public void clearState(Player player, Punishment p) {
+    /**
+     * Gives a player everything back. Takes the punishment directly because end() has already removed it.
+     * finished = false on shutdown: the items stay stored, so a restart does not hand them out early.
+     */
+    public void clearState(Player player, Punishment p, boolean finished) {
         for (Player viewer : Bukkit.getOnlinePlayers()) viewer.showPlayer(plugin, player);
         player.setCollidable(true);
         player.removePotionEffect(PotionEffectType.SLOWNESS);
@@ -521,7 +530,13 @@ public final class PunishmentManager {
                     player.setGameMode(Bukkit.getDefaultGameMode());
                 }
             }
-            if (p.storedInventory != null) restoreInventory(player, p.storedInventory);
+            if (finished) {
+                if (p.storedInventory != null) restoreInventory(player, p.storedInventory);
+                // done: the history entry does not need to carry the items or the old mode any longer
+                p.storedInventory = null;
+                p.prevGameMode = null;
+                store().markDirty();
+            }
         }
         BossBar bar = bars.remove(player.getUniqueId());
         if (bar != null) player.hideBossBar(bar);
@@ -556,22 +571,53 @@ public final class PunishmentManager {
         lang().send(staff, "vanish.still");
     }
 
-    /** Re-applies who can see whom. Called on joins, punishments and setting changes. */
+    /** Targets and viewers that had special visibility rules last time, so they can be shown again. */
+    private java.util.Set<UUID> lastSpecialTargets = new java.util.HashSet<>();
+    private java.util.Set<UUID> lastBlindViewers = new java.util.HashSet<>();
+
+    /**
+     * Re-applies who can see whom. Called on joins, punishments and setting changes.
+     * Only pairs that involve a punished, spectator-banned or vanished player are touched,
+     * so a big server does not check every pair of players each time.
+     */
     public void refreshVisibility() {
         boolean hide = plugin.getConfig().getBoolean("restrictions.hide-from-players", true);
+        boolean staffSee = plugin.getConfig().getBoolean("staff-see-punished", true);
         boolean limboSeesNobody = plugin.getConfig().getBoolean("limbo.hide-others", true);
-        for (Player target : Bukkit.getOnlinePlayers()) {
-            boolean punished = isPunished(target.getUniqueId());
-            boolean limbo = inLimbo(target.getUniqueId());
-            for (Player viewer : Bukkit.getOnlinePlayers()) {
+        java.util.Collection<? extends Player> online = Bukkit.getOnlinePlayers();
+
+        java.util.Set<UUID> special = new java.util.HashSet<>();
+        java.util.Set<UUID> blind = new java.util.HashSet<>();
+        for (Player p : online) {
+            UUID id = p.getUniqueId();
+            if ((isPunished(id) && hide) || inLimbo(id) || plugin.tickets().vanished(id) || isVanished(id)) special.add(id);
+            if (limboSeesNobody && inLimbo(id)) blind.add(id);
+        }
+        // permissions once per viewer, not once per pair
+        Map<UUID, boolean[]> rights = new HashMap<>();
+        java.util.function.Function<Player, boolean[]> rightsOf = v -> rights.computeIfAbsent(v.getUniqueId(),
+                k -> new boolean[]{staffSee && v.hasPermission("playban.see"), v.hasPermission("playban.vanish")});
+
+        java.util.Set<UUID> targets = new java.util.HashSet<>(special);
+        targets.addAll(lastSpecialTargets);
+        java.util.Set<UUID> viewers = new java.util.HashSet<>(blind);
+        viewers.addAll(lastBlindViewers);
+        for (Player target : online) {
+            boolean targetMatters = targets.contains(target.getUniqueId());
+            for (Player viewer : online) {
                 if (viewer.equals(target)) continue;
-                boolean hidden = ((punished && hide) || limbo || plugin.tickets().vanished(target.getUniqueId())) && !maySee(viewer);
-                if (isVanished(target.getUniqueId()) && !viewer.hasPermission("playban.vanish")) hidden = true;
-                if (limboSeesNobody && inLimbo(viewer.getUniqueId())) hidden = true;
+                if (!targetMatters && !viewers.contains(viewer.getUniqueId())) continue;
+                UUID t = target.getUniqueId();
+                boolean[] r = rightsOf.apply(viewer);
+                boolean hidden = ((isPunished(t) && hide) || inLimbo(t) || plugin.tickets().vanished(t)) && !r[0];
+                if (isVanished(t) && !r[1]) hidden = true;
+                if (blind.contains(viewer.getUniqueId())) hidden = true;
                 if (hidden) viewer.hidePlayer(plugin, target);
                 else viewer.showPlayer(plugin, target);
             }
         }
+        lastSpecialTargets = special;
+        lastBlindViewers = blind;
     }
 
     private void updateBar(Player player, Punishment p) {

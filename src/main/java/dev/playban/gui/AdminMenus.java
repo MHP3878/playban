@@ -348,7 +348,8 @@ public final class AdminMenus {
             long step = steps[i];
             m.set(slots[i], item(step < 0 ? Material.LIME_STAINED_GLASS_PANE : Material.RED_STAINED_GLASS_PANE,
                     step < 0 ? "menu.detail.remove" : "menu.detail.add", "time", TimeUtil.format(Math.abs(step))), e -> {
-                plugin.punishments().changeTime(pun, step, p.getName());
+                // the punishment may have ended while this menu was open
+                if (plugin.punishments().isPunished(id)) plugin.punishments().changeTime(pun, step, p.getName());
                 detail(p, id);
             });
         }
@@ -369,7 +370,8 @@ public final class AdminMenus {
             m.set(slot++, Items.of(def.type.icon, plugin.punishments().taskName(def, pun), lore));
         }
         m.set(48, item(Material.MILK_BUCKET, "menu.detail.pardon"), e -> {
-            plugin.punishments().end(pun, "PARDONED", p.getName());
+            if (!e.isShiftClick()) return;
+            if (plugin.punishments().isPunished(id)) plugin.punishments().end(pun, "PARDONED", p.getName());
             active(p, 0);
         });
         m.set(49, item(Material.BOOK, "menu.detail.profile"), e -> profile(p, pun.uuid, pun.name));

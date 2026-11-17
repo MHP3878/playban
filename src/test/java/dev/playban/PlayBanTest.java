@@ -42,6 +42,7 @@ class PlayBanTest {
         troll = server.addPlayer("Troll");
         bystander = server.addPlayer("Bystander");
         server.getScheduler().performTicks(30);
+        plugin.getConfig().set("ticket-cooldown-seconds", 0);
     }
 
     @AfterEach
@@ -1637,6 +1638,196 @@ class PlayBanTest {
             plugin.adminMenus().guide(admin, 0);
             assertNoMissingTexts(admin, code);
         }
+    }
+
+    // ------------------------------------------------------------------ fixes from the code review
+
+    @Test
+    void punishmentEndingOfflineIsGivenBackOnTheNextJoin() {
+        plugin.getConfig().set("inventory-mode", "STORE");
+        troll.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        troll.getInventory().addItem(new ItemStack(Material.DIAMOND, 7));
+        punish("1h");
+        troll.disconnect();
+        admin.performCommand("playban pardon Troll");
+        assertTrue(plugin.store().restores.containsKey(troll.getUniqueId()), "remembered for later");
+        troll.reconnect();
+        server.getScheduler().performTicks(30);
+        assertEquals(org.bukkit.GameMode.SURVIVAL, troll.getGameMode(), "not stuck in adventure mode");
+        assertTrue(troll.getInventory().containsAtLeast(new ItemStack(Material.DIAMOND), 7), "items are back");
+        assertFalse(plugin.store().restores.containsKey(troll.getUniqueId()));
+    }
+
+    @Test
+    void restartDoesNotHandOutStoredItemsEarly() {
+        plugin.getConfig().set("inventory-mode", "STORE");
+        troll.getInventory().addItem(new ItemStack(Material.DIAMOND, 7));
+        punish("1h");
+        plugin.punishments().shutdown();
+        assertFalse(troll.getInventory().contains(Material.DIAMOND), "a restart must not give the items back");
+        assertNotNull(plugin.punishments().get(troll.getUniqueId()).storedInventory, "they stay stored");
+        plugin.punishments().start();
+        server.getScheduler().performTicks(2);
+        assertEquals(org.bukkit.GameMode.ADVENTURE, troll.getGameMode());
+        admin.performCommand("playban pardon Troll");
+        assertTrue(troll.getInventory().containsAtLeast(new ItemStack(Material.DIAMOND), 7), "and come back at the real end");
+    }
+
+    @Test
+    void clearModeAlsoWorksForPlayersPunishedWhileOffline() {
+        plugin.getConfig().set("inventory-mode", "CLEAR");
+        troll.getInventory().addItem(new ItemStack(Material.DIAMOND, 7));
+        troll.disconnect();
+        admin.performCommand("playban punish Troll 1h test");
+        troll.reconnect();
+        server.getScheduler().performTicks(30);
+        assertFalse(troll.getInventory().contains(Material.DIAMOND));
+        troll.getInventory().addItem(new ItemStack(Material.EMERALD, 1));
+        troll.disconnect();
+        troll.reconnect();
+        server.getScheduler().performTicks(30);
+        assertTrue(troll.getInventory().contains(Material.EMERALD), "cleared exactly once, not on every join");
+    }
+
+    @Test
+    void brokenDataFileIsNeverOverwritten() throws Exception {
+        java.io.File file = new java.io.File(plugin.getDataFolder(), "data.yml");
+        String broken = "active:\n  - this: [is not: valid\n";
+        java.nio.file.Files.writeString(file.toPath(), broken);
+        DataStore store = new DataStore(plugin);
+        store.load();
+        assertTrue(store.loadFailed());
+        store.markDirty();
+        store.saveNow();
+        assertEquals(broken, java.nio.file.Files.readString(file.toPath()), "the file is untouched");
+        java.io.File[] backups = plugin.getDataFolder().listFiles((d, n) -> n.startsWith("data.yml.broken-"));
+        assertNotNull(backups);
+        assertTrue(backups.length > 0, "and a copy was made");
+    }
+
+    @Test
+    void punishedPlayersCannotTouchArmorStands() {
+        punish("1h");
+        var stand = troll.getWorld().spawn(troll.getLocation(), org.bukkit.entity.ArmorStand.class);
+        var event = new org.bukkit.event.player.PlayerArmorStandManipulateEvent(troll, stand, new ItemStack(Material.AIR),
+                new ItemStack(Material.DIAMOND_HELMET), org.bukkit.inventory.EquipmentSlot.HEAD, org.bukkit.inventory.EquipmentSlot.HAND);
+        server.getPluginManager().callEvent(event);
+        assertTrue(event.isCancelled());
+    }
+
+    @Test
+    void giftTaskIsSkippedWithoutARealVictim() {
+        Punishment p = punish("1h");
+        assertFalse(p.tasks.containsKey("gift"), "otherwise money could be sent to a second account and back");
+    }
+
+    @Test
+    void quizHasLimitedTries() {
+        Punishment p = punish("1h");
+        TaskDef quiz = plugin.tasks().get("rules-quiz");
+        for (int round = 0; round < 3; round++) {
+            plugin.playerMenus().quiz(troll, quiz, 0);
+            String right = quiz.questions.get(0).answers.get(0);
+            var inv = troll.getOpenInventory().getTopInventory();
+            for (int i = 0; i < inv.getSize(); i++) {
+                ItemStack it = inv.getItem(i);
+                if (it != null && it.getType() == Material.PAPER && !plain(it.getItemMeta().displayName()).equals(right)) {
+                    troll.simulateInventoryClick(i);
+                    break;
+                }
+            }
+        }
+        assertEquals(TaskStatus.EXPIRED, p.tasks.get("rules-quiz").status, "three wrong answers and the quiz is gone");
+    }
+
+    @Test
+    void ticketCooldownStopsSpam() {
+        plugin.getConfig().set("ticket-cooldown-seconds", 60);
+        bystander.performCommand("ticket first");
+        bystander.performCommand("ticket second");
+        assertEquals(1, plugin.tickets().all().size());
+        admin.performCommand("ticket staff are not limited");
+        admin.performCommand("ticket really not");
+        assertEquals(3, plugin.tickets().all().size());
+    }
+
+    @Test
+    void longTicketTextIsCut() {
+        bystander.performCommand("ticket " + "a".repeat(2000));
+        assertEquals(500, plugin.tickets().all().get(0).text.length());
+    }
+
+    @Test
+    void exemptPlayersStayProtectedWhileOffline() {
+        PlayerMock owner = server.addPlayer("Owner");
+        owner.setOp(true);
+        owner.disconnect();
+        owner.reconnect(); // joins as an op, so PlayBan learns that this player is protected
+        owner.disconnect();
+        PlayerMock mod = server.addPlayer("Moderator");
+        mod.addAttachment(plugin, "playban.staff", true);
+        mod.performCommand("ban Owner 1h abuse");
+        assertNull(plugin.store().bans.get(owner.getUniqueId()), "an op stays protected while offline");
+        server.getConsoleSender();
+        server.dispatchCommand(server.getConsoleSender(), "ban Owner 1h console can");
+        assertNotNull(plugin.store().bans.get(owner.getUniqueId()), "the console still can");
+    }
+
+    @Test
+    void banWithOnlyAReasonIsPermanentLikeVanilla() {
+        admin.performCommand("ban Troll Hacking with fly");
+        Punishment ban = plugin.store().bans.get(troll.getUniqueId());
+        assertNotNull(ban);
+        assertEquals(0, ban.expiresAt, "permanent");
+        assertEquals("Hacking with fly", ban.reason);
+    }
+
+    @Test
+    void mistypedTimeIsNotTurnedIntoAPermanentBan() {
+        admin.performCommand("ban Troll 1x test");
+        assertNull(plugin.store().bans.get(troll.getUniqueId()));
+    }
+
+    @Test
+    void banWithACategoryNameUsesTheCategory() {
+        admin.performCommand("ban Troll x-ray");
+        Punishment p = plugin.punishments().get(troll.getUniqueId());
+        assertNotNull(p, "x-ray starts with a PlayBan, the ladder decides");
+        assertEquals("x-ray", p.category);
+    }
+
+    @Test
+    void vanishWorksWithOnlyTheVanishPermission() {
+        PlayerMock helper = server.addPlayer("Helper");
+        helper.addAttachment(plugin, "playban.vanish", true);
+        helper.performCommand("vanish");
+        assertTrue(plugin.punishments().isVanished(helper.getUniqueId()));
+    }
+
+    @Test
+    void guideWorksForEveryone() {
+        assertTrue(bystander.performCommand("guide"));
+        assertInstanceOf(Menu.class, bystander.getOpenInventory().getTopInventory().getHolder());
+    }
+
+    @Test
+    void pardonButtonNeedsShiftClick() {
+        punish("1h");
+        plugin.adminMenus().detail(admin, troll.getUniqueId());
+        admin.simulateInventoryClick(48);
+        assertTrue(plugin.punishments().isPunished(troll.getUniqueId()), "a normal click does nothing");
+        admin.simulateInventoryClick(admin.getOpenInventory(), org.bukkit.event.inventory.ClickType.SHIFT_LEFT, 48);
+        assertFalse(plugin.punishments().isPunished(troll.getUniqueId()));
+    }
+
+    @Test
+    void spawnDoesNotTouchJoinsOrRespawnsUntilASpawnIsSet() {
+        assertFalse(plugin.spawn().isSet());
+        var event = new org.bukkit.event.player.PlayerRespawnEvent(bystander, bystander.getWorld().getSpawnLocation().add(7, 0, 7), false, false,
+                org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.DEATH);
+        var before = event.getRespawnLocation().clone();
+        server.getPluginManager().callEvent(event);
+        assertEquals(before.getX(), event.getRespawnLocation().getX(), 0.01, "a world plugin's respawn point is left alone");
     }
 
     @Test

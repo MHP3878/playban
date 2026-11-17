@@ -9,32 +9,6 @@ commands:
   playban:
     description: PlayBan main command
     aliases: [pb]
-  punish:
-    description: Punish a player by category or with a duration
-    permission: playban.staff
-  ban:
-    description: Ban a player (the same as /playban ban)
-    permission: playban.staff
-  tempban:
-    description: Ban a player for a time (the same as /ban)
-    permission: playban.staff
-  warn:
-    description: Warn a player
-    permission: playban.staff
-  unban:
-    description: Lift a ban, by name or ban ID
-    permission: playban.staff
-  vanish:
-    description: Turn invisible to players
-    permission: playban.vanish
-  guide:
-    description: Every command with what it does
-  spawn:
-    description: Teleport to spawn
-    permission: playban.spawn
-  setspawn:
-    description: Set the spawn where you stand
-    permission: playban.admin
   ticket:
     description: Open a ticket for the server team
     aliases: [pbticket]
@@ -93,5 +67,8 @@ permissions:
     description: Can teleport to players from a ticket and pick a game mode for it
     default: op
   playban.exempt:
-    description: Cannot be punished
+    description: Cannot be punished by other players (the console still can)
+    default: op
+  playban.exempt.bypass:
+    description: Can punish players who have playban.exempt
     default: false

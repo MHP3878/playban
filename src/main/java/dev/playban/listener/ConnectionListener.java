@@ -30,6 +30,11 @@ public final class ConnectionListener implements Listener {
         Punishment p = plugin.punishments().get(player.getUniqueId());
         if (p != null && plugin.getConfig().getBoolean("restrictions.hide-from-players", true)) e.joinMessage(null);
         plugin.voice().joined(player);
+        plugin.punishments().restorePending(player);
+        boolean exempt = player.hasPermission("playban.exempt");
+        if (exempt ? plugin.store().exempt.add(player.getUniqueId()) : plugin.store().exempt.remove(player.getUniqueId())) {
+            plugin.store().markDirty();
+        }
         if (plugin.store().names.containsKey(player.getUniqueId())) plugin.store().names.put(player.getUniqueId(), player.getName());
         if (plugin.punishments().isVanished(player.getUniqueId())) {
             e.joinMessage(null);

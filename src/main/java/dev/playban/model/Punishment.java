@@ -8,6 +8,8 @@ public final class Punishment {
     public static final class TaskProgress {
         public TaskStatus status = TaskStatus.OPEN;
         public long timeLeftMs;
+        /** Wrong quiz answers so far. */
+        public int attempts;
 
         public TaskProgress(TaskStatus status, long timeLeftMs) {
             this.status = status;
@@ -30,6 +32,8 @@ public final class Punishment {
     public String prevGameMode;
     /** PlayBans with inventory-mode STORE: the player's inventory as YAML, given back at the end. */
     public String storedInventory;
+    /** inventory-mode CLEAR: already done, so it happens exactly once even if the player was offline. */
+    public boolean inventoryCleared;
     public UUID uuid;
     public String name;
     public String reason;

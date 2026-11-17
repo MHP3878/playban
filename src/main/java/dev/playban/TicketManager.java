@@ -51,6 +51,8 @@ public final class TicketManager {
     private final java.util.Set<UUID> vanished = new java.util.HashSet<>();
     private int nextId = 1;
     private boolean dirty;
+    private boolean loadFailed;
+    private final Map<UUID, Long> lastTicket = new HashMap<>();
 
     public TicketManager(PlayBanPlugin plugin) {
         this.plugin = plugin;
@@ -166,6 +168,16 @@ public final class TicketManager {
     // ---------------------------------------------------------------- opening
 
     public Ticket create(Player author, String reasonId, String text) {
+        long cooldown = plugin.getConfig().getLong("ticket-cooldown-seconds", 60) * 1000L;
+        Long last = lastTicket.get(author.getUniqueId());
+        if (cooldown > 0 && last != null && !author.hasPermission("playban.staff")) {
+            long left = cooldown - (System.currentTimeMillis() - last);
+            if (left > 0) {
+                lang().send(author, "ticket.cooldown", "time", TimeUtil.format(Math.max(1000, left)));
+                return null;
+            }
+        }
+        if (text.length() > 500) text = text.substring(0, 500);
         int open = 0;
         for (Ticket t : tickets.values()) if (t.active() && t.author.equals(author.getUniqueId())) open++;
         if (open >= MAX_OPEN_PER_PLAYER) {
@@ -188,6 +200,7 @@ public final class TicketManager {
         t.participants.add(p);
         add(t, "CHAT", t.authorName, text, null);
         tickets.put(t.id, t);
+        lastTicket.put(author.getUniqueId(), System.currentTimeMillis());
         plugin.store().names.put(t.author, t.authorName);
         dirty = true;
         lang().send(author, "ticket.sent", "id", t.id);
@@ -416,7 +429,8 @@ public final class TicketManager {
                 continue;
             }
             Player online = Bukkit.getPlayer(p.uuid);
-            if (online != null && online.hasPermission("playban.exempt")) {
+            boolean exempt = online != null ? online.hasPermission("playban.exempt") : plugin.store().exempt.contains(p.uuid);
+            if (exempt && !staff.hasPermission("playban.exempt.bypass")) {
                 p.outcome = lang().plain("ticket.verdict.failed", "category", c.name, "why", lang().plain("error.exempt", "player", p.name));
                 continue;
             }
@@ -474,7 +488,9 @@ public final class TicketManager {
     private void webhook(String content) {
         String url = plugin.getConfig().getString("discord-webhook", "");
         if (url.isEmpty() || !url.startsWith("https://")) return;
-        String json = "{\"content\":\"" + content.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"}";
+        // allowed_mentions empty: a ticket text with @everyone or a role mention must not ping anyone
+        String json = "{\"content\":\"" + content.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+                + "\",\"allowed_mentions\":{\"parse\":[]}}";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(url))
@@ -491,7 +507,21 @@ public final class TicketManager {
 
     public void load() {
         if (file().exists()) {
-            YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file());
+            YamlConfiguration cfg = new YamlConfiguration();
+            try {
+                cfg.load(file());
+            } catch (Exception e) {
+                loadFailed = true;
+                java.io.File backup = new java.io.File(plugin.getDataFolder(), "tickets.yml.broken-" + System.currentTimeMillis());
+                try {
+                    Files.copy(file().toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException ignored) {
+                    // nothing is saved anyway, so the original stays as it is
+                }
+                plugin.getLogger().severe("tickets.yml could not be read: " + e.getMessage()
+                        + ". Tickets will NOT be saved until it is fixed. A copy is in " + backup.getName() + ".");
+                return;
+            }
             nextId = Math.max(1, cfg.getInt("next-id", 1));
             ConfigurationSection root = cfg.getConfigurationSection("tickets");
             if (root != null) for (String key : root.getKeys(false)) {
@@ -618,13 +648,14 @@ public final class TicketManager {
     }
 
     public void saveIfDirty() {
-        if (!dirty) return;
+        if (!dirty || loadFailed) return;
         dirty = false;
         String content = serialize();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> write(content));
     }
 
     public void saveNow() {
+        if (loadFailed) return;
         dirty = false;
         write(serialize());
     }

@@ -1,8 +1,8 @@
-# PlayBan - deutsche Texte
+# StaffCore - deutsche Texte
 # Farben nutzen das MiniMessage-Format: https://docs.advntr.dev/minimessage/format.html
 # Wörter in {geschweiften Klammern} füllt das Plugin aus - bitte so stehen lassen.
 
-prefix: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <dark_gray>»</dark_gray> "
+prefix: "<gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient> <dark_gray>»</dark_gray> "
 none: "niemand"
 no-reason: "Kein Grund angegeben"
 no-limit: "keine Frist"
@@ -34,7 +34,7 @@ ban:
   broadcast-spectator: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>einen Zuschauer-Bann gegeben. Dauer:</gray> <white>{time}</white><gray>. Grund:</gray> <white>{reason}"
   discord-line: "<gray>Discord: <#ffc371>{discord}"
   screen: |-
-    <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>
+    <gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>
 
     <red>Du bist von diesem Server gebannt.
 
@@ -90,14 +90,14 @@ guide:
   spawn: ["<gray>Bringt dich zum Spawn.", "<gray>Bleib beim Countdown stehen."]
   setspawn: ["<gray>Setzt den Spawn dort, wo du stehst."]
   menu: ["<gray>Öffnet das Hauptmenü.", "<gray>Von hier aus geht alles."]
-  punish: ["<gray>Kategorie für einen Spieler wählen.", "<gray>PlayBan berechnet die Strafe aus", "<gray>seinen früheren Verstößen.", "", "<dark_gray>Beispiel: /punish Steve"]
-  apply: ["<gray>Wie /punish, aber ohne Menü.", "<gray>Geht auch von der Konsole.", "", "<dark_gray>Beispiel: /playban apply Steve x-ray"]
+  punish: ["<gray>Kategorie für einen Spieler wählen.", "<gray>StaffCore berechnet die Strafe aus", "<gray>seinen früheren Verstößen.", "", "<dark_gray>Beispiel: /punish Steve"]
+  apply: ["<gray>Wie /punish, aber ohne Menü.", "<gray>Geht auch von der Konsole.", "", "<dark_gray>Beispiel: /sc apply Steve x-ray"]
   ban: ["<gray>Ein echter Bann: Der Spieler kommt", "<gray>nicht mehr rein. Mit perm für immer.", "", "<dark_gray>Beispiel: /ban Steve 7d Hacking"]
   specban: ["<gray>Der Spieler darf rein, hängt aber", "<gray>als Zuschauer fest und kann nur", "<gray>Tickets oder einen Antrag schreiben."]
   warn: ["<gray>Eine Verwarnung. Zählt als Verstoß", "<gray>für die Kategorien.", "", "<dark_gray>Beispiel: /warn Steve Spam"]
   unban: ["<gray>Hebt einen Bann auf. Geht mit dem", "<gray>Namen oder mit der Ban-ID.", "", "<dark_gray>Beispiel: /unban K7QX2M"]
   pardon: ["<gray>Beendet einen laufenden PlayBan sofort."]
-  time: ["<gray>Macht einen PlayBan länger oder kürzer.", "", "<dark_gray>Beispiel: /playban addtime Steve 1h"]
+  time: ["<gray>Macht einen PlayBan länger oder kürzer.", "", "<dark_gray>Beispiel: /sc addtime Steve 1h"]
   note: ["<gray>Schreibt eine Notiz zu einem Spieler.", "<gray>Nur das Team sieht sie."]
   profile: ["<gray>Notizen, Strafen und Tickets", "<gray>eines Spielers."]
   vanish: ["<gray>Macht dich für Spieler unsichtbar.", "<gray>Das Team sieht dich weiterhin."]
@@ -124,52 +124,55 @@ spawn:
     ALWAYS: "jedes Mal"
 
 help: |-
-  <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- Befehle
-  <#ffc371>/playban menu <dark_gray>-</dark_gray> <gray>Hauptmenü öffnen
-  <#ffc371>/playban <Spieler> <dark_gray>-</dark_gray> <gray>Kategorie für einen Spieler wählen
-  <#ffc371>/playban apply <Spieler> <Kategorie> <dark_gray>-</dark_gray> <gray>nach Kategorie bestrafen
-  <#ffc371>/playban warn <Spieler> [Grund] <dark_gray>-</dark_gray> <gray>Spieler verwarnen
-  <#ffc371>/playban ban <Spieler> <Zeit|perm> [Grund] <dark_gray>-</dark_gray> <gray>echter Bann
-  <#ffc371>/playban unban <Spieler> <dark_gray>-</dark_gray> <gray>Bann aufheben
-  <#ffc371>/playban specban <Spieler> <Zeit|perm> [Grund] <dark_gray>-</dark_gray> <gray>Zuschauer-Bann
-  <#ffc371>/playban note <Spieler> <Text> <dark_gray>-</dark_gray> <gray>Notiz zu einem Spieler schreiben
-  <#ffc371>/playban profile <Spieler> <dark_gray>-</dark_gray> <gray>Notizen und Strafen eines Spielers
-  <#ffc371>/playban punish <Spieler> <Zeit> [Grund] <dark_gray>-</dark_gray> <gray>Spieler bestrafen
-  <#ffc371>/playban pardon <Spieler> <dark_gray>-</dark_gray> <gray>Strafe beenden
-  <#ffc371>/playban addtime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verlängern
-  <#ffc371>/playban removetime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verkürzen
-  <#ffc371>/playban info <Spieler> <dark_gray>-</dark_gray> <gray>Strafe anzeigen
-  <#ffc371>/playban list <dark_gray>-</dark_gray> <gray>alle bestraften Spieler
-  <#ffc371>/playban history <Spieler> <dark_gray>-</dark_gray> <gray>frühere Strafen
-  <#ffc371>/playban lang <Kürzel> <dark_gray>-</dark_gray> <gray>Sprache ändern
-  <#ffc371>/playban reload <dark_gray>-</dark_gray> <gray>Dateien neu laden
+  <gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient> <gray>- Befehle
+  <#ffc371>/sc menu <dark_gray>-</dark_gray> <gray>Hauptmenü öffnen
+  <#ffc371>/sc <Spieler> <dark_gray>-</dark_gray> <gray>Kategorie für einen Spieler wählen
+  <#ffc371>/sc apply <Spieler> <Kategorie> <dark_gray>-</dark_gray> <gray>nach Kategorie bestrafen
+  <#ffc371>/sc warn <Spieler> [Grund] <dark_gray>-</dark_gray> <gray>Spieler verwarnen
+  <#ffc371>/sc ban <Spieler> <Zeit|perm> [Grund] <dark_gray>-</dark_gray> <gray>echter Bann
+  <#ffc371>/sc unban <Spieler> <dark_gray>-</dark_gray> <gray>Bann aufheben
+  <#ffc371>/sc specban <Spieler> <Zeit|perm> [Grund] <dark_gray>-</dark_gray> <gray>Zuschauer-Bann
+  <#ffc371>/sc note <Spieler> <Text> <dark_gray>-</dark_gray> <gray>Notiz zu einem Spieler schreiben
+  <#ffc371>/sc profile <Spieler> <dark_gray>-</dark_gray> <gray>Notizen und Strafen eines Spielers
+  <#ffc371>/sc punish <Spieler> <Zeit> [Grund] <dark_gray>-</dark_gray> <gray>Spieler bestrafen
+  <#ffc371>/sc pardon <Spieler> <dark_gray>-</dark_gray> <gray>Strafe beenden
+  <#ffc371>/sc addtime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verlängern
+  <#ffc371>/sc removetime <Spieler> <Zeit> <dark_gray>-</dark_gray> <gray>Strafe verkürzen
+  <#ffc371>/sc info <Spieler> <dark_gray>-</dark_gray> <gray>Strafe anzeigen
+  <#ffc371>/sc list <dark_gray>-</dark_gray> <gray>alle bestraften Spieler
+  <#ffc371>/sc history <Spieler> <dark_gray>-</dark_gray> <gray>frühere Strafen
+  <#ffc371>/sc lang <Kürzel> <dark_gray>-</dark_gray> <gray>Sprache ändern
+  <#ffc371>/sc reload <dark_gray>-</dark_gray> <gray>Dateien neu laden
   <#ffc371>/ticket show [Grund] <dark_gray>-</dark_gray> <gray>Ticket-Übersicht
   <#ffc371>/ticket open <Nummer> <dark_gray>-</dark_gray> <gray>ein Ticket öffnen
   <#ffc371>/ticket stats <dark_gray>-</dark_gray> <gray>Team-Statistik
   <#ffc371>/ticket back <dark_gray>-</dark_gray> <gray>nach einem Ticket-Teleport zurück
   <#ffc371>/voice <dark_gray>-</dark_gray> <gray>Voice-Gruppen (braucht Simple Voice Chat)
+  <gray>Kurzformen: <#ffc371>/ban</#ffc371>, <#ffc371>/tempban</#ffc371>, <#ffc371>/punish</#ffc371>, <#ffc371>/warn</#ffc371>, <#ffc371>/unban</#ffc371>, <#ffc371>/vanish</#ffc371>
+  <#ffc371>/spawn</#ffc371> <dark_gray>-</dark_gray> <gray>zum Spawn, <#ffc371>/setspawn</#ffc371> <dark_gray>-</dark_gray> <gray>Spawn setzen
+  <#ffc371>/guide</#ffc371> <dark_gray>-</dark_gray> <gray>jeder Befehl mit Beispiel, als Menü
   <gray>Zeiten schreibst du so: <white>30m</white>, <white>2h</white>, <white>1d 12h</white>.
 
 usage:
-  specban: "<gray>Nutzung: <white>/playban specban <Spieler> <Zeit|perm> [Grund]"
-  note: "<gray>Nutzung: <white>/playban note <Spieler> <Text>"
-  profile: "<gray>Nutzung: <white>/playban profile <Spieler>"
-  apply: "<gray>Nutzung: <white>/playban apply <Spieler> <Kategorie>"
-  warn: "<gray>Nutzung: <white>/playban warn <Spieler> [Grund]"
-  ban: "<gray>Nutzung: <white>/playban ban <Spieler> <Zeit|perm> [Grund]"
-  unban: "<gray>Nutzung: <white>/playban unban <Spieler>"
+  specban: "<gray>Nutzung: <white>/sc specban <Spieler> <Zeit|perm> [Grund]"
+  note: "<gray>Nutzung: <white>/sc note <Spieler> <Text>"
+  profile: "<gray>Nutzung: <white>/sc profile <Spieler>"
+  apply: "<gray>Nutzung: <white>/sc apply <Spieler> <Kategorie>"
+  warn: "<gray>Nutzung: <white>/sc warn <Spieler> [Grund]"
+  ban: "<gray>Nutzung: <white>/sc ban <Spieler> <Zeit|perm> [Grund]"
+  unban: "<gray>Nutzung: <white>/sc unban <Spieler>"
   punish: "<gray>Nutzung: <white>/punish <Spieler></white>, <white>/punish <Spieler> <Kategorie></white> oder <white>/punish <Spieler> <Zeit> [Grund]"
-  pardon: "<gray>Nutzung: <white>/playban pardon <Spieler>"
-  addtime: "<gray>Nutzung: <white>/playban addtime <Spieler> <Zeit>"
-  removetime: "<gray>Nutzung: <white>/playban removetime <Spieler> <Zeit>"
-  info: "<gray>Nutzung: <white>/playban info <Spieler>"
-  history: "<gray>Nutzung: <white>/playban history <Spieler>"
-  lang: "<gray>Nutzung: <white>/playban lang <Kürzel></white> - verfügbar: <white>{list}"
+  pardon: "<gray>Nutzung: <white>/sc pardon <Spieler>"
+  addtime: "<gray>Nutzung: <white>/sc addtime <Spieler> <Zeit>"
+  removetime: "<gray>Nutzung: <white>/sc removetime <Spieler> <Zeit>"
+  info: "<gray>Nutzung: <white>/sc info <Spieler>"
+  history: "<gray>Nutzung: <white>/sc history <Spieler>"
+  lang: "<gray>Nutzung: <white>/sc lang <Kürzel></white> - verfügbar: <white>{list}"
   ticket: "<gray>Nutzung: <white>/ticket <deine Nachricht>"
 
 error:
   unknown-command: "<red>Unbekannter Befehl. Mit <white>/guide</white> siehst du die Befehle, die du nutzen kannst."
-  short-commands-off: "<red>Kurze Befehle sind ausgeschaltet. Nutze <white>/playban {command}</white>."
+  short-commands-off: "<red>Kurze Befehle sind ausgeschaltet. Nutze <white>/sc {command}</white>."
   bad-link: "<red>Das ist kein gültiger Link. Er muss mit <white>https://</white> anfangen."
   already-banned: "<red><white>{player}</white> ist bereits gebannt."
   not-banned: "<red><white>{player}</white> ist nicht gebannt."
@@ -245,11 +248,11 @@ history:
 
 staff:
   same-address: "<yellow><white>{player}</white> kam von derselben Adresse wie der bestrafte Spieler <white>{other}</white>."
-  pending: "<gray>Wartet auf das Team: <white>{reviews}</white> Nachrichten zum Prüfen, <white>{tickets}</white> Tickets. <#ffc371>/playban menu"
+  pending: "<gray>Wartet auf das Team: <white>{reviews}</white> Nachrichten zum Prüfen, <white>{tickets}</white> Tickets. <#ffc371>/sc menu"
 
 review:
   submitted: "<green>Deine Nachricht ging an das Team. Die Aufgabe zählt, sobald es sie freigibt."
-  new: "<gray><white>{player}</white> hat eine Nachricht geschrieben, die geprüft werden muss. <#ffc371>/playban menu"
+  new: "<gray><white>{player}</white> hat eine Nachricht geschrieben, die geprüft werden muss. <#ffc371>/sc menu"
   approved: "<green>Nachricht von <white>{player}</white> freigegeben."
   rejected: "<gray>Nachricht von <white>{player}</white> abgelehnt."
   rejected-you: "<red>Das Team hat deine Nachricht abgelehnt. Du kannst die Aufgabe noch einmal versuchen."
@@ -260,7 +263,7 @@ voice:
   "no": "<gray>nein"
   seen: "sichtbar"
   unseen: "unsichtbar"
-  not-installed: "<red>Dieser Server hat keinen Voice-Chat. PlayBan braucht dafür das Plugin <white>Simple Voice Chat</white>."
+  not-installed: "<red>Dieser Server hat keinen Voice-Chat. StaffCore braucht dafür das Plugin <white>Simple Voice Chat</white>."
   failed: "<red>Der Voice-Chat hat das abgelehnt. Details stehen im Server-Log."
   bad-password: "<red>Ein Passwort hat keine Leerzeichen und höchstens 64 Zeichen."
   not-owner: "<red>Du kannst nur eine Voice-Gruppe verwalten, die du erstellt hast und in der du bist."
@@ -277,7 +280,7 @@ voice:
   nothing-to-agree: "<gray>Gerade gibt es nichts einzuschalten."
   report-text: "Voice-Gruppe \"{group}\": {reason}. In der Gruppe: {members}"
   help: |-
-    <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- Voice-Chat
+    <gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient> <gray>- Voice-Chat
     <#ffc371>/voice report <dark_gray>-</dark_gray> <gray>eine Voice-Gruppe melden
     <#ffc371>/voice manage <dark_gray>-</dark_gray> <gray>in deiner eigenen Gruppe kicken oder bannen
 
@@ -502,7 +505,7 @@ setting:
       lore: ["<gray>Der Spieler kann nicht einmal", "<gray>den Kopf bewegen."]
   short-commands:
     name: "<#ffc371>Kurze Befehle"
-    lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish ohne /playban davor.", "<gray>Aus: Die Namen sind frei für", "<gray>andere Plugins. <white>Braucht Neustart."]
+    lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish ohne /sc davor.", "<gray>Aus: Die Namen sind frei für", "<gray>andere Plugins. <white>Braucht Neustart."]
   vanish:
     staff-chat-only:
       name: "<#ffc371>Vanish: Chat nur ans Team"
@@ -538,7 +541,7 @@ menu:
   text-line: "<white>{text}"
 
   main:
-    title: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>"
+    title: "<gradient:#ff5f6d:#ffc371><bold>StaffCore</bold></gradient>"
     guide:
       name: "<#ffc371><bold>Befehls-Anleitung</bold>"
       lore: ["<gray>Jeder Befehl mit Erklärung", "<gray>und Beispiel.", "", "<#ffc371>Klicken zum Öffnen"]
@@ -735,7 +738,7 @@ menu:
       lore: ["<gray>Schickt es in deinen Chat,", "<gray>dort klicken zum Kopieren."]
     password-unknown:
       name: "<gray>Passwort unbekannt"
-      lore: ["<gray>Ein Spieler hat es gesetzt. PlayBan kennt nur", "<gray>Passwörter, die über dieses Menü gesetzt wurden."]
+      lore: ["<gray>Ein Spieler hat es gesetzt. StaffCore kennt nur", "<gray>Passwörter, die über dieses Menü gesetzt wurden."]
     bans:
       name: "<#ffc371>Gebannte Spieler"
       lore: ["<gray>Aus dieser Gruppe gebannt: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]

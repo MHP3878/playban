@@ -1,74 +1,74 @@
-name: PlayBan
+name: StaffCore
 version: '${project.version}'
-main: dev.playban.PlayBanPlugin
+main: dev.staffcore.StaffCorePlugin
 api-version: '1.21'
-description: Punish players without banning them. They keep playing - hidden, restricted and with tasks to shorten their time.
+description: Staff tools in one plugin - PlayBans, bans, categories, tickets, vanish, spawn and voice moderation.
 softdepend: [Vault, voicechat]
 
 commands:
-  playban:
-    description: PlayBan main command
-    aliases: [pb]
+  staffcore:
+    description: StaffCore main command
+    aliases: [sc, playban, pb]
   ticket:
     description: Open a ticket for the server team
-    aliases: [pbticket]
+    aliases: [scticket]
 
   appeal:
     description: Ask to be unbanned, with the ban ID from your ban screen
   voice:
     description: Voice group moderation (needs the plugin Simple Voice Chat)
-    aliases: [pbvoice]
+    aliases: [scvoice]
 
 permissions:
-  playban.admin:
+  staffcore.admin:
     description: Full access including settings and the task editor
     default: op
     children:
-      playban.staff: true
-  playban.staff:
+      staffcore.staff: true
+  staffcore.staff:
     description: Punish players, handle reviews and tickets
     default: op
     children:
-      playban.see: true
-      playban.notify: true
-      playban.voice: true
-      playban.vanish: true
-      playban.commands.all: true
-      playban.spawn.instant: true
-      playban.spawn.others: true
-  playban.see:
+      staffcore.see: true
+      staffcore.notify: true
+      staffcore.voice: true
+      staffcore.vanish: true
+      staffcore.commands.all: true
+      staffcore.spawn.instant: true
+      staffcore.spawn.others: true
+  staffcore.see:
     description: Can still see punished players
     default: op
-  playban.notify:
+  staffcore.notify:
     description: Receives staff notifications
     default: op
-  playban.vanish:
+  staffcore.vanish:
     description: Can turn invisible with /vanish and still sees vanished staff
     default: op
-  playban.commands.all:
+  staffcore.commands.all:
     description: Sees and can use commands that are hidden from normal players
     default: op
-  playban.voice:
+  staffcore.voice:
     description: Can moderate voice groups - kick, mute, ban, close, passwords, join unseen
     default: op
-  playban.spawn:
+  staffcore.spawn:
     description: Can use /spawn
     default: true
-  playban.spawn.instant:
+  staffcore.spawn.instant:
     description: /spawn without countdown and cooldown
     default: op
-  playban.spawn.others:
+  staffcore.spawn.others:
     description: Can send other players to spawn with /spawn <player>
     default: op
-  playban.ticket:
+  staffcore.ticket:
     description: Can open tickets
     default: true
-  playban.teleport:
+  staffcore.teleport:
     description: Can teleport to players from a ticket and pick a game mode for it
     default: op
-  playban.exempt:
+  staffcore.exempt:
     description: Cannot be punished by other players (the console still can)
     default: op
-  playban.exempt.bypass:
-    description: Can punish players who have playban.exempt
+  staffcore.exempt.bypass:
+    description: Can punish players who have staffcore.exempt
     default: false

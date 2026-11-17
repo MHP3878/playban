@@ -1,4 +1,8 @@
-# PlayBan
+# StaffCore
+
+Staff tools in one plugin for Paper 1.21.4 to 1.21.11. Formerly called PlayBan; an existing `plugins/PlayBan` folder is taken over automatically.
+
+## PlayBan: punish without banning
 
 Punish players without banning them. A punished player stays on the server, but:
 
@@ -7,60 +11,60 @@ Punish players without banning them. A punished player stays on the server, but:
 - they cannot chat and can only use the commands you allow, plus `/ticket`
 - they get tasks, and every finished task shortens the punishment
 
-PlayBan also hands out warnings and real bans. You define categories such as X-Ray, Cheating or Spam, each with its own ladder: what happens on the first, second, third offense. The team only picks the category, the plugin works out the punishment.
+StaffCore also hands out warnings and real bans. You define categories such as X-Ray, Cheating or Spam, each with its own ladder: what happens on the first, second, third offense. The team only picks the category, the plugin works out the punishment.
 
 Everything is controlled through in-game menus: punishing, categories, reviewing messages, tickets, the task editor and all settings.
 
 ## Requirements
 
-- Paper 1.21 or newer, Java 21
+- Paper 1.21.4 to 1.21.11, Java 21
 - Optional: Vault plus an economy plugin for the "give money" task
 - Optional: the plugin Simple Voice Chat for voice group moderation
 
 ## Install
 
-1. Put `PlayBan-<version>.jar` into the `plugins` folder and restart the server.
-2. Run `/playban menu`.
+1. Put `StaffCore-<version>.jar` into the `plugins` folder and restart the server.
+2. Run `/sc menu`.
 
 ## Commands
 
 | Command | What it does | Permission |
 |---|---|---|
-| `/playban` or `/pb` | Team: main menu. Punished player: own tasks | - |
-| `/playban <player>` or `/punish <player>` | Pick a category for a player in a menu | `playban.staff` |
-| `/playban apply <player> <category>` | Punish by category, also works from the console | `playban.staff` |
-| `/playban punish <player> <time> [reason]` | PlayBan with a duration of your choice | `playban.staff` |
-| `/warn <player> [reason]` | Warn a player | `playban.staff` |
-| `/ban <player> <time or perm> [reason]` | Real ban | `playban.staff` |
-| `/playban specban <player> <time or perm> [reason]` | Spectator ban: may join, but is stuck and can only write tickets | `playban.staff` |
-| `/unban <player or ban-ID>` | Lift a ban or spectator ban | `playban.staff` |
-| `/vanish` | Turn invisible to players; the team still sees you. Your name is left out of kill, join, quit and advancement messages, the server list does not count you, and your chat goes to the team unless it starts with `!` | `playban.vanish` |
+| `/sc`, `/staffcore` (also `/playban`) | Team: main menu. Punished player: own tasks | - |
+| `/sc <player>` or `/punish <player>` | Pick a category for a player in a menu | `staffcore.staff` |
+| `/sc apply <player> <category>` | Punish by category, also works from the console | `staffcore.staff` |
+| `/sc punish <player> <time> [reason]` | PlayBan with a duration of your choice | `staffcore.staff` |
+| `/warn <player> [reason]` | Warn a player | `staffcore.staff` |
+| `/ban <player> <time or perm> [reason]` | Real ban | `staffcore.staff` |
+| `/sc specban <player> <time or perm> [reason]` | Spectator ban: may join, but is stuck and can only write tickets | `staffcore.staff` |
+| `/unban <player or ban-ID>` | Lift a ban or spectator ban | `staffcore.staff` |
+| `/vanish` | Turn invisible to players; the team still sees you. Your name is left out of kill, join, quit and advancement messages, the server list does not count you, and your chat goes to the team unless it starts with `!` | `staffcore.vanish` |
 | `/guide` | Every command with what it does and an example | - |
-| `/spawn` | Teleport to spawn after a short countdown; staff go at once and can send others with `/spawn <player>` | `playban.spawn` |
-| `/setspawn` | Set the spawn where you stand | `playban.admin` |
+| `/spawn` | Teleport to spawn after a short countdown; staff go at once and can send others with `/spawn <player>` | `staffcore.spawn` |
+| `/setspawn` | Set the spawn where you stand | `staffcore.admin` |
 | `/appeal <ban-ID> <text>` | Ask to be unbanned, with the ID from the ban screen | - |
-| `/playban note <player> <text>` | Write a note about a player | `playban.staff` |
-| `/playban profile <player>` | Notes and punishments of a player | `playban.staff` |
-| `/playban pardon <player>` | End a PlayBan | `playban.staff` |
-| `/playban addtime` / `removetime <player> <time>` | Change the remaining time | `playban.staff` |
-| `/playban info <player>`, `list`, `history <player>` | Look things up | `playban.staff` |
-| `/playban tasks` | Own tasks (for punished team members) | - |
-| `/playban lang <code>` | Switch language (`en`, `de`) | `playban.admin` |
-| `/playban reload` | Reload config, tasks and texts | `playban.admin` |
-| `/ticket` | Open a ticket: pick a reason, then describe it | `playban.ticket` |
-| `/ticket <message>` | Open a ticket directly | `playban.ticket` |
-| `/ticket show [reason]` | Ticket overview for the team, optionally filtered | `playban.staff` |
-| `/ticket open <number>` | Open one ticket | `playban.staff` |
-| `/ticket stats` | Who handled how many tickets | `playban.staff` |
-| `/ticket back` | Return after teleporting from a ticket | `playban.staff` |
-| `/voice` | Voice groups: join unseen, kick, mute, ban, close, passwords | `playban.voice` |
+| `/sc note <player> <text>` | Write a note about a player | `staffcore.staff` |
+| `/sc profile <player>` | Notes and punishments of a player | `staffcore.staff` |
+| `/sc pardon <player>` | End a PlayBan | `staffcore.staff` |
+| `/sc addtime` / `removetime <player> <time>` | Change the remaining time | `staffcore.staff` |
+| `/sc info <player>`, `list`, `history <player>` | Look things up | `staffcore.staff` |
+| `/sc tasks` | Own tasks (for punished team members) | - |
+| `/sc lang <code>` | Switch language (`en`, `de`) | `staffcore.admin` |
+| `/sc reload` | Reload config, tasks and texts | `staffcore.admin` |
+| `/ticket` | Open a ticket: pick a reason, then describe it | `staffcore.ticket` |
+| `/ticket <message>` | Open a ticket directly | `staffcore.ticket` |
+| `/ticket show [reason]` | Ticket overview for the team, optionally filtered | `staffcore.staff` |
+| `/ticket open <number>` | Open one ticket | `staffcore.staff` |
+| `/ticket stats` | Who handled how many tickets | `staffcore.staff` |
+| `/ticket back` | Return after teleporting from a ticket | `staffcore.staff` |
+| `/voice` | Voice groups: join unseen, kick, mute, ban, close, passwords | `staffcore.voice` |
 | `/voice report` | Report a voice group to the team | - |
 | `/voice manage` | Kick or ban in a voice group you created | - |
 | `/voice speak` | Switch your microphone on after the team pulled you into a ticket voice group | - |
 
 Times look like `30m`, `2h`, `1d 12h`.
 
-The short commands (`/ban`, `/punish`, `/warn`, `/unban`, `/vanish`, `/guide`) can be switched off in the settings. If another plugin already uses one of these names, use `/playban ban ...` instead.
+The short commands (`/ban`, `/punish`, `/warn`, `/unban`, `/vanish`, `/guide`) can be switched off in the settings. If another plugin already uses one of these names, use `/sc ban ...` instead.
 
 Every punishment gets a short ban ID such as `K7QX2M`. It is shown on the ban screen and to the player, `/unban` accepts it instead of the name, and `/appeal` only works with the player's own ID.
 
@@ -68,16 +72,16 @@ Every punishment gets a short ban ID such as `K7QX2M`. It is shown on the ban sc
 
 | Permission | Default | Meaning |
 |---|---|---|
-| `playban.admin` | op | Everything, including settings and the task editor |
-| `playban.staff` | op | Punish, review messages, answer tickets |
-| `playban.see` | op | Still sees punished players |
-| `playban.notify` | op | Gets team notifications |
-| `playban.voice` | op | Can moderate voice groups |
-| `playban.vanish` | op | Can use /vanish and sees vanished staff |
-| `playban.commands.all` | op | Sees commands that are hidden from players |
-| `playban.ticket` | everyone | Can open tickets |
-| `playban.teleport` | op | Can teleport to players from a ticket and pick a game mode |
-| `playban.exempt` | nobody | Cannot be punished |
+| `staffcore.admin` | op | Everything, including settings and the task editor |
+| `staffcore.staff` | op | Punish, review messages, answer tickets |
+| `staffcore.see` | op | Still sees punished players |
+| `staffcore.notify` | op | Gets team notifications |
+| `staffcore.voice` | op | Can moderate voice groups |
+| `staffcore.vanish` | op | Can use /vanish and sees vanished staff |
+| `staffcore.commands.all` | op | Sees commands that are hidden from players |
+| `staffcore.ticket` | everyone | Can open tickets |
+| `staffcore.teleport` | op | Can teleport to players from a ticket and pick a game mode |
+| `staffcore.exempt` | nobody | Cannot be punished |
 
 ## Categories
 
@@ -96,7 +100,7 @@ Anti-cheat plugins can run `playban apply <player> <category>` from the console.
 
 ## Hidden commands
 
-Players without `playban.commands.all` do not see team commands in their suggestions, and the commands listed under `command-hiding` (by default `plugins`, `pl`, `version` and similar) are hidden and answer like an unknown command. Forms like `bukkit:plugins` are hidden too. The list can be changed in Settings.
+Players without `staffcore.commands.all` do not see team commands in their suggestions, and the commands listed under `command-hiding` (by default `plugins`, `pl`, `version` and similar) are hidden and answer like an unknown command. Forms like `bukkit:plugins` are hidden too. The list can be changed in Settings.
 
 ## Tickets
 
@@ -113,11 +117,11 @@ Extras: new tickets can be posted to a Discord channel (webhook), the team is re
 
 ## Voice groups
 
-With the plugin Simple Voice Chat installed, `/voice` shows the team every voice group. Players only need the normal voice chat mod. The buttons are in PlayBan's own menu, because a server plugin cannot change the mod's screens.
+With the plugin Simple Voice Chat installed, `/voice` shows the team every voice group. Players only need the normal voice chat mod. The buttons are in StaffCore's own menu, because a server plugin cannot change the mod's screens.
 
 - Join a group visibly or unseen. Unseen means players do not see the team member in the group, but talking and listening work. Each team member can set which way is the default.
 - Per player: remove from the group, mute, "hears nothing", ban from the group. Mute and "hears nothing" end when the player leaves the group.
-- Per group: close it, set or remove a password, and show a password in chat where a click copies it. PlayBan only knows passwords set through its menu.
+- Per group: close it, set or remove a password, and show a password in chat where a click copies it. StaffCore only knows passwords set through its menu.
 - Whoever created a group can kick and ban in it with `/voice manage`.
 - Players report a group with `/voice report`, which opens a ticket.
 - The "Voice" button in a ticket creates a private voice group and moves everyone into it. Players are muted until they click to speak.

@@ -1,5 +1,5 @@
 # Offense categories with their punishment ladder.
-# Easier to edit in-game: /playban menu -> Categories
+# Easier to edit in-game: /sc menu -> Categories
 #
 # steps:        1st entry = first offense, 2nd entry = second offense, ...
 #               The last step is used for every further offense.

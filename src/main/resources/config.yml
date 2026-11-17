@@ -1,4 +1,4 @@
-# PlayBan - everything in this file can also be changed in-game with /playban menu
+# StaffCore - everything in this file can also be changed in-game with /sc menu
 
 # Language of all texts. Bundled: en, de. Files are in the lang/ folder.
 language: en
@@ -7,13 +7,13 @@ language: en
 # false = the punishment runs down in real time, like a normal temporary ban
 count-only-online-time: true
 
-# Staff with the permission playban.see can still see punished players
+# Staff with the permission staffcore.see can still see punished players
 staff-see-punished: true
 
 # true = nice messages and apologies are delivered without a staff review (not recommended)
 auto-approve-messages: false
 
-# true = /ban, /tempban, /punish, /warn, /unban and /vanish work without "/playban" in front.
+# true = /ban, /tempban, /punish, /warn, /unban and /vanish work without "/sc" in front.
 # false = they are not registered at all, so another plugin (EssentialsX, LiteBans, ...) can use the names.
 # Takes effect after a restart.
 short-commands: true
@@ -139,7 +139,7 @@ vanish:
   players: []
 
 # ---- Hidden commands ----
-# Players without playban.commands.all do not see these commands and get "unknown command" if they type them.
+# Players without staffcore.commands.all do not see these commands and get "unknown command" if they type them.
 command-hiding:
   enabled: true
   # Also hide forms like bukkit:plugins or minecraft:tp, which people use to get around blocks

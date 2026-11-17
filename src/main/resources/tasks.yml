@@ -1,5 +1,5 @@
 # Tasks a punished player can complete to shorten the punishment.
-# Easier to edit in-game: /playban menu -> Tasks
+# Easier to edit in-game: /sc menu -> Tasks
 #
 # type:        STAFF_MESSAGE | NICE_MESSAGE | GIFT_MONEY | DONATE_ITEMS | QUIZ
 # reduction:   time taken off, e.g. "30m" or "10%" (percent of the original duration)

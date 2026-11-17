@@ -4,15 +4,18 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>dev.playban</groupId>
-    <artifactId>PlayBan</artifactId>
-    <version>0.7.0</version>
+    <groupId>dev.staffcore</groupId>
+    <artifactId>StaffCore</artifactId>
+    <version>0.8.0</version>
     <packaging>jar</packaging>
-    <name>PlayBan</name>
+    <name>StaffCore</name>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- built against the oldest supported version, so it runs on 1.21.4 up to 1.21.11.
+             Check a newer one with: mvn compile -Dpaper.version=1.21.11-R0.1-SNAPSHOT -->
+        <paper.version>1.21.4-R0.1-SNAPSHOT</paper.version>
     </properties>
 
     <repositories>
@@ -26,7 +29,7 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.21.4-R0.1-SNAPSHOT</version>
+            <version>${paper.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -44,7 +47,7 @@
     </dependencies>
 
     <build>
-        <finalName>PlayBan-${project.version}</finalName>
+        <finalName>StaffCore-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -213,6 +213,9 @@ permissions:
   staffcore.announce:
     description: "/announce - a message with a title to everybody"
     default: op
+  staffcore.modguard.bypass:
+    description: Not checked for forbidden clients and mods
+    default: false
   staffcore.anticheat.bypass:
     description: Never checked by the anti-cheat (not even ops have it by default)
     default: false

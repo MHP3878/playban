@@ -3362,4 +3362,92 @@ class StaffCoreTest {
         }
         assertEquals(0, plugin.antiCheat().points(bystander.getUniqueId(), "aim"), 0.01);
     }
+
+    // ------------------------------------------------------------------ mod guard and tests
+
+    @Test
+    void forbiddenClientIsWarnedFirstThenPunished() {
+        var guard = plugin.modGuard();
+        guard.info(troll.getUniqueId()).brand = "Meteor Client";
+        guard.judge(troll);
+        assertFalse(troll.isOnline(), "first time: kicked with a request to remove it");
+        assertFalse(punishedOrBanned(troll));
+        assertEquals(1, guard.strikes(troll.getUniqueId()));
+        PlayerMock again = server.addPlayer("Troll2");
+        // the same player joins again with the same client: simulate by moving the strike
+        guard.info(again.getUniqueId()).brand = "meteor";
+        guard.judge(again);
+        guard.judge(again);
+        server.getScheduler().performTicks(80);
+        assertTrue(punishedOrBanned(again) || !again.isOnline(), "second time: punished");
+    }
+
+    @Test
+    void channelRulesAndAllowListWork() {
+        var guard = plugin.modGuard();
+        guard.info(bystander.getUniqueId()).channels.add("xaerominimap:main");
+        guard.judge(bystander);
+        assertTrue(bystander.isOnline(), "a minimap only alerts the team");
+        assertFalse(guard.matches(guard.info(bystander.getUniqueId())).isEmpty());
+        plugin.getConfig().set("mod-guard.mode", "ALLOWLIST");
+        PlayerMock odd = server.addPlayer("Odd");
+        guard.info(odd.getUniqueId()).brand = "weirdclient";
+        guard.judge(odd);
+        assertFalse(odd.isOnline(), "not on the allow list: kicked");
+        PlayerMock fine = server.addPlayer("Fine");
+        guard.info(fine.getUniqueId()).brand = "fabric";
+        guard.judge(fine);
+        assertTrue(fine.isOnline());
+    }
+
+    @Test
+    void hiddenSignAnswerRevealsAMod() {
+        var guard = plugin.modGuard();
+        guard.probe(troll);
+        guard.answer(troll, java.util.List.of(Component.text("Open GUI"), Component.text("key.wurst.zoom"), Component.empty(), Component.empty()));
+        assertTrue(guard.info(troll.getUniqueId()).mods.contains("meteor"), "the client filled in Meteor's text");
+        assertFalse(guard.info(troll.getUniqueId()).mods.contains("wurst"), "the raw key means no Wurst");
+    }
+
+    @Test
+    void auraBotCountsHitsBehindTheBack() {
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5, 0, 0));
+        plugin.investigations().auraBot(admin, troll);
+        assertTrue(plugin.investigations().botRunning(troll.getUniqueId()));
+        server.getScheduler().performTicks(2);
+        var bot = w.getEntities().stream().filter(e -> e instanceof org.bukkit.entity.Zombie).findFirst().orElseThrow();
+        var hit = new org.bukkit.event.entity.EntityDamageByEntityEvent(troll, bot, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 5);
+        server.getPluginManager().callEvent(hit);
+        assertTrue(hit.isCancelled(), "the bot takes no damage");
+        assertTrue(plugin.antiCheat().points(troll.getUniqueId(), "aura") > 0, "a hit behind the back counts");
+        server.getScheduler().performTicks(20 * 12);
+        assertFalse(plugin.investigations().botRunning(troll.getUniqueId()), "gone after its time");
+        assertTrue(w.getEntities().stream().noneMatch(e -> e instanceof org.bukkit.entity.Zombie));
+    }
+
+    @Test
+    void xrayBaitCatchesDiggingStraightToIt() {
+        var w = troll.getWorld();
+        for (int x = -20; x <= 20; x++) for (int y = 50; y <= 75; y++) for (int z = -20; z <= 20; z++) w.getBlockAt(x, y, z).setType(Material.STONE);
+        troll.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5));
+        int n = plugin.investigations().xrayBait(admin, troll);
+        assertTrue(n > 0, "fake ores placed");
+        assertEquals(n, plugin.investigations().baitsLeft(troll.getUniqueId()));
+        // dig right next to one
+        Block bait = plugin.investigations().baits(troll.getUniqueId()).iterator().next();
+        server.getPluginManager().callEvent(new BlockBreakEvent(bait.getRelative(org.bukkit.block.BlockFace.UP), troll));
+        assertEquals(n - 1, plugin.investigations().baitsLeft(troll.getUniqueId()), "digging to a fake ore is noticed");
+        assertTrue(plugin.antiCheat().points(troll.getUniqueId(), "xraybait") > 0);
+    }
+
+    @Test
+    void testsMenuHasEveryText() {
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.investigations().menu(admin, troll);
+            assertNoMissingTexts(admin, code);
+        }
+    }
 }

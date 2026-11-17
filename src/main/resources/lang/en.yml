@@ -89,6 +89,7 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  mods: ["<gray>Which client and which mods a player", "<gray>has, as far as the client tells.", "<gray>/mods reset <player> clears warnings."]
   check: ["<gray>Everything about a player on one", "<gray>live page: ping, client, clicks,", "<gray>anti-cheat points and findings,", "<gray>last commands, and buttons for", "<gray>inventory, freeze, watch, punish."]
   lag: ["<gray>TPS, tick time and the busiest", "<gray>chunks, a click takes you there.", "<gray>/cleanup removes items lying around."]
   announce: ["<gray>A message with a title to everybody.", "<gray>/announce next sends the next", "<gray>message of the list."]
@@ -1757,6 +1758,9 @@ module:
   announcer:
     name: "<#ffc371><bold>Announcements</bold>"
     lore: ["<gray>Messages that go round on their", "<gray>own, and /announce. The list is in", "<gray>config.yml under announcer.messages."]
+  modguard:
+    name: "<#ffc371><bold>Mod guard</bold>"
+    lore: ["<gray>Forbidden clients and mods: warn and", "<gray>kick first, punish next time. Rules", "<gray>in config.yml under mod-guard.rules."]
   homes:
     name: "<#ffc371><bold>Homes</bold>"
     lore: ["<gray>Players save places and teleport", "<gray>back: /sethome, /home, /homes."]
@@ -1795,6 +1799,19 @@ module:
     lore: ["<gray>/troll: harmless jokes."]
 
 module-setting:
+  mod-guard:
+    mode:
+      name: "<white>Mode"
+      lore: ["<gray>BLOCKLIST: all but the rules.", "<gray>ALLOWLIST: only allowed clients."]
+    warnings:
+      name: "<white>Warnings before punishment"
+      lore: ["<gray>How often WARN only kicks."]
+    punishment:
+      name: "<white>Punishment"
+      lore: ["<gray>What follows after the warnings."]
+    probe:
+      name: "<white>Hidden sign check"
+      lore: ["<gray>Asks the client for mod texts.", "<gray>Paper 1.21.9 and newer only;", "<gray>shows a sign editor for a blink."]
   announcer:
     interval-seconds:
       name: "<white>Every seconds"
@@ -1980,6 +1997,7 @@ anticheat:
   unknown: "<red>No player called <white>{player}</white> is known."
   cleared: "<gray>The mark of <white>{player}</white> is gone."
   check:
+    xraybait: "Dug to fake ores"
     snap: "Sudden aim jump"
     botmine: "Mining like a bot"
     aim: "Aim (mouse)"
@@ -2059,6 +2077,12 @@ check:
   alts: "<#ffc371>Other accounts"
   tp: "<#ffc371>Teleport there unseen"
   prison: "<dark_gray>Prison 15 minutes"
+  tests: "<#ffc371><bold>Tests"
+  tests-lore: ["<gray>Aura bot behind the back, x-ray", "<gray>bait, fake base, knockback test,", "<gray>recording, screen check, mods."]
+  mods: "<#ffc371><bold>Client and mods"
+  mods-brand: "<gray>Client: <white>{brand}"
+  mods-channels: "<gray>Mod channels: <white>{count}"
+  mods-found: "<red>{mod} <gray>({action})"
   replay: "<#ffc371>Watch the recording ({count})"
   replay-lore: ["<gray>The last saved clip as a replay:", "<gray>a figure moves exactly like the player,", "<gray>only you see it.", "", "<#ffc371>Click: newest clip", "<#ffc371>Right-click: the last 10 seconds now"]
 
@@ -2084,3 +2108,77 @@ replay:
   event: "<#ffc371>{event}"
   none: "<gray>There is no recording of this player."
   live: "recorded now"
+
+modguard:
+  found: "<red>⚠ <white>{player}</white> <gray>uses <white>{mod}</white> → {action}. <gray>Click for /check."
+  kick: "<red><bold>Not allowed here</bold>\n\n<gray>Your client or a mod is not allowed on this server:\n<white>{mod}"
+  warn-kick: "<red><bold>Please remove {mod}</bold>\n\n<gray>This client or mod is not allowed here.\n<gray>Remove it and join again.\n\n<red>Next time you will be punished."
+  reason: "Forbidden client or mod: {mod}"
+  usage: "<gray>Usage: <white>/mods <player></white> or <white>/mods reset <player></white>"
+  header: "<white>{player}</white><gray>: client <white>{brand}</white>, warnings: <white>{strikes}</white>"
+  channels: "<gray>Mod channels: <white>{channels}"
+  mods: "<gray>Rules hit: <white>{mods}"
+  reset: "<gray>The mod warnings of <white>{player}</white> are cleared."
+
+tests:
+  title: "<dark_gray>Tests: {player}"
+  failed: "<red>That did not work on this server."
+  aura:
+    name: "<#ffc371><bold>Aura bot"
+    lore: ["<gray>A target circles behind the suspect's", "<gray>back. Only they and you see it.", "<gray>People do not hit what is behind them."]
+    clicks: ["<#ffc371>Click: start", "<#ffc371>Right-click: duration", "<#ffc371>Shift-click: kind", "<#ffc371>Shift + right-click: invisible"]
+  bait:
+    name: "<#ffc371><bold>X-ray bait"
+    lore: ["<gray>Fake ores deep in the stone, walled", "<gray>in on all sides, only the suspect", "<gray>sees them. Digging to them: x-ray."]
+    clicks: ["<#ffc371>Click: place", "<#ffc371>Right-click: how many", "<#ffc371>Shift-click: which ore", "<#ffc371>Shift + right-click: show to me"]
+  base:
+    name: "<#ffc371><bold>Fake base nearby"
+    lore: ["<gray>A bait base 40-70 blocks away", "<gray>deep underground."]
+    clicks: ["<#ffc371>Click: build", "<#ffc371>Right-click: design"]
+  ss:
+    name: "<#ffc371><bold>Screen check"
+    lore: ["<gray>Title and message for the suspect", "<gray>to join the voice channel", "<gray>(investigation.screenshare-link)."]
+    clicks: ["<#ffc371>Click: start", "<#ffc371>Right-click: freeze or not"]
+  kb:
+    name: "<#ffc371><bold>Knockback test"
+    lore: ["<gray>Pushes like a hit, no damage, and", "<gray>shows how far they moved."]
+  record:
+    name: "<#ffc371><bold>Record and replay"
+    lore: ["<gray>The last ten seconds right now,", "<gray>played back for you."]
+  mods:
+    name: "<#ffc371><bold>Check client and mods"
+    lore: ["<gray>Client name, mod channels, and the", "<gray>hidden sign check once more."]
+  option:
+    aura:
+      seconds: "<gray>Duration: <white>{value} s"
+      kind: "<gray>Kind: <white>{value}"
+      invisible: "<gray>Invisible: <white>{value}"
+    bait:
+      count: "<gray>How many: <white>{value}"
+      ore: "<gray>Ore: <white>{value}"
+      show: "<gray>Show to me: <white>{value}"
+    base:
+      design: "<gray>Design: <white>{value}"
+    ss:
+      freeze: "<gray>Freeze: <white>{value}"
+  value:
+    enabled: "yes"
+    disabled: "no"
+    zombie: "zombie"
+    player: "player figure"
+    stand: "armor stand"
+    random: "random"
+    diamond: "diamond"
+    ancient_debris: "ancient debris"
+    emerald: "emerald"
+    gold: "gold"
+  aura-started: "<gray>Aura bot behind <white>{player}</white> for {seconds} seconds."
+  aura-hit: "<#ffc371>Hits: {hits} <gray>· behind the back: <red>{behind}</red> <gray>({angle}°)"
+  aura-result: "<gray>Aura bot done: <white>{player}</white> hit it <white>{hits}</white> times, <red>{behind}</red> of them behind their back."
+  bait-started: "<gray>{count} fake ores placed around <white>{player}</white>. You are told when they dig to one."
+  bait-found: "<red>⚠ <white>{player}</white> dug straight to a fake ore! <gray>{left} left. Click for /check."
+  ss-title: "<red><bold>Screen check</bold>"
+  ss-subtitle: "<white>The team wants to see your screen"
+  ss-chat: "<red>The team (<white>{staff}</white>) asks you for a screen check. Do not leave and do not close anything."
+  ss-link: "<#ffc371><underlined>Join the voice channel"
+  ss-started: "<gray>Screen check for <white>{player}</white> started."

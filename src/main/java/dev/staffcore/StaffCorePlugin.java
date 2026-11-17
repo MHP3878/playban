@@ -47,6 +47,8 @@ public class StaffCorePlugin extends JavaPlugin {
     private dev.staffcore.module.AdminPanel adminPanel;
     private dev.staffcore.module.PlayerCheck playerCheck;
     private dev.staffcore.module.Announcer announcer;
+    private dev.staffcore.module.ModGuard modGuard;
+    private dev.staffcore.module.Investigations investigations;
     private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
@@ -153,6 +155,12 @@ public class StaffCorePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(playerCheck, this);
         register("check", "Everything about a player on one live page", "staffcore.check", playerCheck);
         announcer = new dev.staffcore.module.Announcer(this);
+        modGuard = new dev.staffcore.module.ModGuard(this);
+        modGuard.load();
+        getServer().getPluginManager().registerEvents(modGuard, this);
+        modGuard.registerProbeListener();
+        investigations = new dev.staffcore.module.Investigations(this);
+        getServer().getPluginManager().registerEvents(investigations, this);
         modules = new dev.staffcore.module.ModuleManager(this);
         defineModules(executor);
         modules.startAll();
@@ -273,6 +281,12 @@ public class StaffCorePlugin extends JavaPlugin {
                 .setting("anticheat.max-ping", CYCLE, org.bukkit.Material.CLOCK, 300, 200, 300, 500)
                 .setting("anticheat.max-cps", CYCLE, org.bukkit.Material.STONE_BUTTON, 22, 18, 22, 26);
         modules.add("adminmode", org.bukkit.Material.NETHERITE_CHESTPLATE, "admin-mode.required", true);
+        modules.add("modguard", org.bukkit.Material.NAME_TAG, "mod-guard.enabled", true)
+                .command(new dev.staffcore.module.ModuleManager.Cmd("mods", "Which client and mods a player has", "staffcore.check", modGuard))
+                .setting("mod-guard.mode", CYCLE, org.bukkit.Material.COMPARATOR, "BLOCKLIST", "BLOCKLIST", "ALLOWLIST")
+                .setting("mod-guard.warnings", CYCLE, org.bukkit.Material.PAPER, 1, 0, 1, 2, 3)
+                .setting("mod-guard.punishment", CYCLE, org.bukkit.Material.ANVIL, "CATEGORY cheating", "CATEGORY cheating", "PLAYBAN 1h", "PLAYBAN 1d", "BAN 7d", "BAN perm")
+                .setting("mod-guard.probe", BOOL, org.bukkit.Material.OAK_SIGN, true);
         modules.add("esp", org.bukkit.Material.SPYGLASS, "esp.enabled", true)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("esp", "See chests and players through walls, only you", "staffcore.esp", esp))
                 .setting("esp.player-range", CYCLE, org.bukkit.Material.PLAYER_HEAD, 128, 32, 64, 128, 256)
@@ -333,6 +347,7 @@ public class StaffCorePlugin extends JavaPlugin {
         if (esp != null) esp.stop();
         if (ghost != null) ghost.stop();
         if (announcer != null) announcer.stop();
+        if (investigations != null) investigations.stopAll();
         if (antiCheat != null) antiCheat.stop();
         if (money != null) {
             money.saveIfDirty();
@@ -409,6 +424,10 @@ public class StaffCorePlugin extends JavaPlugin {
     public dev.staffcore.module.AdminPanel adminPanel() { return adminPanel; }
 
     public dev.staffcore.module.PlayerCheck playerCheck() { return playerCheck; }
+
+    public dev.staffcore.module.ModGuard modGuard() { return modGuard; }
+
+    public dev.staffcore.module.Investigations investigations() { return investigations; }
 
     /** One line in the team protocol (/stafflog). */
     public void staffLog(String actor, String action, String target, String detail) {

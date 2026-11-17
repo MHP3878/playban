@@ -191,6 +191,16 @@ public final class PlayerCheck implements TabExecutor, Listener {
             staff.closeInventory();
             ac.replay(staff, t.getUniqueId(), e.isRightClick() ? "now" : null);
         });
+        m.set(43, Items.of(Material.BREWING_STAND, lang().msg("check.tests"), lang().lore("check.tests-lore")), e -> plugin.investigations().menu(staff, t));
+        ModGuard.Info mods = plugin.modGuard().info(t.getUniqueId());
+        List<Component> modLore = new ArrayList<>();
+        modLore.add(line("check.mods-brand", "brand", mods.brand == null ? "?" : mods.brand));
+        modLore.add(line("check.mods-channels", "count", mods.channels.size()));
+        for (ModGuard.Rule r : plugin.modGuard().matches(mods)) modLore.add(line("check.mods-found", "mod", r.name(), "action", r.action()));
+        m.set(25, Items.of(Material.NAME_TAG, lang().msg("check.mods"), modLore), e -> {
+            staff.closeInventory();
+            staff.performCommand("mods " + t.getName());
+        });
         m.set(49, Items.of(Material.BARRIER, lang().msg("panel.close"), List.of()), e -> staff.closeInventory());
         return m.fill();
     }

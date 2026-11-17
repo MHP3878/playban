@@ -156,6 +156,27 @@ Test it with your own clients before you rely on it; if something is too strict 
 
 **PlayBan both ways.** A PlayBan hides the player from everybody and everybody from the player (the team stays visible to them; `restrictions.hide-others`). When it is over the player is sent back: `playban.end-teleport` LAST (where they were before), SPAWN, HOME, LOCATION (`playban.end-location`) or NONE, also in Settings (shift-click there: the place where you stand).
 
+## Forbidden clients and mods
+
+The mod guard looks at three things: the client name the game sends (`fabric`, `vanilla`, `lunarclient`, ...), the mod channels a client registers, and, on Paper 1.21.9 and newer, a hidden sign: for a blink the client gets a sign editor with translation keys of mods, and a client that has such a mod fills in its own text. Each rule in `mod-guard.rules` names words to look for and an action:
+
+- `ALERT`: only tells the team (default for minimaps with a player radar).
+- `KICK`: sends the player away with the name of the mod.
+- `WARN`: the first time(s) a kick with "please remove it, next time you will be punished" (`warnings`), then the punishment (`punishment`, default the cheating category) with the catch animation.
+- `PUNISH`: at once.
+
+With `mode: ALLOWLIST` only the clients in `allowed-clients` may join. `/mods <player>` shows client, channels and rules hit; `/mods reset <player>` clears the warnings; `staffcore.modguard.bypass` skips the check.
+
+Honest limit: many cheat clients (Meteor too) pretend to be plain Fabric and register nothing of their own. They are only found this way when they give themselves away; what they do is still judged by the anti-cheat, and the tests below find them.
+
+## Tests for suspects
+
+`/check` → **Tests**, every test with its own choices (right-click and shift-click change them, left-click starts):
+
+- **Aura bot**: a target circles behind the suspect's back for 10-60 seconds, as zombie, player figure or armor stand, visible or invisible, and only the suspect and you see it. People do not hit what is behind them; every hit from behind gives anti-cheat points, you see the count live and a summary at the end.
+- **X-ray bait**: 5, 10 or 20 fake ores (diamond, ancient debris, emerald, gold) deep in the stone, walled in on every side, visible only to the suspect (and to you if you like). Digging straight to one gives 6 points each and a message to you.
+- **Fake base nearby** with a design of your choice, **knockback test**, **record and replay** the last ten seconds, **screen check** (title and message, optional freeze, a clickable link from `investigation.screenshare-link`), and **client and mods** once more.
+
 ## More team tools
 
 - **`/check <player>`**: everything about one player on one page that updates every second. Ping, client, game mode, health, where they are, clicks per second right now, the anti-cheat account per check, the last findings and the last ten commands (passwords of `/login` and the like are hidden). Buttons: inventory, ender chest, freeze, watch, follow unseen (admin mode, ghost mode, to the player), reset points, punish, profile, block log of the last day, other accounts, teleport, prison for 15 minutes.

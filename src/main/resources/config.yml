@@ -315,6 +315,7 @@ anticheat:
     fastbow: {enabled: true, weight: 1.0}
     snap: {enabled: true, weight: 1.0}
     botmine: {enabled: true, weight: 1.0}
+    xraybait: {enabled: true, weight: 1.0}
 
 # ---- PlayBan ----
 playban:
@@ -338,3 +339,38 @@ announcer:
     - "<gray>Need help? Write <white>/ticket</white>, the team answers."
     - "<gray>Cheating is caught by the anti-cheat. Play fair!"
     - "<gray>Save your base with <white>/sethome</white>."
+
+# ---- Mod guard (/sc modules) ----
+# Finds clients and mods by the client name, the mod channels, and on Paper 1.21.9+ by a hidden sign with
+# translation keys (probe). Many cheat clients hide themselves; behaviour is still judged by the anti-cheat.
+# Actions: ALERT (tell the team), KICK, WARN (kick the first times with a request to remove it, then punish), PUNISH
+mod-guard:
+  enabled: true
+  # BLOCKLIST: everything except the rules below. ALLOWLIST: only the clients in allowed-clients may join
+  mode: BLOCKLIST
+  allowed-clients: [vanilla, fabric, forge, neoforge, quilt, lunarclient, feather, badlion, labymod]
+  not-allowed-action: KICK
+  # how often WARN only kicks before it punishes
+  warnings: 1
+  # PLAYBAN <time>, BAN <time|perm>, KICK, CATEGORY <id>
+  punishment: CATEGORY cheating
+  probe: true
+  rules:
+    meteor: {brand: [meteor], channel: [meteor], keys: [key.meteor-client.open-gui], action: WARN}
+    wurst: {brand: [wurst], channel: [wurst], keys: [key.wurst.zoom], action: WARN}
+    liquidbounce: {brand: [liquidbounce], channel: [liquidbounce], action: WARN}
+    aristois: {brand: [aristois], channel: [aristois], action: WARN}
+    impact: {brand: [impact], channel: [impact], action: WARN}
+    future: {brand: [future], channel: [future], action: WARN}
+    rusherhack: {brand: [rusherhack], channel: [rusherhack], action: WARN}
+    thunderhack: {brand: [thunderhack], channel: [thunderhack], action: WARN}
+    bleachhack: {brand: [bleachhack], channel: [bleachhack], action: WARN}
+    inertia: {brand: [inertia], channel: [inertia], action: WARN}
+    freecam: {channel: [freecam], keys: [key.freecam.toggle], action: WARN}
+    xray-mod: {channel: [xray], keys: [key.xray.toggle], action: WARN}
+    minimap-radar: {channel: [xaerominimap, journeymap, voxelmap], action: ALERT}
+
+# ---- Tests from /check (Tests button) ----
+investigation:
+  # shown as a clickable link in the screen check, e.g. your Discord voice channel
+  screenshare-link: ""

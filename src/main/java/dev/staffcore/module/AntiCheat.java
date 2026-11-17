@@ -79,7 +79,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AntiCheat implements Listener, TabExecutor {
     public static final List<String> CHECKS = List.of("fly", "speed", "reach", "aura", "autoclick", "nofall", "velocity", "xray",
             "timer", "step", "jesus", "fastbreak", "nuker", "scaffold", "noslow", "badpackets", "autototem", "anchor", "crystal", "bot",
-            "aim", "criticals", "invmove", "fastbow", "snap", "botmine");
+            "aim", "criticals", "invmove", "fastbow", "snap", "botmine", "xraybait");
     /** Checks that alone never catch anybody: they can only mark. */
     private static final Set<String> SOFT = Set.of("xray", "bot");
 
@@ -481,6 +481,19 @@ public final class AntiCheat implements Listener, TabExecutor {
             apply(id, name, step, reason);
         };
         animation.play(p, punish);
+    }
+
+    /** Catches a player for something found outside the point account (a forbidden mod, a test): animation, then this step. */
+    public void catchWith(Player p, String step, String reason) {
+        if (!catching.add(p.getUniqueId())) return;
+        UUID id = p.getUniqueId();
+        String name = p.getName();
+        saveClip(id, keep(p, reason));
+        plugin.punishments().notifyStaff(lang().prefixed("anticheat.caught", "player", name, "checks", reason, "step", step));
+        animation.play(p, () -> {
+            catching.remove(id);
+            apply(id, name, step, reason);
+        });
     }
 
     private void apply(UUID id, String name, String step, String reason) {

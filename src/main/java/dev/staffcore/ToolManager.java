@@ -618,7 +618,7 @@ public final class ToolManager implements Listener, TabExecutor {
      * Pushes the player like a normal hit would, without damage, and measures how far they really moved.
      * Somebody with an anti-knockback cheat barely moves.
      */
-    private void knockbackTest(Player staff, Player target) {
+    public void knockbackTest(Player staff, Player target) {
         Location start = target.getLocation();
         double yaw = Math.toRadians(staff.getLocation().getYaw());
         target.setVelocity(new org.bukkit.util.Vector(-Math.sin(yaw) * 0.42, 0.36, Math.cos(yaw) * 0.42));

@@ -50,9 +50,10 @@ public final class AdminMenus {
             "restrictions.item-drop", "restrictions.item-pickup", "restrictions.chat",
             "restrictions.commands", "restrictions.mob-target",
             "count-only-online-time", "staff-see-punished", "auto-approve-messages",
-            "limbo.blind", "limbo.hide-others"
+            "limbo.blind", "limbo.hide-others",
+            "restrictions.adventure-mode", "restrictions.action-bar", "restrictions.slow", "limbo.lock-view", "short-commands"
     };
-    private static final int[] TOGGLE_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 28, 29, 30, 24, 25};
+    private static final int[] TOGGLE_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 28, 29, 30, 24, 25, 23, 31, 39, 40, 42};
 
     private final PlayBanPlugin plugin;
 
@@ -106,6 +107,7 @@ public final class AdminMenus {
         m.set(14, item(Material.WRITABLE_BOOK, "menu.main.reviews", "count", plugin.store().reviews.size()), e -> reviews(p, 0));
         m.set(15, item(Material.PAPER, "menu.main.tickets", "count", plugin.tickets().count(dev.playban.model.Ticket.Status.OPEN),
                 "progress", plugin.tickets().count(dev.playban.model.Ticket.Status.IN_PROGRESS)), e -> plugin.ticketMenus().list(p, "ACTIVE", null, 0));
+        m.set(40, item(Material.KNOWLEDGE_BOOK, "menu.main.guide"), e -> guide(p, 0));
         m.set(16, item(Material.BOOK, "menu.main.history"), e ->
                 plugin.input().ask(p, "prompt.history-name", name -> profileByName(p, name), () -> main(p)));
         if (plugin.voice().available() && p.hasPermission("playban.voice")) {
@@ -373,6 +375,42 @@ public final class AdminMenus {
         m.set(49, item(Material.BOOK, "menu.detail.profile"), e -> profile(p, pun.uuid, pun.name));
         m.set(50, item(Material.OAK_DOOR, "menu.back"), e -> active(p, 0));
         m.fill().open(p);
+    }
+
+    // ---------------------------------------------------------------- command guide
+
+    /** One command in the guide: what you type, an icon, who may use it ("" = everyone). */
+    private record GuideEntry(String id, String usage, Material icon, String permission) {}
+
+    private static final List<GuideEntry> GUIDE = List.of(
+            new GuideEntry("menu", "/playban menu", Material.COMPASS, "playban.staff"),
+            new GuideEntry("punish", "/punish <player>", Material.ANVIL, "playban.staff"),
+            new GuideEntry("apply", "/playban apply <player> <category>", Material.LECTERN, "playban.staff"),
+            new GuideEntry("ban", "/ban <player> <time|perm> [reason]", Material.IRON_BARS, "playban.staff"),
+            new GuideEntry("specban", "/playban specban <player> <time|perm> [reason]", Material.ENDER_EYE, "playban.staff"),
+            new GuideEntry("warn", "/warn <player> [reason]", Material.BELL, "playban.staff"),
+            new GuideEntry("unban", "/unban <player|ban-ID>", Material.MILK_BUCKET, "playban.staff"),
+            new GuideEntry("pardon", "/playban pardon <player>", Material.LIME_DYE, "playban.staff"),
+            new GuideEntry("time", "/playban addtime|removetime <player> <time>", Material.CLOCK, "playban.staff"),
+            new GuideEntry("note", "/playban note <player> <text>", Material.WRITABLE_BOOK, "playban.staff"),
+            new GuideEntry("profile", "/playban profile <player>", Material.BOOK, "playban.staff"),
+            new GuideEntry("vanish", "/vanish", Material.GLASS, "playban.vanish"),
+            new GuideEntry("ticket-show", "/ticket show [reason]", Material.HOPPER, "playban.staff"),
+            new GuideEntry("voice", "/voice", Material.JUKEBOX, "playban.voice"),
+            new GuideEntry("ticket", "/ticket", Material.PAPER, ""),
+            new GuideEntry("appeal", "/appeal <ban-ID> <text>", Material.NAME_TAG, ""),
+            new GuideEntry("tasks", "/playban", Material.FEATHER, ""));
+
+    /** Every command with what it does and an example, filtered to what the viewer may use. */
+    public void guide(Player p, int page) {
+        List<GuideEntry> visible = new ArrayList<>();
+        for (GuideEntry g : GUIDE) if (g.permission().isEmpty() || p.hasPermission(g.permission())) visible.add(g);
+        paged(lang().msg("menu.guide.title"), visible, page,
+                g -> Items.of(g.icon(), lang().msg("menu.guide.entry", "command", g.usage()), lang().lore("guide." + g.id())),
+                null, n -> guide(p, n), () -> {
+                    if (p.hasPermission("playban.staff")) main(p);
+                    else p.closeInventory();
+                }).open(p);
     }
 
     // ---------------------------------------------------------------- player profile & notes
@@ -660,6 +698,13 @@ public final class AdminMenus {
                 e -> editList(p, "reason-presets", "prompt.reason-presets", false));
         m.set(37, item(Material.PAINTING, "menu.settings.ban-screen"), e -> banScreen(p, 0));
         m.set(41, item(Material.PAPER, "menu.settings.tickets"), e -> plugin.ticketMenus().settings(p));
+        String inv = plugin.getConfig().getString("inventory-mode", "KEEP").toUpperCase();
+        m.set(43, item(Material.CHEST, "menu.settings.inventory", "value", lang().raw("inventory-mode." + inv)), e -> {
+            List<String> modes = List.of("KEEP", "STORE", "CLEAR");
+            plugin.getConfig().set("inventory-mode", modes.get((Math.max(0, modes.indexOf(inv)) + 1) % modes.size()));
+            plugin.saveConfig();
+            settings(p);
+        });
         String limbo = plugin.getConfig().getString("limbo.location.world");
         m.set(38, item(Material.ENDER_EYE, "menu.settings.limbo-location", "value", limbo == null ? lang().raw("limbo.default-location")
                 : limbo + " " + (int) plugin.getConfig().getDouble("limbo.location.x") + " " + (int) plugin.getConfig().getDouble("limbo.location.y")

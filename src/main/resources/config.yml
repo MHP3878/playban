@@ -13,6 +13,16 @@ staff-see-punished: true
 # true = nice messages and apologies are delivered without a staff review (not recommended)
 auto-approve-messages: false
 
+# true = /ban, /punish, /warn, /unban, /vanish and /guide work without "/playban" in front.
+# If another plugin also uses one of these names, use /playban ban ... instead.
+short-commands: true
+
+# What happens to the inventory of a punished player:
+#   KEEP  = they keep everything (but cannot use it while punished)
+#   STORE = it is taken away and given back when the punishment ends
+#   CLEAR = it is deleted for good
+inventory-mode: KEEP
+
 # What a punished player is NOT allowed to do
 restrictions:
   hide-from-players: true
@@ -26,6 +36,13 @@ restrictions:
   chat: true
   commands: true
   mob-target: true
+  # adventure mode: the game itself stops breaking blocks, so nothing jumps back and it does not feel laggy
+  adventure-mode: true
+  # line above the hotbar with time left and reason
+  action-bar: true
+  # punished players walk slower
+  slow: false
+  slow-level: 1
 
 # Commands a punished player may still use (without the slash).
 # /playban and /ticket always work.
@@ -57,6 +74,8 @@ limbo:
   blind: true
   # The player sees no other players
   hide-others: true
+  # The player cannot even turn their head
+  lock-view: true
   # Where the player is held. Set it in the menu; without it the world spawn is used.
   # location: {world: world, x: 0, y: 100, z: 0, yaw: 0, pitch: 0}
 

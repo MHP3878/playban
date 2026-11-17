@@ -30,6 +30,7 @@ warn:
   broadcast: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>verwarnt. Grund:</gray> <white>{reason}"
 
 ban:
+  id-line: "<gray>Ban-ID: <white>{id}"
   broadcast-spectator: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>einen Zuschauer-Bann gegeben. Dauer:</gray> <white>{time}</white><gray>. Grund:</gray> <white>{reason}"
   discord-line: "<gray>Discord: <#ffc371>{discord}"
   screen: |-
@@ -44,6 +45,7 @@ ban:
   broadcast-unbanned: "<white>{staff}</white> <gray>hat</gray> <white>{player}</white> <gray>entbannt."
 
 limbo:
+  id: "<gray>Deine Ban-ID: <white>{id}</white>. Antrag mit <#ffc371>/appeal {id} <Text></#ffc371>"
   title: "<red><bold>GEBANNT</bold></red>"
   subtitle: "<gray>Restzeit: <white>{time}"
   status: "<red>Du bist gebannt und kannst nur zuschauen. <gray>Restzeit: <white>{time}</white>. Grund: <white>{reason}"
@@ -60,6 +62,44 @@ profile:
 
 note:
   added: "<green>Notiz zu <white>{player}</white> gespeichert."
+
+actionbar: "<gray>PlayBan <dark_gray>|</dark_gray> <gray>noch <white>{time}</white> <dark_gray>|</dark_gray> <gray>Grund: <white>{reason}"
+
+vanish:
+  "on": "<gray>Du bist jetzt <white>unsichtbar</white>. Spieler sehen dich nicht. Tippe noch einmal <#ffc371>/vanish</#ffc371>, um dich zu zeigen."
+  "off": "<gray>Du bist wieder <white>sichtbar</white>."
+
+appeal:
+  not-punished: "<gray>Du bist nicht bestraft, es gibt also nichts zu beantragen."
+  usage: "<gray>Nutzung: <white>/appeal {id} <warum du entbannt werden solltest></white>"
+  wrong-id: "<red>Diese Ban-ID gehört nicht zu deiner Strafe. Schau auf deinen Bann-Bildschirm."
+  too-short: "<red>Bitte erklär es etwas genauer, mindestens 10 Zeichen."
+  ticket-text: "Entbannungsantrag für Bann {id}: {text}"
+  received: "<green>Dein Antrag für Bann <white>{id}</white> ist als Ticket <white>#{ticket}</white> angekommen. Das Team meldet sich bei dir."
+
+inventory-mode:
+  KEEP: "alles behalten"
+  STORE: "wegnehmen, am Ende zurückgeben"
+  CLEAR: "für immer löschen"
+
+guide:
+  menu: ["<gray>Öffnet das Hauptmenü.", "<gray>Von hier aus geht alles."]
+  punish: ["<gray>Kategorie für einen Spieler wählen.", "<gray>PlayBan berechnet die Strafe aus", "<gray>seinen früheren Verstößen.", "", "<dark_gray>Beispiel: /punish Steve"]
+  apply: ["<gray>Wie /punish, aber ohne Menü.", "<gray>Geht auch von der Konsole.", "", "<dark_gray>Beispiel: /playban apply Steve x-ray"]
+  ban: ["<gray>Ein echter Bann: Der Spieler kommt", "<gray>nicht mehr rein. Mit perm für immer.", "", "<dark_gray>Beispiel: /ban Steve 7d Hacking"]
+  specban: ["<gray>Der Spieler darf rein, hängt aber", "<gray>als Zuschauer fest und kann nur", "<gray>Tickets oder einen Antrag schreiben."]
+  warn: ["<gray>Eine Verwarnung. Zählt als Verstoß", "<gray>für die Kategorien.", "", "<dark_gray>Beispiel: /warn Steve Spam"]
+  unban: ["<gray>Hebt einen Bann auf. Geht mit dem", "<gray>Namen oder mit der Ban-ID.", "", "<dark_gray>Beispiel: /unban K7QX2M"]
+  pardon: ["<gray>Beendet einen laufenden PlayBan sofort."]
+  time: ["<gray>Macht einen PlayBan länger oder kürzer.", "", "<dark_gray>Beispiel: /playban addtime Steve 1h"]
+  note: ["<gray>Schreibt eine Notiz zu einem Spieler.", "<gray>Nur das Team sieht sie."]
+  profile: ["<gray>Notizen, Strafen und Tickets", "<gray>eines Spielers."]
+  vanish: ["<gray>Macht dich für Spieler unsichtbar.", "<gray>Das Team sieht dich weiterhin."]
+  ticket-show: ["<gray>Alle Tickets, mit Filtern.", "", "<dark_gray>Beispiel: /ticket show report"]
+  voice: ["<gray>Voice-Gruppen verwalten.", "<gray>Braucht Simple Voice Chat."]
+  ticket: ["<gray>Dem Serverteam schreiben:", "<gray>Spieler melden, etwas fragen,", "<gray>einen Bug melden."]
+  appeal: ["<gray>Entbannung beantragen. Du brauchst", "<gray>die Ban-ID von deinem Bann-Bildschirm."]
+  tasks: ["<gray>Wenn du bestraft bist: zeigt", "<gray>Restzeit, Grund und die Aufgaben,", "<gray>die deine Zeit verkürzen."]
 
 help: |-
   <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- Befehle
@@ -139,6 +179,7 @@ end:
   broadcast-pardoned: "<white>{staff}</white> <gray>hat die Strafe von</gray> <white>{player}</white> <gray>beendet."
 
 status:
+  id: "<gray>Ban-ID: <white>{id}</white> <dark_gray>(für /appeal)"
   line: "<gray>Du bist noch <white>{time}</white> bestraft. Grund: <white>{reason}"
   online-only: "<gray>Die Zeit läuft nur, solange du <white>online</white> bist."
   real-time: "<gray>Die Zeit läuft auch, wenn du offline bist."
@@ -413,6 +454,15 @@ setting:
     mob-target:
       name: "<#ffc371>Monster ignorieren ihn"
       lore: ["<gray>Monster greifen den Spieler", "<gray>nicht an."]
+    adventure-mode:
+      name: "<#ffc371>Abenteuermodus"
+      lore: ["<gray>Das Spiel selbst verhindert Abbauen.", "<gray>Nichts springt zurück, es fühlt", "<gray>sich nicht laggy an."]
+    action-bar:
+      name: "<#ffc371>Zeit und Grund über der Leiste"
+      lore: ["<gray>Der Spieler sieht immer, wie lange", "<gray>und warum er bestraft ist."]
+    slow:
+      name: "<#ffc371>Langsamer laufen"
+      lore: ["<gray>Bestrafte bewegen sich langsamer."]
   limbo:
     blind:
       name: "<#ffc371>Zuschauer-Bann: blind"
@@ -420,6 +470,12 @@ setting:
     hide-others:
       name: "<#ffc371>Zuschauer-Bann: sieht niemanden"
       lore: ["<gray>Spieler mit Zuschauer-Bann", "<gray>sehen keine anderen Spieler."]
+    lock-view:
+      name: "<#ffc371>Zuschauer-Bann: nicht umdrehen"
+      lore: ["<gray>Der Spieler kann nicht einmal", "<gray>den Kopf bewegen."]
+  short-commands:
+    name: "<#ffc371>Kurze Befehle"
+    lore: ["<gray>/ban, /punish, /warn, /unban,", "<gray>/vanish ohne /playban davor."]
   count-only-online-time:
     name: "<#ffc371>Nur Online-Zeit zählt"
     lore: ["<gray>An: Die Zeit läuft nur, solange", "<gray>der Spieler auf dem Server ist.", "<gray>Aus: Sie läuft wie bei einem Bann."]
@@ -442,6 +498,9 @@ menu:
 
   main:
     title: "<gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient>"
+    guide:
+      name: "<#ffc371><bold>Befehls-Anleitung</bold>"
+      lore: ["<gray>Jeder Befehl mit Erklärung", "<gray>und Beispiel.", "", "<#ffc371>Klicken zum Öffnen"]
     voice:
       name: "<#ffc371><bold>Voice-Gruppen</bold>"
       lore: ["<gray>Gruppen: <white>{count}", "", "<#ffc371>Klicken zum Öffnen"]
@@ -657,6 +716,10 @@ menu:
     ban:
       name: "<red>Aus der Gruppe bannen"
       lore: ["<gray>Der Spieler wird entfernt und kann", "<gray>dieser Gruppe nicht mehr beitreten."]
+
+  guide:
+    title: "<dark_gray>Befehls-Anleitung"
+    entry: "<#ffc371>{command}"
 
   select-player:
     title: "<dark_gray>Wen willst du bestrafen?"
@@ -946,6 +1009,9 @@ menu:
     "on": "<green>● An"
     "off": "<red>● Aus"
     click: "<#ffc371>Klicken zum Umschalten"
+    inventory:
+      name: "<#ffc371>Inventar von Bestraften"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#ffc371>Klicken zum Wechseln"]
     ban-screen:
       name: "<#ffc371>Bann-Bildschirm"
       lore: ["<gray>Was ein gebannter Spieler sieht,", "<gray>und dein Discord-Link.", "", "<#ffc371>Klicken zum Bearbeiten"]

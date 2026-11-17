@@ -171,10 +171,13 @@ public final class DataStore {
             p.uuid = UUID.fromString(s.getString("uuid", ""));
             p.name = s.getString("name", "?");
             p.type = s.getString("type", "PLAYBAN");
+            p.banId = s.getString("ban-id");
             p.category = s.getString("category");
             p.expiresAt = s.getLong("expires");
             p.prevMode = s.getString("prev-mode");
             p.prevLocation = s.getString("prev-location");
+            p.prevGameMode = s.getString("prev-gamemode");
+            p.storedInventory = s.getString("stored-inventory");
             p.reason = s.getString("reason", "");
             p.staff = s.getString("staff", "?");
             p.createdAt = s.getLong("created");
@@ -207,12 +210,15 @@ public final class DataStore {
         cfg.set(path + ".uuid", p.uuid.toString());
         cfg.set(path + ".name", p.name);
         cfg.set(path + ".type", p.type);
+        if (p.banId != null) cfg.set(path + ".ban-id", p.banId);
         if (p.category != null) cfg.set(path + ".category", p.category);
         if (p.expiresAt > 0) cfg.set(path + ".expires", p.expiresAt);
         if (p.prevMode != null) {
             cfg.set(path + ".prev-mode", p.prevMode);
             cfg.set(path + ".prev-location", p.prevLocation);
         }
+        if (p.prevGameMode != null) cfg.set(path + ".prev-gamemode", p.prevGameMode);
+        if (p.storedInventory != null) cfg.set(path + ".stored-inventory", p.storedInventory);
         cfg.set(path + ".reason", p.reason);
         cfg.set(path + ".staff", p.staff);
         cfg.set(path + ".created", p.createdAt);

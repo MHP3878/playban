@@ -1194,6 +1194,186 @@ class PlayBanTest {
         }
     }
 
+    // ------------------------------------------------------------------ 0.6.0: feel, clarity, short commands, ban IDs
+
+    @Test
+    void punishedPlayerGoesIntoAdventureModeAndGetsTheOldModeBack() {
+        troll.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        punish("1h");
+        assertEquals(org.bukkit.GameMode.ADVENTURE, troll.getGameMode(), "adventure mode stops the laggy block breaking");
+        admin.performCommand("playban pardon Troll");
+        assertEquals(org.bukkit.GameMode.SURVIVAL, troll.getGameMode());
+
+        troll.setGameMode(org.bukkit.GameMode.CREATIVE);
+        punish("1h");
+        admin.performCommand("playban pardon Troll");
+        assertEquals(org.bukkit.GameMode.CREATIVE, troll.getGameMode(), "whatever mode they had comes back");
+    }
+
+    @Test
+    void inventoryCanBeStoredAndGivenBack() {
+        plugin.getConfig().set("inventory-mode", "STORE");
+        troll.getInventory().addItem(new ItemStack(Material.DIAMOND, 12));
+        punish("1h");
+        assertFalse(troll.getInventory().contains(Material.DIAMOND), "taken away while punished");
+        admin.performCommand("playban pardon Troll");
+        assertTrue(troll.getInventory().containsAtLeast(new ItemStack(Material.DIAMOND), 12), "given back at the end");
+    }
+
+    @Test
+    void storedInventorySurvivesARestart() {
+        plugin.getConfig().set("inventory-mode", "STORE");
+        troll.getInventory().addItem(new ItemStack(Material.EMERALD, 5));
+        punish("1h");
+        plugin.store().saveNow();
+        DataStore fresh = new DataStore(plugin);
+        fresh.load();
+        assertNotNull(fresh.active.get(troll.getUniqueId()).storedInventory, "the stored items are written to disk");
+    }
+
+    @Test
+    void inventoryCanBeClearedForGood() {
+        plugin.getConfig().set("inventory-mode", "CLEAR");
+        troll.getInventory().addItem(new ItemStack(Material.DIAMOND, 12));
+        punish("1h");
+        assertFalse(troll.getInventory().contains(Material.DIAMOND));
+        admin.performCommand("playban pardon Troll");
+        assertFalse(troll.getInventory().contains(Material.DIAMOND), "nothing comes back in CLEAR mode");
+    }
+
+    @Test
+    void punishedPlayerSeesTimeAndReasonAboveTheHotbar() {
+        punish("1h");
+        server.getScheduler().performTicks(25);
+        Component bar = troll.nextActionBar();
+        assertNotNull(bar, "an action bar is shown");
+        assertTrue(plain(bar).contains("Griefing the spawn"), "with the reason");
+    }
+
+    @Test
+    void vanishHidesStaffFromPlayersButNotFromOtherStaff() {
+        PlayerMock mod = server.addPlayer("Mod");
+        mod.setOp(true);
+        assertTrue(admin.performCommand("vanish"));
+        assertTrue(plugin.punishments().isVanished(admin.getUniqueId()));
+        assertFalse(bystander.canSee(admin), "normal players do not see a vanished admin");
+        assertTrue(mod.canSee(admin), "other team members still do");
+        admin.performCommand("vanish");
+        assertTrue(bystander.canSee(admin), "and back");
+
+        bystander.performCommand("vanish");
+        assertFalse(plugin.punishments().isVanished(bystander.getUniqueId()), "normal players cannot vanish");
+    }
+
+    @Test
+    void shortCommandsWorkWithoutPlaybanInFront() {
+        assertTrue(admin.performCommand("ban Troll 1h Hacking"));
+        assertNotNull(plugin.store().bans.get(troll.getUniqueId()), "/ban works like /playban ban");
+        assertTrue(admin.performCommand("unban Troll"));
+        assertNull(plugin.store().bans.get(troll.getUniqueId()));
+        assertTrue(admin.performCommand("warn Bystander Spam"));
+        assertEquals("WARN", plugin.store().history.get(bystander.getUniqueId()).get(0).type);
+
+        plugin.getConfig().set("short-commands", false);
+        admin.performCommand("ban Troll 1h Hacking");
+        assertNull(plugin.store().bans.get(troll.getUniqueId()), "switched off, /ban no longer bans");
+    }
+
+    @Test
+    void everyPunishmentGetsAUniqueBanIdAndCanBeLiftedWithIt() {
+        admin.performCommand("ban Troll 1h Hacking");
+        String id = plugin.store().bans.get(troll.getUniqueId()).banId;
+        assertNotNull(id);
+        assertEquals(6, id.length());
+        assertTrue(id.matches("[A-Z2-9]{6}"), "no 0/O or 1/I that people mix up");
+        admin.performCommand("playban punish Bystander 1h test");
+        String other = plugin.punishments().get(bystander.getUniqueId()).banId;
+        assertNotNull(other, "PlayBans get an ID too");
+        assertNotEquals(id, other, "every ID is different");
+
+        assertTrue(plain(plugin.punishments().banScreen(plugin.store().bans.get(troll.getUniqueId()))).contains(id),
+                "the ban screen shows the ID");
+        admin.performCommand("unban " + id.toLowerCase());
+        assertNull(plugin.store().bans.get(troll.getUniqueId()), "unban by ID works, in any letter case");
+    }
+
+    @Test
+    void appealOnlyWorksWithTheOwnBanId() {
+        admin.performCommand("playban specban Troll 1h Hacking");
+        String trollId = plugin.store().bans.get(troll.getUniqueId()).banId;
+        admin.performCommand("playban specban Bystander 1h Spam");
+        String otherId = plugin.store().bans.get(bystander.getUniqueId()).banId;
+
+        troll.performCommand("appeal " + otherId + " I want to come back please");
+        assertTrue(plugin.tickets().all().isEmpty(), "someone else's ID is refused");
+        troll.performCommand("appeal " + trollId + " short");
+        assertTrue(plugin.tickets().all().isEmpty(), "too short is refused");
+
+        PlayerCommandPreprocessEvent allowed = new PlayerCommandPreprocessEvent(troll, "/appeal " + trollId + " text");
+        server.getPluginManager().callEvent(allowed);
+        assertFalse(allowed.isCancelled(), "/appeal works inside the spectator ban");
+
+        troll.performCommand("appeal " + trollId + " I am sorry, I will follow the rules now");
+        assertEquals(1, plugin.tickets().all().size());
+        var t = plugin.tickets().all().get(0);
+        assertEquals("appeal", t.reason);
+        assertTrue(t.text.contains(trollId));
+    }
+
+    @Test
+    void spectatorBanCanLockTheView() {
+        admin.performCommand("playban specban Troll 1h Hacking");
+        var here = troll.getLocation();
+        var turned = here.clone();
+        turned.setYaw(here.getYaw() + 90);
+        var move = new org.bukkit.event.player.PlayerMoveEvent(troll, here.clone(), turned);
+        server.getPluginManager().callEvent(move);
+        assertEquals(here.getYaw(), move.getTo().getYaw(), "cannot turn the head");
+
+        plugin.getConfig().set("limbo.lock-view", false);
+        var move2 = new org.bukkit.event.player.PlayerMoveEvent(troll, here.clone(), turned.clone());
+        server.getPluginManager().callEvent(move2);
+        assertEquals(turned.getYaw(), move2.getTo().getYaw(), "with lock-view off turning is allowed");
+    }
+
+    @Test
+    void commandGuideShowsOnlyWhatTheViewerMayUse() {
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            admin.performCommand("guide");
+            assertNoMissingTexts(admin, code);
+            int adminCount = 0;
+            for (ItemStack it : admin.getOpenInventory().getTopInventory().getContents())
+                if (it != null && it.getType() != Material.BLACK_STAINED_GLASS_PANE && it.getType() != Material.ARROW
+                        && it.getType() != Material.OAK_DOOR && it.getType() != Material.MAP) adminCount++;
+
+            bystander.performCommand("playban guide");
+            // normal players reach it through the main help too
+            plugin.adminMenus().guide(bystander, 0);
+            assertNoMissingTexts(bystander, code);
+            int playerCount = 0;
+            for (ItemStack it : bystander.getOpenInventory().getTopInventory().getContents())
+                if (it != null && it.getType() != Material.BLACK_STAINED_GLASS_PANE && it.getType() != Material.ARROW
+                        && it.getType() != Material.OAK_DOOR && it.getType() != Material.MAP) playerCount++;
+            assertTrue(playerCount < adminCount, "players only see their own commands");
+            assertTrue(playerCount >= 3, "but they do see /ticket, /appeal and their own menu");
+        }
+    }
+
+    @Test
+    void newSettingsAppearInTheMenuInBothLanguages() {
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.adminMenus().settings(admin);
+            assertNoMissingTexts(admin, code);
+            plugin.adminMenus().main(admin);
+            assertNoMissingTexts(admin, code);
+        }
+        plugin.adminMenus().settings(admin);
+        admin.simulateInventoryClick(43);
+        assertEquals("STORE", plugin.getConfig().getString("inventory-mode"), "the inventory button switches the mode");
+    }
+
     @Test
     void timeParsing() {
         assertEquals(90_000_000L + 1_800_000L, TimeUtil.parse("1d 1h 30m"));

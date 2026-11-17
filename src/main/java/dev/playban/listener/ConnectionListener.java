@@ -64,6 +64,7 @@ public final class ConnectionListener implements Listener {
         if (plugin.tickets().canReturn(player.getUniqueId())) plugin.tickets().returnBack(player);
         plugin.ticketMenus().closed(player.getUniqueId());
         plugin.voice().quit(player.getUniqueId());
+        plugin.punishments().clearVanish(player.getUniqueId());
         plugin.tickets().pauseAllOf(player.getUniqueId());
         if (plugin.punishments().inLimbo(player.getUniqueId())) {
             // put everything back so the player is never left in spectator mode if the plugin is removed

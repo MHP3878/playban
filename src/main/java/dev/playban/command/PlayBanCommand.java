@@ -33,6 +33,22 @@ public final class PlayBanCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         boolean staff = sender.hasPermission("playban.staff");
+        // Short commands: /ban Steve 1d -> handled like /playban ban Steve 1d
+        String used = label.toLowerCase();
+        if (used.contains(":")) used = used.substring(used.indexOf(':') + 1);
+        java.util.Map<String, String> shortcuts = java.util.Map.of(
+                "ban", "ban", "tempban", "ban", "punish", "punish", "playban", "",
+                "warn", "warn", "unban", "unban", "vanish", "vanish", "guide", "guide");
+        if (!used.equals("playban") && !used.equals("pb") && shortcuts.containsKey(used)
+                && plugin.getConfig().getBoolean("short-commands", true)) {
+            String mapped = shortcuts.get(used);
+            String[] shifted = new String[args.length + (mapped.isEmpty() ? 0 : 1)];
+            if (!mapped.isEmpty()) {
+                shifted[0] = mapped;
+                System.arraycopy(args, 0, shifted, 1, args.length);
+                args = shifted;
+            }
+        }
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
 
         if (sender instanceof Player player && plugin.punishments().inLimbo(player.getUniqueId())
@@ -61,6 +77,15 @@ public final class PlayBanCommand implements TabExecutor {
             case "menu" -> {
                 if (sender instanceof Player player) plugin.adminMenus().main(player);
                 else lang().send(sender, "error.players-only");
+            }
+            case "vanish" -> {
+                if (!(sender instanceof Player player)) lang().send(sender, "error.players-only");
+                else if (!player.hasPermission("playban.vanish")) lang().send(sender, "error.no-permission");
+                else plugin.punishments().setVanished(player, !plugin.punishments().isVanished(player.getUniqueId()));
+            }
+            case "guide", "help" -> {
+                if (sender instanceof Player player) plugin.adminMenus().guide(player, 0);
+                else for (String line : lang().raw("help").split("\n")) sender.sendMessage(lang().parse(line));
             }
             case "punish" -> punish(sender, args);
             case "apply" -> apply(sender, args);
@@ -114,6 +139,15 @@ public final class PlayBanCommand implements TabExecutor {
                 }
                 Punishment ban = null;
                 for (Punishment b : plugin.store().bans.values()) if (b.name.equalsIgnoreCase(args[1])) ban = b;
+                if (ban == null) {
+                    // maybe it is a ban ID; a PlayBan ID ends the PlayBan instead
+                    Punishment byId = plugin.punishments().byBanId(args[1]);
+                    if (byId != null && plugin.store().bans.containsKey(byId.uuid)) ban = byId;
+                    else if (byId != null) {
+                        plugin.punishments().end(byId, "PARDONED", sender.getName());
+                        return true;
+                    }
+                }
                 if (ban == null) lang().send(sender, "error.not-banned", "player", args[1]);
                 else plugin.punishments().unban(ban, sender.getName());
             }
@@ -182,9 +216,6 @@ public final class PlayBanCommand implements TabExecutor {
                 plugin.saveConfig();
                 lang().load(args[1].toLowerCase());
                 lang().send(sender, "language-set", "language", lang().code());
-            }
-            case "help" -> {
-                for (String line : lang().raw("help").split("\n")) sender.sendMessage(lang().parse(line));
             }
             default -> {
                 // "/playban <player>" opens the category picker for that player

@@ -8,11 +8,13 @@ softdepend: [Vault, voicechat]
 commands:
   playban:
     description: PlayBan main command
-    aliases: [pb]
+    aliases: [pb, punish, ban, tempban, warn, unban, vanish, guide]
   ticket:
     description: Open a ticket for the server team
     aliases: [pbticket]
 
+  appeal:
+    description: Ask to be unbanned, with the ban ID from your ban screen
   voice:
     description: Voice group moderation (needs the plugin Simple Voice Chat)
     aliases: [pbvoice]
@@ -30,11 +32,15 @@ permissions:
       playban.see: true
       playban.notify: true
       playban.voice: true
+      playban.vanish: true
   playban.see:
     description: Can still see punished players
     default: op
   playban.notify:
     description: Receives staff notifications
+    default: op
+  playban.vanish:
+    description: Can turn invisible with /vanish and still sees vanished staff
     default: op
   playban.voice:
     description: Can moderate voice groups - kick, mute, ban, close, passwords, join unseen

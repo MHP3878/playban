@@ -15,6 +15,8 @@ public final class Punishment {
         }
     }
 
+    /** Short code the player can quote, e.g. in an appeal. Unique across all punishments. */
+    public String banId;
     /** PLAYBAN, BAN or WARN */
     public String type = "PLAYBAN";
     /** Category id, or null for a custom punishment. */
@@ -24,6 +26,10 @@ public final class Punishment {
     /** Spectator bans only: game mode and place before the player was put on hold, kept so a crash cannot lose them. */
     public String prevMode;
     public String prevLocation;
+    /** PlayBans: the game mode the player had before, so it can be given back. */
+    public String prevGameMode;
+    /** PlayBans with inventory-mode STORE: the player's inventory as YAML, given back at the end. */
+    public String storedInventory;
     public UUID uuid;
     public String name;
     public String reason;

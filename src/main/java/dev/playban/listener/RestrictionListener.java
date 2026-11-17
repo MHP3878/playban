@@ -67,10 +67,15 @@ public final class RestrictionListener implements Listener {
         if (!plugin.punishments().inLimbo(e.getPlayer().getUniqueId())) return;
         Location from = e.getFrom();
         Location to = e.getTo();
-        if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) return;
+        boolean lockView = plugin.getConfig().getBoolean("limbo.lock-view", true);
+        boolean moved = from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ();
+        boolean turned = from.getYaw() != to.getYaw() || from.getPitch() != to.getPitch();
+        if (!moved && !(lockView && turned)) return;
         Location stay = from.clone();
-        stay.setYaw(to.getYaw());
-        stay.setPitch(to.getPitch());
+        if (!lockView) {
+            stay.setYaw(to.getYaw());
+            stay.setPitch(to.getPitch());
+        }
         e.setTo(stay);
     }
 
@@ -227,6 +232,7 @@ public final class RestrictionListener implements Listener {
         if (label.contains(":")) label = label.substring(label.indexOf(':') + 1);
         if (label.equals("playban") || label.equals("pb") || label.equals("ticket") || label.equals("pbticket")) return;
         if ((label.equals("voice") || label.equals("pbvoice")) && e.getMessage().toLowerCase().endsWith(" speak")) return;
+        if (label.equals("appeal")) return;
         if (!plugin.punishments().inLimbo(p.getUniqueId())) {
             List<String> allowed = plugin.getConfig().getStringList("allowed-commands");
             for (String a : allowed) if (a.equalsIgnoreCase(label)) return;

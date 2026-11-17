@@ -27,13 +27,16 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 | Command | What it does | Permission |
 |---|---|---|
 | `/playban` or `/pb` | Team: main menu. Punished player: own tasks | - |
-| `/playban <player>` | Pick a category for a player in a menu | `playban.staff` |
+| `/playban <player>` or `/punish <player>` | Pick a category for a player in a menu | `playban.staff` |
 | `/playban apply <player> <category>` | Punish by category, also works from the console | `playban.staff` |
 | `/playban punish <player> <time> [reason]` | PlayBan with a duration of your choice | `playban.staff` |
-| `/playban warn <player> [reason]` | Warn a player | `playban.staff` |
-| `/playban ban <player> <time or perm> [reason]` | Real ban | `playban.staff` |
+| `/warn <player> [reason]` | Warn a player | `playban.staff` |
+| `/ban <player> <time or perm> [reason]` | Real ban | `playban.staff` |
 | `/playban specban <player> <time or perm> [reason]` | Spectator ban: may join, but is stuck and can only write tickets | `playban.staff` |
-| `/playban unban <player>` | Lift a ban or spectator ban | `playban.staff` |
+| `/unban <player or ban-ID>` | Lift a ban or spectator ban | `playban.staff` |
+| `/vanish` | Turn invisible to players; the team still sees you | `playban.vanish` |
+| `/guide` | Every command with what it does and an example | - |
+| `/appeal <ban-ID> <text>` | Ask to be unbanned, with the ID from the ban screen | - |
 | `/playban note <player> <text>` | Write a note about a player | `playban.staff` |
 | `/playban profile <player>` | Notes and punishments of a player | `playban.staff` |
 | `/playban pardon <player>` | End a PlayBan | `playban.staff` |
@@ -55,6 +58,10 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 
 Times look like `30m`, `2h`, `1d 12h`.
 
+The short commands (`/ban`, `/punish`, `/warn`, `/unban`, `/vanish`, `/guide`) can be switched off in the settings. If another plugin already uses one of these names, use `/playban ban ...` instead.
+
+Every punishment gets a short ban ID such as `K7QX2M`. It is shown on the ban screen and to the player, `/unban` accepts it instead of the name, and `/appeal` only works with the player's own ID.
+
 ## Permissions
 
 | Permission | Default | Meaning |
@@ -64,6 +71,7 @@ Times look like `30m`, `2h`, `1d 12h`.
 | `playban.see` | op | Still sees punished players |
 | `playban.notify` | op | Gets team notifications |
 | `playban.voice` | op | Can moderate voice groups |
+| `playban.vanish` | op | Can use /vanish and sees vanished staff |
 | `playban.ticket` | everyone | Can open tickets |
 | `playban.teleport` | op | Can teleport to players from a ticket and pick a game mode |
 | `playban.exempt` | nobody | Cannot be punished |

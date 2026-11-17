@@ -7,6 +7,7 @@ import dev.playban.gui.PlayerMenus;
 import dev.playban.gui.TicketMenus;
 import dev.playban.gui.VoiceMenus;
 import dev.playban.command.VoiceCommand;
+import dev.playban.command.AppealCommand;
 import dev.playban.voice.SimpleVoiceChatBridge;
 import dev.playban.voice.VoiceManager;
 import dev.playban.command.TicketCommand;
@@ -72,6 +73,12 @@ public class PlayBanPlugin extends JavaPlugin {
         if (voiceCommand != null) {
             voiceCommand.setExecutor(voiceExecutor);
             voiceCommand.setTabCompleter(voiceExecutor);
+        }
+        AppealCommand appealExecutor = new AppealCommand(this);
+        PluginCommand appeal = getCommand("appeal");
+        if (appeal != null) {
+            appeal.setExecutor(appealExecutor);
+            appeal.setTabCompleter(appealExecutor);
         }
         TicketCommand ticketExecutor = new TicketCommand(this);
         PluginCommand ticket = getCommand("ticket");

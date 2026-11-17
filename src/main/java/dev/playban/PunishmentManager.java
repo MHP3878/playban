@@ -14,6 +14,8 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -32,6 +34,8 @@ import java.util.UUID;
 public final class PunishmentManager {
     private final PlayBanPlugin plugin;
     private final Map<UUID, BossBar> bars = new HashMap<>();
+    /** Staff who turned themselves invisible with /vanish. */
+    private final java.util.Set<UUID> vanished = new java.util.HashSet<>();
 
     private BukkitTask ticker;
     private int seconds;
@@ -102,6 +106,7 @@ public final class PunishmentManager {
     public Punishment punish(UUID id, String name, long ms, String reason, String staff, UUID victim, String victimName, String category) {
         long now = System.currentTimeMillis();
         Punishment p = new Punishment();
+        p.banId = newBanId();
         p.category = category;
         p.uuid = id;
         p.name = name;
@@ -126,6 +131,9 @@ public final class PunishmentManager {
         Player online = Bukkit.getPlayer(id);
         if (online != null) {
             online.closeInventory();
+            if (plugin.getConfig().getString("inventory-mode", "KEEP").equalsIgnoreCase("CLEAR")) {
+                online.getInventory().clear();
+            }
             applyState(online);
             online.showTitle(Title.title(lang().msg("punish.title"), lang().msg("punish.subtitle", "time", TimeUtil.format(ms))));
             online.playSound(online.getLocation(), Sound.BLOCK_IRON_DOOR_CLOSE, 1f, 0.8f);
@@ -147,7 +155,7 @@ public final class PunishmentManager {
         Player online = Bukkit.getPlayer(p.uuid);
         if (online != null) {
             online.closeInventory();
-            clearState(online);
+            clearState(online, p);
             online.showTitle(Title.title(lang().msg("end.title"), lang().msg("end.subtitle")));
             online.playSound(online.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
             lang().send(online, "PARDONED".equals(endReason) ? "end.pardoned" : "end.served");
@@ -236,7 +244,34 @@ public final class PunishmentManager {
         p.category = category;
         p.createdAt = System.currentTimeMillis();
         p.lastUpdate = p.createdAt;
+        p.banId = newBanId();
         return p;
+    }
+
+    private static final String ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I mix-ups
+
+    /** A short code like "K7QX2M" that no other punishment has. */
+    public String newBanId() {
+        java.util.Set<String> taken = new java.util.HashSet<>();
+        for (Punishment x : store().active.values()) if (x.banId != null) taken.add(x.banId);
+        for (Punishment x : store().bans.values()) if (x.banId != null) taken.add(x.banId);
+        for (List<Punishment> list : store().history.values()) for (Punishment x : list) if (x.banId != null) taken.add(x.banId);
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        String id;
+        do {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 6; i++) sb.append(ID_CHARS.charAt(random.nextInt(ID_CHARS.length())));
+            id = sb.toString();
+        } while (taken.contains(id));
+        return id;
+    }
+
+    /** Finds an active PlayBan or ban by its ID. */
+    public Punishment byBanId(String id) {
+        String wanted = id.trim().toUpperCase().replace("#", "");
+        for (Punishment x : store().bans.values()) if (wanted.equals(x.banId)) return x;
+        for (Punishment x : store().active.values()) if (wanted.equals(x.banId)) return x;
+        return null;
     }
 
     public void warn(UUID id, String name, String reason, String staff, String category) {
@@ -305,7 +340,9 @@ public final class PunishmentManager {
         List<String> custom = plugin.getConfig().getStringList("ban-screen.lines");
         String template = custom.isEmpty() ? lang().raw("ban.screen") : String.join("\n", custom);
         if (!discord().isEmpty() && !template.contains("{discord}")) template += "\n\n" + lang().raw("ban.discord-line");
-        return lang().format(template, "reason", p.reason, "time", timeLeft(p), "staff", p.staff, "discord", discord());
+        if (p.banId != null && !template.contains("{id}")) template += "\n" + lang().raw("ban.id-line");
+        return lang().format(template, "reason", p.reason, "time", timeLeft(p), "staff", p.staff, "discord", discord(),
+                "id", p.banId == null ? "-" : p.banId);
     }
 
     // ---------------------------------------------------------------- spectator ban
@@ -366,6 +403,7 @@ public final class PunishmentManager {
         Punishment ban = store().bans.get(player.getUniqueId());
         if (ban == null) return;
         lang().send(player, "limbo.status", "time", timeLeft(ban), "reason", ban.reason);
+        if (ban.banId != null) lang().send(player, "limbo.id", "id", ban.banId);
         lang().send(player, "limbo.hint");
         if (!discord().isEmpty()) lang().send(player, "limbo.discord", "discord", discord());
     }
@@ -413,14 +451,94 @@ public final class PunishmentManager {
         if (p == null) return;
         refreshVisibility();
         player.setCollidable(false);
+        // adventure mode: the client itself stops predicting block breaks, so it no longer feels laggy
+        if (plugin.getConfig().getBoolean("restrictions.adventure-mode", true)) {
+            if (p.prevGameMode == null) {
+                p.prevGameMode = player.getGameMode().name();
+                store().markDirty();
+            }
+            if (player.getGameMode() != GameMode.SPECTATOR) player.setGameMode(GameMode.ADVENTURE);
+        }
+        // optional: take the inventory away for the duration, or clear it for good
+        String invMode = plugin.getConfig().getString("inventory-mode", "KEEP").toUpperCase();
+        if (invMode.equals("STORE") && p.storedInventory == null) {
+            p.storedInventory = serializeInventory(player);
+            player.getInventory().clear();
+            store().markDirty();
+        } else if (invMode.equals("CLEAR") && p.prevGameMode != null && p.storedInventory == null) {
+            // clear once, right at the start (prevGameMode is set the first time only)
+        }
+        if (invMode.equals("CLEAR")) {
+            // nothing to restore, but keep them empty-handed while punished is handled on join below
+        }
+        if (plugin.getConfig().getBoolean("restrictions.slow", false)) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, PotionEffect.INFINITE_DURATION,
+                    Math.max(0, plugin.getConfig().getInt("restrictions.slow-level", 1) - 1), false, false, false));
+        }
         updateBar(player, p);
     }
 
+    /** Paper's own item format keeps enchantments and custom items intact. Stored as "contents;armor" in base64. */
+    private String serializeInventory(Player player) {
+        java.util.Base64.Encoder b64 = java.util.Base64.getEncoder();
+        return b64.encodeToString(ItemStack.serializeItemsAsBytes(player.getInventory().getContents()))
+                + ";" + b64.encodeToString(ItemStack.serializeItemsAsBytes(player.getInventory().getArmorContents()));
+    }
+
+    private void restoreInventory(Player player, String data) {
+        try {
+            String[] parts = data.split(";", 2);
+            java.util.Base64.Decoder b64 = java.util.Base64.getDecoder();
+            player.getInventory().clear();
+            player.getInventory().setContents(ItemStack.deserializeItemsFromBytes(b64.decode(parts[0])));
+            if (parts.length > 1) player.getInventory().setArmorContents(ItemStack.deserializeItemsFromBytes(b64.decode(parts[1])));
+        } catch (RuntimeException e) {
+            plugin.getLogger().warning("Could not give " + player.getName() + " their stored inventory back: " + e.getMessage());
+        }
+    }
+
     public void clearState(Player player) {
+        clearState(player, get(player.getUniqueId()));
+    }
+
+    /** Gives a player everything back. Takes the punishment directly because end() has already removed it. */
+    public void clearState(Player player, Punishment p) {
         for (Player viewer : Bukkit.getOnlinePlayers()) viewer.showPlayer(plugin, player);
         player.setCollidable(true);
+        player.removePotionEffect(PotionEffectType.SLOWNESS);
+        if (p != null) {
+            if (p.prevGameMode != null) {
+                try {
+                    player.setGameMode(GameMode.valueOf(p.prevGameMode));
+                } catch (IllegalArgumentException ignored) {
+                    player.setGameMode(Bukkit.getDefaultGameMode());
+                }
+            }
+            if (p.storedInventory != null) restoreInventory(player, p.storedInventory);
+        }
         BossBar bar = bars.remove(player.getUniqueId());
         if (bar != null) player.hideBossBar(bar);
+    }
+
+    public boolean isVanished(UUID id) {
+        return vanished.contains(id);
+    }
+
+    /** Turns a staff member invisible (or back). Players without playban.vanish stop seeing them. */
+    public void setVanished(Player staff, boolean value) {
+        if (value) vanished.add(staff.getUniqueId());
+        else vanished.remove(staff.getUniqueId());
+        refreshVisibility();
+        if (value) {
+            staff.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, PotionEffect.INFINITE_DURATION, 0, false, false, false));
+        } else {
+            staff.removePotionEffect(PotionEffectType.INVISIBILITY);
+        }
+        lang().send(staff, value ? "vanish.on" : "vanish.off");
+    }
+
+    public void clearVanish(UUID id) {
+        vanished.remove(id);
     }
 
     /** Re-applies who can see whom. Called on joins, punishments and setting changes. */
@@ -433,6 +551,7 @@ public final class PunishmentManager {
             for (Player viewer : Bukkit.getOnlinePlayers()) {
                 if (viewer.equals(target)) continue;
                 boolean hidden = ((punished && hide) || limbo || plugin.tickets().vanished(target.getUniqueId())) && !maySee(viewer);
+                if (isVanished(target.getUniqueId()) && !viewer.hasPermission("playban.vanish")) hidden = true;
                 if (limboSeesNobody && inLimbo(viewer.getUniqueId())) hidden = true;
                 if (hidden) viewer.hidePlayer(plugin, target);
                 else viewer.showPlayer(plugin, target);
@@ -462,6 +581,7 @@ public final class PunishmentManager {
 
     public void sendStatus(Player player, Punishment p) {
         lang().send(player, "status.line", "time", TimeUtil.format(Math.max(0, p.remainingMs)), "reason", p.reason);
+        if (p.banId != null) lang().send(player, "status.id", "id", p.banId);
         lang().send(player, onlineOnly() ? "status.online-only" : "status.real-time");
         lang().send(player, "status.hint");
     }
@@ -492,6 +612,9 @@ public final class PunishmentManager {
                 end(p, "SERVED", "");
             } else if (online != null) {
                 updateBar(online, p);
+                if (plugin.getConfig().getBoolean("restrictions.action-bar", true)) {
+                    online.sendActionBar(lang().msg("actionbar", "time", TimeUtil.format(Math.max(0, p.remainingMs)), "reason", p.reason));
+                }
             }
         }
         for (Punishment ban : new ArrayList<>(store().bans.values())) {

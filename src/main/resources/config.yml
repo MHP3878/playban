@@ -237,3 +237,41 @@ modules:
   prison: true
   fakebase: true
   trolls: true
+
+# ---- Admin mode and /admin ----
+admin-mode:
+  # true: a team member is a normal player until they switch admin mode on (/admin).
+  # Team commands and admin items only work in admin mode. The console is never limited.
+  required: true
+admin-panel:
+  # the rank level needed to see a ticket of this kind in the /admin inbox (0 = every team member)
+  ticket-levels:
+    default: 0
+    report: 30
+    appeal: 50
+
+# ---- Anti-cheat ----
+# Marks suspicious players for the team (/admin inbox). Only very clear cases are punished, through the category below.
+anticheat:
+  enabled: true
+  auto-punish: true
+  category: cheating
+  # below this TPS and above this ping the movement checks stay quiet, so lag never gets anyone punished
+  min-tps: 18
+  max-ping: 300
+  # blocks per second on foot, before effects and ice
+  speed-limit: 9.5
+  max-cps: 22
+  # x-ray: at least this many diamond ores or ancient debris in 30 minutes, and this share of all mined stone
+  xray-ores: 10
+  xray-ratio: 0.06
+  # per check: enabled, points to be marked (flag), points to be punished (punish, 0 = never)
+  checks:
+    fly: {enabled: true, flag: 8, punish: 30}
+    speed: {enabled: true, flag: 8, punish: 30}
+    reach: {enabled: true, flag: 6, punish: 20}
+    aura: {enabled: true, flag: 5, punish: 15}
+    autoclick: {enabled: true, flag: 4, punish: 0}
+    nofall: {enabled: true, flag: 4, punish: 15}
+    velocity: {enabled: true, flag: 3, punish: 12}
+    xray: {enabled: true, flag: 1, punish: 0}

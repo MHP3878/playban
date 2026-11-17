@@ -89,6 +89,8 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  admin: ["<gray>Dein Admin-Panel: Postfach mit Tickets", "<gray>und markierten Spielern, Admin-Modus,", "<gray>Vanish, Geistermodus, ESP und alle", "<gray>Befehle, die du nutzen darfst."]
+  anticheat: ["<gray>Vom Anti-Cheat markierte Spieler.", "<gray>/anticheat clear <spieler> nimmt", "<gray>die Markierung weg."]
   modules: ["<gray>Alle Systeme in einem Menü: Homes,", "<gray>Teleport-Anfragen, Geld, Spawn,", "<gray>Ränge, ESP, Block-Protokoll und mehr.", "<gray>Linksklick: an oder aus.", "<gray>Rechtsklick: Einstellungen."]
   esp: ["<gray>Kisten leuchten durch Wände, Spieler", "<gray>bekommen Namensschilder mit Leben,", "<gray>Entfernung und Item. Nur du siehst es.", "", "<dark_gray>Beispiel: /esp all"]
   home: ["<gray>Orte speichern und zurück-", "<gray>teleportieren. /homes zeigt sie als Menü.", "", "<dark_gray>Beispiel: /sethome farm, /home farm"]
@@ -441,6 +443,9 @@ moderation:
   report-sent: "<green>Danke, deine Meldung über <white>{player}</white> ging an das Team."
 
 tools:
+  ghost:
+    name: "<dark_aqua><bold>Geistermodus</bold>"
+    lore: ["<gray>Rechtsklick: Kreativ und unsichtbar,", "<gray>und du läufst durch Wände wie ein", "<gray>Zuschauer. Nochmal zum Beenden."]
   esp:
     name: "<aqua><bold>ESP-Fernrohr</bold>"
     lore: ["<gray>Rechtsklick: aus, Spieler, Kisten, beides.", "<gray>Kisten leuchten und Spieler haben", "<gray>Namensschilder durch Wände. Nur du siehst es."]
@@ -1722,6 +1727,8 @@ module:
   right-none: "<dark_gray>Keine Einstellungen"
   switched-on: "<green>{module} ist an. Die Befehle gehen sofort."
   switched-off: "<gray>{module} ist aus. Die Befehle sind weg."
+  switched-on-plain: "<green>{module} ist an."
+  switched-off-plain: "<gray>{module} ist aus."
   is-off: "<red>{module} ist ausgeschaltet. Ein Admin kann es in /sc modules anschalten."
   settings-title: "<dark_gray>Einstellungen: {module}"
   value: "<gray>Jetzt: <white>{value}"
@@ -1732,6 +1739,12 @@ module:
   word-off: "aus"
   line: "<gray>{module}: <white>{name}</white> - {state}"
   unknown: "<red>Das Modul <white>{module}</white> gibt es nicht. <white>/sc modules</white> zeigt alle."
+  anticheat:
+    name: "<#ffc371><bold>Anti-Cheat</bold>"
+    lore: ["<gray>Markiert verdächtige Spieler fürs", "<gray>Team, bestraft nur klare Fälle."]
+  adminmode:
+    name: "<#ffc371><bold>Admin-Modus-Pflicht</bold>"
+    lore: ["<gray>An: Teammitglieder sind normale Spieler,", "<gray>bis sie in /admin den Admin-Modus", "<gray>anschalten. Team-Befehle und Admin-", "<gray>Items gehen nur im Admin-Modus."]
   homes:
     name: "<#ffc371><bold>Homes</bold>"
     lore: ["<gray>Spieler speichern Orte und", "<gray>teleportieren zurück: /sethome, /home."]
@@ -1770,6 +1783,22 @@ module:
     lore: ["<gray>/troll: harmlose Späße."]
 
 module-setting:
+  anticheat:
+    auto-punish:
+      name: "<white>Automatisch bestrafen"
+      lore: ["<gray>Sehr klare Fälle bekommen die Strafe", "<gray>der Kategorie unten."]
+    category:
+      name: "<white>Kategorie"
+      lore: ["<gray>Welche Kategorie Cheater bestraft.", "<gray>Ihre Stufen bestimmen, wie hart."]
+    speed-limit:
+      name: "<white>Tempolimit"
+      lore: ["<gray>Blöcke pro Sekunde zu Fuß.", "<gray>Höher heißt weniger Fehlalarme."]
+    max-ping:
+      name: "<white>Höchster Ping"
+      lore: ["<gray>Darüber wird Bewegung nicht bewertet."]
+    max-cps:
+      name: "<white>Klicks pro Sekunde"
+      lore: ["<gray>Mehr ist verdächtig."]
   homes:
     max:
       name: "<white>Homes pro Spieler"
@@ -1828,3 +1857,80 @@ module-setting:
     max:
       name: "<white>Höchstens gleichzeitig"
       lore: ["<gray>Fake-Basen zur selben Zeit."]
+
+ghost:
+  on: "<dark_aqua>Geistermodus an: <gray>du bist unsichtbar, im Kreativmodus und läufst durch Wände."
+  off: "<gray>Geistermodus aus."
+
+panel:
+  title: "<gradient:#ff5f6d:#ffc371><bold>Admin</bold></gradient>"
+  you-active: "<green><bold>{player}</bold> <gray>- aktiver Admin"
+  you-inactive: "<gray><bold>{player}</bold> - inaktiv, ein normaler Spieler"
+  you-lore: ["<gray>Rang: <white>{rank}", "", "<gray>Schalte den Admin-Modus an, um", "<gray>Team-Befehle und Admin-Items zu nutzen."]
+  inbox: "<#ffc371><bold>Postfach</bold> <gray>({count})"
+  inbox-lore: ["<gray>Tickets für dich: <white>{tickets}", "<gray>Vom Anti-Cheat markiert: <white>{flagged}", "", "<#ffc371>Klick zum Öffnen"]
+  inbox-title: "<dark_gray>Postfach ({count})"
+  inbox-empty: "<green>Nichts zu tun"
+  mode-on: "<green><bold>Admin-Modus: an"
+  mode-off: "<gray><bold>Admin-Modus: aus"
+  mode-lore: ["<gray>An: dein Inventar wird sicher verwahrt,", "<gray>du bekommst deine Admin-Items, bist", "<gray>unsichtbar und kannst fliegen.", "", "<#ffc371>Klick zum Umschalten"]
+  vanish-on: "<green><bold>Vanish: an"
+  vanish-off: "<gray><bold>Vanish: aus"
+  vanish-lore: ["<#ffc371>Klick zum Umschalten"]
+  ghost-on: "<green><bold>Geistermodus: an"
+  ghost-off: "<gray><bold>Geistermodus: aus"
+  ghost-lore: ["<gray>Kreativ und unsichtbar, und Wände", "<gray>halten dich nicht auf: in der Wand", "<gray>siehst du die Höhlen wie ein Zuschauer.", "", "<#ffc371>Klick zum Umschalten"]
+  esp: "<aqua><bold>ESP: {mode}"
+  esp-lore: ["<gray>Kisten und Spieler durch Wände,", "<gray>nur für dich.", "", "<#ffc371>Klick: aus, Spieler, Kisten, beides"]
+  commands: "<#ffc371><bold>Meine Befehle"
+  commands-lore: ["<gray>Alle Befehle, die du nutzen darfst,", "<gray>mit Beschreibung.", "", "<#ffc371>Klick zum Öffnen"]
+  commands-title: "<dark_gray>Meine Befehle ({count})"
+  command-name: "<white>/{command}"
+  command-aliases: "<dark_gray>Auch: {aliases}"
+  command-from: "<dark_gray>Von: {plugin}"
+  command-click: "<#ffc371>Klick: in den Chat schreiben"
+  command-suggest: "<gray>Klick zum Eintippen: <white>/{command}"
+  flagged-row: "<red><bold>Vom Anti-Cheat markiert</bold> <gray>→"
+  flag-name: "<red><bold>{player}</bold> <gray>({score} Punkte)"
+  flag-check: "<gray>{check}: <white>{vl}"
+  flag-online: "<green>Online"
+  flag-offline: "<dark_gray>Offline"
+  flag-handler: "<gold>Wird von {staff} angeschaut"
+  flag-punished: "<red>Schon automatisch bestraft"
+  flag-actions: ["<#ffc371>Klick: Fall übernehmen (unsichtbar,", "<#ffc371>Geistermodus, zum Spieler)", "<red>Shift-Klick: Markierung entfernen"]
+  ticket-name: "<white>#{id} <#ffc371>{reason}</#ffc371> <gray>von {player}"
+  ticket-lore: ["<gray>{text}", "", "<gray>Stand: <white>{state}", "<gray>Bearbeitet von: <white>{handler}", "", "<#ffc371>Klick zum Öffnen"]
+  ticket-state:
+    open: "offen"
+    in_progress: "in Bearbeitung"
+    closed: "geschlossen"
+    declined: "abgelehnt"
+  case-offline: "<gray><white>{player}</white> ist gerade nicht online."
+  case-taken: "<green>Du hast den Fall <white>{player}</white> übernommen. Du bist unsichtbar und im Geistermodus."
+  case-broadcast: "<gray><white>{staff}</white> schaut sich <white>{player}</white> an."
+  need-admin-mode: "<gray>Du bist gerade inaktiver Admin. <#ffc371>Klick hier</#ffc371> oder schreib <white>/admin</white> und schalte den Admin-Modus an."
+  staffcore: "<#ffc371>StaffCore-Menü"
+  tools: "<#ffc371>Admin-Items"
+  modules: "<#ffc371>Module"
+  close: "<red>Schließen"
+
+anticheat:
+  alert: "<red>⚠ <white>{player}</white> <gray>{check} <white>({vl})</white> <dark_gray>{detail}</dark_gray> <gray>Klick, um den Fall zu übernehmen."
+  punished: "<red><white>{player}</white> wurde automatisch bestraft wegen {check}: {punishment}."
+  header: "<gradient:#ff5f6d:#ffc371>Anti-Cheat</gradient> <gray>({count} markiert)"
+  line: "<white>{player}</white> <gray>{score} Punkte: {checks}"
+  unknown: "<red><white>{player}</white> ist nicht markiert."
+  cleared: "<gray>Die Markierung von <white>{player}</white> ist weg."
+  check:
+    fly: "Fliegen"
+    speed: "Tempo"
+    reach: "Reichweite"
+    aura: "Kill-Aura"
+    autoclick: "Autoklicker"
+    nofall: "Kein Fallschaden"
+    velocity: "Kein Rückstoß"
+    xray: "X-Ray (Erze)"
+  detail:
+    hover: "schwebt in der Luft"
+    rise: "steigt ohne Hilfe"
+    multi: "zwei Ziele gleichzeitig"

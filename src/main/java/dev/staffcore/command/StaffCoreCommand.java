@@ -257,7 +257,7 @@ public final class StaffCoreCommand implements TabExecutor {
                 if (args.length >= 3) {
                     boolean on = args[2].equalsIgnoreCase("on");
                     if (!plugin.modules().set(args[1], on, sender.getName())) lang().send(sender, "module.unknown", "module", args[1]);
-                    else lang().send(sender, on ? "module.switched-on" : "module.switched-off", "module", plugin.modules().name(args[1].toLowerCase()));
+                    else lang().send(sender, plugin.modules().switchedKey(plugin.modules().get(args[1].toLowerCase())), "module", plugin.modules().name(args[1].toLowerCase()));
                 } else if (sender instanceof Player player) plugin.modules().menu(player);
                 else plugin.modules().list(sender);
             }

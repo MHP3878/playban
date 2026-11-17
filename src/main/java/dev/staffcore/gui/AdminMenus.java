@@ -411,6 +411,8 @@ public final class AdminMenus {
             new GuideEntry("prison", "/prison <player> [time] [reason]", Material.BEDROCK, "staffcore.prison"),
             new GuideEntry("unprison", "/unprison <player>", Material.TRIPWIRE_HOOK, "staffcore.prison"),
             new GuideEntry("troll", "/troll <player> [joke]", Material.EGG, "staffcore.troll"),
+            new GuideEntry("admin", "/admin", Material.NETHERITE_CHESTPLATE, "staffcore.panel"),
+            new GuideEntry("anticheat", "/anticheat [clear <player>]", Material.IRON_SWORD, "staffcore.anticheat"),
             new GuideEntry("modules", "/sc modules", Material.BEACON, "staffcore.admin"),
             new GuideEntry("esp", "/esp [players|chests|all|off]", Material.SPYGLASS, "staffcore.esp"),
             new GuideEntry("home", "/home [name], /sethome, /delhome, /homes", Material.RED_BED, "staffcore.home"),

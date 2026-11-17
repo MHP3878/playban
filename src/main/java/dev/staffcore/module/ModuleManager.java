@@ -191,7 +191,7 @@ public final class ModuleManager {
                 }
                 toggle(m, p.getName());
                 p.playSound(p.getLocation(), m.enabled() ? Sound.BLOCK_NOTE_BLOCK_PLING : Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 1.2f);
-                lang().send(p, m.enabled() ? "module.switched-on" : "module.switched-off", "module", name(m.id));
+                lang().send(p, switchedKey(m), "module", name(m.id));
                 menu(p);
             });
         }
@@ -255,6 +255,11 @@ public final class ModuleManager {
             s.sendMessage(lang().msg("module.line", "module", m.id, "name", name(m.id),
                     "state", lang().raw(m.enabled() ? "module.word-on" : "module.word-off")));
         }
+    }
+
+    /** The message after switching: modules without commands do not talk about commands. */
+    public String switchedKey(Module m) {
+        return (m.enabled() ? "module.switched-on" : "module.switched-off") + (m.commands.isEmpty() ? "-plain" : "");
     }
 
     public boolean set(String id, boolean value, String by) {

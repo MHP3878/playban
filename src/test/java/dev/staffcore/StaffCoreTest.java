@@ -45,6 +45,8 @@ class StaffCoreTest {
         bystander = server.addPlayer("Bystander");
         server.getScheduler().performTicks(30);
         plugin.getConfig().set("ticket-cooldown-seconds", 0);
+        // most tests use team commands directly; admin mode itself has its own tests
+        plugin.getConfig().set("admin-mode.required", false);
     }
 
     @AfterEach
@@ -2983,5 +2985,142 @@ class StaffCoreTest {
         admin.getInventory().setItemInMainHand(tool("esp"));
         rightClickAir(admin);
         assertEquals(dev.staffcore.module.EspManager.Mode.PLAYERS, plugin.esp().mode(admin.getUniqueId()));
+    }
+
+    // ------------------------------------------------------------------ /admin, anti-cheat, ghost mode
+
+    @Test
+    void inactiveAdminsAreNormalPlayers() {
+        plugin.getConfig().set("admin-mode.required", true);
+        assertTrue(plugin.adminPanel().needsAdminMode("/ban Troll 1d"));
+        assertTrue(plugin.adminPanel().needsAdminMode("/staffcore:freeze Troll"));
+        assertTrue(plugin.adminPanel().needsAdminMode("/sc menu"));
+        assertFalse(plugin.adminPanel().needsAdminMode("/admin"), "the panel always opens");
+        assertFalse(plugin.adminPanel().needsAdminMode("/home"), "player commands stay");
+        assertFalse(plugin.adminPanel().needsAdminMode("/ticket"));
+        assertFalse(plugin.adminPanel().needsAdminMode("/sc guide"));
+        var cmd = new org.bukkit.event.player.PlayerCommandPreprocessEvent(admin, "/ban Troll 1d");
+        server.getPluginManager().callEvent(cmd);
+        assertTrue(cmd.isCancelled(), "an inactive admin cannot ban");
+        admin.performCommand("admin on");
+        assertTrue(plugin.tools().inStaffMode(admin.getUniqueId()));
+        var again = new org.bukkit.event.player.PlayerCommandPreprocessEvent(admin, "/ban Troll 1d");
+        server.getPluginManager().callEvent(again);
+        assertFalse(again.isCancelled(), "an active admin can");
+        admin.performCommand("admin off");
+        // admin items do nothing outside admin mode either
+        admin.getInventory().setItemInMainHand(tool("handcuffs"));
+        rightClickPlayer(admin, troll);
+        assertFalse(plugin.admin().isCuffed(troll.getUniqueId()));
+        var normal = new org.bukkit.event.player.PlayerCommandPreprocessEvent(troll, "/ban Admin 1d");
+        server.getPluginManager().callEvent(normal);
+        assertFalse(normal.isCancelled(), "players are not affected by this; their permission check answers");
+    }
+
+    @Test
+    void antiCheatMarksFirstAndPunishesOnlyClearCases() {
+        var ac = plugin.antiCheat();
+        ac.violation(troll, "reach", 3, "3.9");
+        assertNull(ac.suspect(troll.getUniqueId()), "a few points are not enough");
+        ac.violation(troll, "reach", 4, "4.1");
+        assertNotNull(ac.suspect(troll.getUniqueId()), "marked for the team");
+        assertFalse(plugin.punishments().isPunished(troll.getUniqueId()) || plugin.store().bans.containsKey(troll.getUniqueId()));
+        ac.violation(troll, "reach", 20, "5.0");
+        assertTrue(plugin.punishments().isPunished(troll.getUniqueId()) || plugin.store().bans.containsKey(troll.getUniqueId()),
+                "very clear: punished by the cheating category");
+        // auto clicker and x-ray never punish on their own
+        ac.violation(bystander, "autoclick", 100, "40 CPS");
+        assertNotNull(ac.suspect(bystander.getUniqueId()));
+        assertFalse(plugin.punishments().isPunished(bystander.getUniqueId()) || plugin.store().bans.containsKey(bystander.getUniqueId()));
+        // creative players and the bypass permission are never checked
+        PlayerMock builder = server.addPlayer("Builder");
+        builder.setGameMode(org.bukkit.GameMode.CREATIVE);
+        ac.violation(builder, "fly", 100, null);
+        assertNull(ac.suspect(builder.getUniqueId()));
+        ac.dismiss(bystander.getUniqueId(), "Admin");
+        assertNull(ac.suspect(bystander.getUniqueId()));
+    }
+
+    @Test
+    void reachIsMeasuredToTheHitbox() {
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5));
+        bystander.teleport(new org.bukkit.Location(w, 7.5, 70, 0.5));
+        for (int i = 0; i < 10; i++) {
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(troll, bystander, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                    org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1));
+        }
+        assertNotNull(plugin.antiCheat().suspect(troll.getUniqueId()), "hits from 7 blocks away are reach");
+        admin.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5));
+        bystander.teleport(new org.bukkit.Location(w, 2.5, 70, 0.5));
+        for (int i = 0; i < 30; i++) {
+            server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(admin, bystander, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                    org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1));
+        }
+        assertEquals(0, plugin.antiCheat().points(admin.getUniqueId(), "reach"), 0.001, "normal hits are fine");
+    }
+
+    @Test
+    void takingACaseMakesYouAnInvisibleGhostAtThePlayer() {
+        var w = troll.getWorld();
+        troll.teleport(new org.bukkit.Location(w, 400.5, 70, 400.5));
+        plugin.antiCheat().violation(troll, "fly", 10, null);
+        assertTrue(admin.performCommand("admin"));
+        assertNoMissingTexts(admin, "en");
+        admin.simulateInventoryClick(28);
+        assertTrue(plugin.tools().inStaffMode(admin.getUniqueId()), "active admin now, with the admin items");
+        assertTrue(plugin.punishments().isVanished(admin.getUniqueId()));
+        assertTrue(plugin.ghost().on(admin.getUniqueId()));
+        assertEquals(org.bukkit.GameMode.CREATIVE, admin.getGameMode());
+        assertTrue(admin.getLocation().distance(troll.getLocation()) < 2, "at the player");
+        assertEquals("Admin", plugin.antiCheat().suspect(troll.getUniqueId()).handler);
+
+        // a wall: spectator inside, creative outside
+        for (int y = 69; y <= 73; y++) w.getBlockAt(402, y, 400).setType(Material.STONE);
+        admin.teleport(new org.bukkit.Location(w, 401.6, 70, 400.5));
+        server.getScheduler().performTicks(2);
+        assertEquals(org.bukkit.GameMode.SPECTATOR, admin.getGameMode(), "next to the wall: through it");
+        admin.teleport(new org.bukkit.Location(w, 420.5, 80, 420.5));
+        server.getScheduler().performTicks(2);
+        assertEquals(org.bukkit.GameMode.CREATIVE, admin.getGameMode(), "in the open: creative again");
+
+        admin.performCommand("admin off");
+        assertFalse(plugin.ghost().on(admin.getUniqueId()));
+        assertEquals(org.bukkit.GameMode.SURVIVAL, admin.getGameMode(), "the old game mode is back");
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.adminPanel().main(admin);
+            assertNoMissingTexts(admin, code);
+            plugin.adminPanel().inbox(admin, 0);
+            assertNoMissingTexts(admin, code);
+            plugin.adminPanel().commands(admin, 0);
+            assertNoMissingTexts(admin, code);
+        }
+    }
+
+    @Test
+    void myCommandsShowsWhatYouMayUse() {
+        var mine = plugin.adminPanel().usable(troll).stream().map(org.bukkit.command.Command::getName).toList();
+        assertTrue(mine.contains("home"));
+        assertTrue(mine.contains("ticket"));
+        assertFalse(mine.contains("ban"), "no team commands for players");
+        assertFalse(mine.contains("fakebase"));
+        var adminCmds = plugin.adminPanel().usable(admin).stream().map(org.bukkit.command.Command::getName).toList();
+        assertTrue(adminCmds.contains("ban"));
+        assertTrue(adminCmds.contains("fakebase"));
+    }
+
+    @Test
+    void inboxShowsTicketsByRankLevel() {
+        typeInChat(bystander, "x");
+        bystander.performCommand("report Troll griefing my house");
+        assertEquals(1, plugin.tickets().all().size());
+        assertEquals(1, plugin.adminPanel().tickets(admin).size());
+        admin.performCommand("rank setup");
+        PlayerMock sup = server.addPlayer("Supporter");
+        admin.performCommand("rank set Supporter supporter");
+        plugin.getConfig().set("admin-panel.ticket-levels.report", 50);
+        assertEquals(0, plugin.adminPanel().tickets(sup).size(), "reports need level 50 here");
+        assertEquals(1, plugin.adminPanel().tickets(admin).size());
     }
 }

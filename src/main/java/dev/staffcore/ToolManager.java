@@ -63,11 +63,12 @@ public final class ToolManager implements Listener, TabExecutor {
             new Tool("trollwand", Material.AMETHYST_SHARD, "staffcore.troll"),
             new Tool("bait", Material.TRAPPED_CHEST, "staffcore.tool.bait"),
             new Tool("esp", Material.SPYGLASS, "staffcore.esp"),
+            new Tool("ghost", Material.ECHO_SHARD, "staffcore.ghost"),
             new Tool("exit", Material.BARRIER, "staffcore.staffmode"));
 
     /** Where each item goes in staff mode: the hotbar first, then the row above it. */
     private static final List<String> KIT = List.of("compass", "vanish", "inspector", "freeze", "handcuffs", "warnstick", "banhammer", "brush", "xray",
-            "invsee", "randomtp", "fly", "kbstick", "spectate", "prisonkey", "bait", "trollwand", "esp", "exit");
+            "invsee", "randomtp", "fly", "kbstick", "spectate", "prisonkey", "bait", "trollwand", "esp", "ghost", "exit");
 
     private static final Map<Material, Color> ORES = new EnumMap<>(Material.class);
 
@@ -128,6 +129,11 @@ public final class ToolManager implements Listener, TabExecutor {
         if (tool == null) return null;
         if (!p.hasPermission(tool.permission())) {
             lang().send(p, "tools.not-allowed");
+            return null;
+        }
+        // an inactive admin is a normal player: admin items work in admin mode only
+        if (plugin.adminPanel() != null && plugin.adminPanel().required() && !inStaffMode(p.getUniqueId())) {
+            p.sendMessage(lang().prefixed("panel.need-admin-mode").clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/admin")));
             return null;
         }
         return tool;
@@ -301,6 +307,7 @@ public final class ToolManager implements Listener, TabExecutor {
             }
             case "xray" -> xray(p);
             case "bait" -> lang().send(p, "tools.bait-how");
+            case "ghost" -> plugin.ghost().toggle(p);
             case "esp" -> {
                 if (plugin.modules().on("esp")) plugin.esp().cycle(p);
                 else lang().send(p, "module.is-off", "module", plugin.modules().name("esp"));
@@ -372,7 +379,32 @@ public final class ToolManager implements Listener, TabExecutor {
     }
 
     /** Puts the player's things away safely and gives them every admin item they may use. */
+    private java.io.File modeFile() {
+        return new java.io.File(plugin.getDataFolder(), "staffmode-gamemodes.yml");
+    }
+
+    /** The game mode before staff mode, on disk, so ghost mode cannot leave anyone in creative after a crash. */
+    private void rememberMode(Player p, org.bukkit.GameMode mode) {
+        org.bukkit.configuration.file.YamlConfiguration cfg = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(modeFile());
+        cfg.set(p.getUniqueId().toString(), mode == null ? null : mode.name());
+        try {
+            cfg.save(modeFile());
+        } catch (java.io.IOException e) {
+            plugin.getLogger().warning("Could not save staffmode-gamemodes.yml: " + e.getMessage());
+        }
+    }
+
+    private org.bukkit.GameMode rememberedMode(Player p) {
+        String m = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(modeFile()).getString(p.getUniqueId().toString());
+        try {
+            return m == null ? null : org.bukkit.GameMode.valueOf(m);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     public void enterStaffMode(Player p) {
+        rememberMode(p, p.getGameMode());
         java.util.Base64.Encoder b64 = java.util.Base64.getEncoder();
         String saved = b64.encodeToString(ItemStack.serializeItemsAsBytes(p.getInventory().getContents()));
         plugin.store().staffModeInventories.put(p.getUniqueId(), saved);
@@ -398,6 +430,10 @@ public final class ToolManager implements Listener, TabExecutor {
         plugin.store().markDirty();
         stopSpectating(p);
         plugin.esp().off(p);
+        if (plugin.ghost() != null && plugin.ghost().on(p.getUniqueId())) plugin.ghost().off(p);
+        org.bukkit.GameMode before = rememberedMode(p);
+        if (before != null && p.getGameMode() != before) p.setGameMode(before);
+        rememberMode(p, null);
         // things taken while in staff mode (from a chest or someone's inventory) are kept, only the admin items go
         List<ItemStack> gathered = new ArrayList<>();
         for (ItemStack item : p.getInventory().getContents()) {

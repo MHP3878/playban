@@ -98,6 +98,32 @@ Only offenses in the same category count. Punishments the team lifted do not cou
 
 Anti-cheat plugins can run `playban apply <player> <category>` from the console.
 
+## /admin: the admin panel
+
+`/admin` opens a team member's own panel:
+
+- **Inbox:** open tickets their rank may handle (`admin-panel.ticket-levels` sets the rank level per ticket kind, e.g. reports from 30, appeals from 50) and every player the anti-cheat marked.
+- **Marked players** also stand right in the panel. A click takes the case: admin mode on, invisible, ghost mode, and off to the player; the team sees who took it. Shift-click removes the mark.
+- **Admin mode** (staff mode), **vanish**, **ghost mode** and **ESP** as buttons.
+- **My commands:** every command this member may use, from every plugin, by permission and rank level, with what it does; a click puts it into the chat.
+
+**Active and inactive admins.** With `admin-mode.required` (the "Admin mode required" module, on by default) a team member is a normal player until they switch admin mode on in `/admin` (or `/admin on`). Team commands and admin items only work in admin mode; player commands like `/home` or `/ticket`, `/admin`, `/teamchat` and `/guide` always do. Admin mode stores the inventory safely and gives the admin items the member's rank may use; switching off gives everything back, the old game mode included. The console is never limited.
+
+**Ghost mode** (`/admin ghost`, the echo shard in admin mode): creative and invisible, and walls are no obstacle. Next to a wall, floor (while sneaking) or ceiling the game switches to spectator for that moment, so you slide through and see the caves inside like a spectator; in the open you are back in creative. Switching off never leaves you inside a block.
+
+Admin items cannot get their own tab in the creative inventory: those tabs come from the client, a server plugin cannot add one. They come from admin mode and `/tools` instead.
+
+## Anti-cheat
+
+The anti-cheat checks flying (hanging in the air, rising without help), speed, reach (to the hitbox, with room for ping), kill aura (hits behind you, two targets at once), auto clickers, no fall damage, no knockback and x-ray by the share of diamond ore and ancient debris among mined stone. Each check gives points that fade again over time.
+
+- A few points **mark** the player: the team gets a clickable alert and the player appears in `/admin`.
+- Only many points from a clear check (flying, speed, reach, kill aura, no fall, no knockback) **punish** automatically, through the next step of the `cheating` category. Auto clicker and x-ray never punish on their own.
+- Lag never counts: below `min-tps` (18) and above `max-ping` (300) movement is not judged. Creative, spectators, admin mode, vanished, frozen and punished players and `staffcore.anticheat.bypass` (nobody has it by default, ops neither) are not checked. Teleports, knockback, explosions, ice, water, ladders, cobwebs, slime, effects, elytra and vehicles are taken into account.
+- Every threshold can be changed per check under `anticheat.checks`, auto-punish, category, speed limit, ping and clicks per second also in the module settings. `/anticheat` lists marked players, `/anticheat clear <player>` removes a mark.
+
+The anti-cheat is careful by design. Test it with your own clients before you rely on auto-punish; if it is too strict or too lax, change the numbers.
+
 ## Modules
 
 `/sc modules` (or the beacon in the main menu) shows every bigger system in one place. **Left-click** switches a module on or off: its commands are registered or removed at once, no restart, and the name is free for another plugin while it is off. **Right-click** opens its settings. From the console: `/sc modules` lists them, `/sc module homes off` switches one.
@@ -109,6 +135,8 @@ Anti-cheat plugins can run `playban apply <player> <category>` from the console.
 | Money | `/money [player]` (`/bal`), `/pay`, `/baltop`, `/eco give\|take\|set` | starting money, currency symbol, symbol before or after |
 | Spawn | `/spawn`, `/setspawn` | the spawn menu |
 | Ranks | `/rank` | the rank menu |
+| Anti-cheat | `/anticheat` (`/ac`) | auto-punish, category, speed limit, highest ping, clicks per second |
+| Admin mode required | - | left-click: team members are normal players until `/admin` |
 | Admin ESP | `/esp [players\|chests\|all\|off]`, the ESP spyglass in staff mode | player range, chest range, most chests |
 | Block log | `/blocklog` | days kept, largest radius |
 | Admin commands | `/tpadmin`, `/freeze`, `/invsee`, `/fly`, `/heal`, `/god`, ... | - |
@@ -241,6 +269,8 @@ Messages are only delivered and only count after a team member approved them in 
 - `prisons.yml`, `prisons-return.yml` - prison cells and items waiting for their owner
 - `blocklog.db` - block log and team protocol (SQLite)
 - `homes.yml`, `money.yml` - homes and balances
+- `anticheat.yml` - marked players
+- `staffmode-gamemodes.yml` - the game mode before admin mode, while it is on
 - `fakebases.yml` - only while a fake base stands: the blocks to put back
 
 ## Build

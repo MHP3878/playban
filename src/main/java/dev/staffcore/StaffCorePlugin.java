@@ -42,6 +42,9 @@ public class StaffCorePlugin extends JavaPlugin {
     private dev.staffcore.module.MoneyManager money;
     private dev.staffcore.module.EspManager esp;
     private dev.staffcore.module.ModuleManager modules;
+    private dev.staffcore.module.AntiCheat antiCheat;
+    private dev.staffcore.module.GhostMode ghost;
+    private dev.staffcore.module.AdminPanel adminPanel;
     private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
@@ -136,10 +139,19 @@ public class StaffCorePlugin extends JavaPlugin {
         esp = new dev.staffcore.module.EspManager(this);
         getServer().getPluginManager().registerEvents(esp, this);
         esp.start();
+        antiCheat = new dev.staffcore.module.AntiCheat(this);
+        getServer().getPluginManager().registerEvents(antiCheat, this);
+        ghost = new dev.staffcore.module.GhostMode(this);
+        getServer().getPluginManager().registerEvents(ghost, this);
+        ghost.start();
+        adminPanel = new dev.staffcore.module.AdminPanel(this);
+        getServer().getPluginManager().registerEvents(adminPanel, this);
+        register("admin", "Your admin panel: inbox, admin mode, ghost mode, your commands", "staffcore.panel", adminPanel);
         modules = new dev.staffcore.module.ModuleManager(this);
         defineModules(executor);
         modules.startAll();
         economy.fallback(() -> modules.on("money") ? money : null);
+        antiCheat.start();
         VoiceCommand voiceExecutor = new VoiceCommand(this);
         PluginCommand voiceCommand = getCommand("voice");
         if (voiceCommand != null) {
@@ -240,6 +252,15 @@ public class StaffCorePlugin extends JavaPlugin {
         modules.add("ranks", org.bukkit.Material.GOLDEN_HELMET, ranks::enabled, ranks::setEnabled)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("rank", "Give and manage ranks", "staffcore.ranks", new dev.staffcore.command.RankCommand(this)))
                 .settingsMenu(p -> rankMenus.list(p));
+        modules.add("anticheat", org.bukkit.Material.IRON_SWORD, "anticheat.enabled", true)
+                .command(new dev.staffcore.module.ModuleManager.Cmd("anticheat", "Players the anti-cheat marked", "staffcore.anticheat", antiCheat,
+                        java.util.List.of("ac")))
+                .setting("anticheat.auto-punish", BOOL, org.bukkit.Material.ANVIL, true)
+                .setting("anticheat.category", TEXT, org.bukkit.Material.LECTERN, "cheating")
+                .setting("anticheat.speed-limit", CYCLE, org.bukkit.Material.SUGAR, 9.5, 8.5, 9.5, 11.0, 13.0)
+                .setting("anticheat.max-ping", CYCLE, org.bukkit.Material.CLOCK, 300, 200, 300, 500)
+                .setting("anticheat.max-cps", CYCLE, org.bukkit.Material.STONE_BUTTON, 22, 18, 22, 26);
+        modules.add("adminmode", org.bukkit.Material.NETHERITE_CHESTPLATE, "admin-mode.required", true);
         modules.add("esp", org.bukkit.Material.SPYGLASS, "esp.enabled", true)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("esp", "See chests and players through walls, only you", "staffcore.esp", esp))
                 .setting("esp.player-range", CYCLE, org.bukkit.Material.PLAYER_HEAD, 128, 32, 64, 128, 256)
@@ -289,6 +310,8 @@ public class StaffCorePlugin extends JavaPlugin {
         if (prison != null) prison.stop();
         if (fakeBases != null) fakeBases.stop();
         if (esp != null) esp.stop();
+        if (ghost != null) ghost.stop();
+        if (antiCheat != null) antiCheat.stop();
         if (money != null) {
             money.saveIfDirty();
             money.unhookVault();
@@ -356,6 +379,12 @@ public class StaffCorePlugin extends JavaPlugin {
     public dev.staffcore.module.EspManager esp() { return esp; }
 
     public dev.staffcore.module.ModuleManager modules() { return modules; }
+
+    public dev.staffcore.module.AntiCheat antiCheat() { return antiCheat; }
+
+    public dev.staffcore.module.GhostMode ghost() { return ghost; }
+
+    public dev.staffcore.module.AdminPanel adminPanel() { return adminPanel; }
 
     /** One line in the team protocol (/stafflog). */
     public void staffLog(String actor, String action, String target, String detail) {

@@ -89,6 +89,8 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  admin: ["<gray>Your admin panel: inbox with tickets", "<gray>and marked players, admin mode,", "<gray>vanish, ghost mode, ESP and every", "<gray>command you may use."]
+  anticheat: ["<gray>Players the anti-cheat marked.", "<gray>/anticheat clear <player> removes", "<gray>the mark."]
   modules: ["<gray>Every system in one menu: homes,", "<gray>teleport requests, money, spawn,", "<gray>ranks, ESP, block log and more.", "<gray>Left-click: on or off.", "<gray>Right-click: settings."]
   esp: ["<gray>Chests glow through walls, players", "<gray>get name tags with health, distance", "<gray>and item. Only you see it.", "", "<dark_gray>Example: /esp all"]
   home: ["<gray>Save places and teleport back.", "<gray>/homes shows them as a menu.", "", "<dark_gray>Example: /sethome farm, /home farm"]
@@ -441,6 +443,9 @@ moderation:
   report-sent: "<green>Thanks, your report about <white>{player}</white> went to the team."
 
 tools:
+  ghost:
+    name: "<dark_aqua><bold>Ghost mode</bold>"
+    lore: ["<gray>Right-click: creative and invisible,", "<gray>and you walk through walls like", "<gray>a spectator. Again to stop."]
   esp:
     name: "<aqua><bold>ESP spyglass</bold>"
     lore: ["<gray>Right-click: off, players, chests, both.", "<gray>Chests glow and players have name", "<gray>tags through walls. Only you see it."]
@@ -1722,6 +1727,8 @@ module:
   right-none: "<dark_gray>No settings"
   switched-on: "<green>{module} is on. Its commands work right away."
   switched-off: "<gray>{module} is off. Its commands are gone."
+  switched-on-plain: "<green>{module} is on."
+  switched-off-plain: "<gray>{module} is off."
   is-off: "<red>{module} is switched off. An admin can switch it on in /sc modules."
   settings-title: "<dark_gray>Settings: {module}"
   value: "<gray>Now: <white>{value}"
@@ -1732,6 +1739,12 @@ module:
   word-off: "off"
   line: "<gray>{module}: <white>{name}</white> - {state}"
   unknown: "<red>There is no module <white>{module}</white>. <white>/sc modules</white> lists them."
+  anticheat:
+    name: "<#ffc371><bold>Anti-cheat</bold>"
+    lore: ["<gray>Marks suspicious players for the", "<gray>team, punishes only clear cases."]
+  adminmode:
+    name: "<#ffc371><bold>Admin mode required</bold>"
+    lore: ["<gray>On: team members are normal players", "<gray>until they switch admin mode on in", "<gray>/admin. Team commands and admin", "<gray>items only work in admin mode."]
   homes:
     name: "<#ffc371><bold>Homes</bold>"
     lore: ["<gray>Players save places and teleport", "<gray>back: /sethome, /home, /homes."]
@@ -1770,6 +1783,22 @@ module:
     lore: ["<gray>/troll: harmless jokes."]
 
 module-setting:
+  anticheat:
+    auto-punish:
+      name: "<white>Punish automatically"
+      lore: ["<gray>Very clear cases get the punishment", "<gray>of the category below."]
+    category:
+      name: "<white>Category"
+      lore: ["<gray>Which category punishes cheaters.", "<gray>Its steps decide how hard."]
+    speed-limit:
+      name: "<white>Speed limit"
+      lore: ["<gray>Blocks per second on foot.", "<gray>Higher means fewer false alarms."]
+    max-ping:
+      name: "<white>Highest ping"
+      lore: ["<gray>Above this, movement is not judged."]
+    max-cps:
+      name: "<white>Clicks per second"
+      lore: ["<gray>More than this is suspicious."]
   homes:
     max:
       name: "<white>Homes per player"
@@ -1828,3 +1857,80 @@ module-setting:
     max:
       name: "<white>At most at once"
       lore: ["<gray>Fake bases at the same time."]
+
+ghost:
+  on: "<dark_aqua>Ghost mode on: <gray>you are invisible, in creative, and walk through walls."
+  off: "<gray>Ghost mode off."
+
+panel:
+  title: "<gradient:#ff5f6d:#ffc371><bold>Admin</bold></gradient>"
+  you-active: "<green><bold>{player}</bold> <gray>- active admin"
+  you-inactive: "<gray><bold>{player}</bold> - inactive, a normal player"
+  you-lore: ["<gray>Rank: <white>{rank}", "", "<gray>Switch admin mode on to use", "<gray>team commands and admin items."]
+  inbox: "<#ffc371><bold>Inbox</bold> <gray>({count})"
+  inbox-lore: ["<gray>Tickets for you: <white>{tickets}", "<gray>Marked by the anti-cheat: <white>{flagged}", "", "<#ffc371>Click to open"]
+  inbox-title: "<dark_gray>Inbox ({count})"
+  inbox-empty: "<green>Nothing to do"
+  mode-on: "<green><bold>Admin mode: on"
+  mode-off: "<gray><bold>Admin mode: off"
+  mode-lore: ["<gray>On: your inventory is stored safely,", "<gray>you get your admin items, are", "<gray>invisible and can fly.", "", "<#ffc371>Click to switch"]
+  vanish-on: "<green><bold>Vanish: on"
+  vanish-off: "<gray><bold>Vanish: off"
+  vanish-lore: ["<#ffc371>Click to switch"]
+  ghost-on: "<green><bold>Ghost mode: on"
+  ghost-off: "<gray><bold>Ghost mode: off"
+  ghost-lore: ["<gray>Creative and invisible, and walls", "<gray>are no obstacle: inside a wall you", "<gray>see the caves like a spectator.", "", "<#ffc371>Click to switch"]
+  esp: "<aqua><bold>ESP: {mode}"
+  esp-lore: ["<gray>Chests and players through walls,", "<gray>only for you.", "", "<#ffc371>Click: off, players, chests, both"]
+  commands: "<#ffc371><bold>My commands"
+  commands-lore: ["<gray>Every command you may use,", "<gray>with what it does.", "", "<#ffc371>Click to open"]
+  commands-title: "<dark_gray>My commands ({count})"
+  command-name: "<white>/{command}"
+  command-aliases: "<dark_gray>Also: {aliases}"
+  command-from: "<dark_gray>From: {plugin}"
+  command-click: "<#ffc371>Click: put it in the chat"
+  command-suggest: "<gray>Click to type: <white>/{command}"
+  flagged-row: "<red><bold>Marked by the anti-cheat</bold> <gray>→"
+  flag-name: "<red><bold>{player}</bold> <gray>({score} points)"
+  flag-check: "<gray>{check}: <white>{vl}"
+  flag-online: "<green>Online"
+  flag-offline: "<dark_gray>Offline"
+  flag-handler: "<gold>Being looked at by {staff}"
+  flag-punished: "<red>Already punished automatically"
+  flag-actions: ["<#ffc371>Click: take the case (invisible,", "<#ffc371>ghost mode, go to the player)", "<red>Shift-click: remove the mark"]
+  ticket-name: "<white>#{id} <#ffc371>{reason}</#ffc371> <gray>from {player}"
+  ticket-lore: ["<gray>{text}", "", "<gray>State: <white>{state}", "<gray>Handled by: <white>{handler}", "", "<#ffc371>Click to open"]
+  ticket-state:
+    open: "open"
+    in_progress: "in progress"
+    closed: "closed"
+    declined: "declined"
+  case-offline: "<gray><white>{player}</white> is not online right now."
+  case-taken: "<green>You took the case of <white>{player}</white>. You are invisible and in ghost mode."
+  case-broadcast: "<gray><white>{staff}</white> is looking at <white>{player}</white>."
+  need-admin-mode: "<gray>You are an inactive admin right now. <#ffc371>Click here</#ffc371> or type <white>/admin</white> and switch admin mode on."
+  staffcore: "<#ffc371>StaffCore menu"
+  tools: "<#ffc371>Admin items"
+  modules: "<#ffc371>Modules"
+  close: "<red>Close"
+
+anticheat:
+  alert: "<red>⚠ <white>{player}</white> <gray>{check} <white>({vl})</white> <dark_gray>{detail}</dark_gray> <gray>Click to take the case."
+  punished: "<red><white>{player}</white> was punished automatically for {check}: {punishment}."
+  header: "<gradient:#ff5f6d:#ffc371>Anti-cheat</gradient> <gray>({count} marked)"
+  line: "<white>{player}</white> <gray>{score} points: {checks}"
+  unknown: "<red><white>{player}</white> is not marked."
+  cleared: "<gray>The mark of <white>{player}</white> is gone."
+  check:
+    fly: "Flying"
+    speed: "Speed"
+    reach: "Reach"
+    aura: "Kill aura"
+    autoclick: "Auto clicker"
+    nofall: "No fall damage"
+    velocity: "No knockback"
+    xray: "X-ray (ores)"
+  detail:
+    hover: "hangs in the air"
+    rise: "rises without help"
+    multi: "two targets at once"

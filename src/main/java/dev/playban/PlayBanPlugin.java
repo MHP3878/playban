@@ -28,6 +28,7 @@ public class PlayBanPlugin extends JavaPlugin {
     private AdminMenus adminMenus;
     private PlayerMenus playerMenus;
     private TicketManager tickets;
+    private SpawnManager spawn;
     private TicketMenus ticketMenus;
     private VoiceManager voice;
     private VoiceMenus voiceMenus;
@@ -62,6 +63,15 @@ public class PlayBanPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RestrictionListener(this), this);
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new dev.playban.listener.StaffListener(this), this);
+        spawn = new SpawnManager(this);
+        getServer().getPluginManager().registerEvents(spawn, this);
+        for (String name : new String[]{"spawn", "setspawn"}) {
+            PluginCommand cmd = getCommand(name);
+            if (cmd != null) {
+                cmd.setExecutor(spawn);
+                cmd.setTabCompleter(spawn);
+            }
+        }
 
         PlayBanCommand executor = new PlayBanCommand(this);
         for (String name : new String[]{"playban", "punish", "ban", "tempban", "warn", "unban", "vanish", "guide"}) {
@@ -119,6 +129,7 @@ public class PlayBanPlugin extends JavaPlugin {
     public AdminMenus adminMenus() { return adminMenus; }
     public PlayerMenus playerMenus() { return playerMenus; }
     public TicketManager tickets() { return tickets; }
+    public SpawnManager spawn() { return spawn; }
     public TicketMenus ticketMenus() { return ticketMenus; }
     public VoiceManager voice() { return voice; }
     public VoiceMenus voiceMenus() { return voiceMenus; }

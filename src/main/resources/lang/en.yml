@@ -87,6 +87,8 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  spawn: ["<gray>Teleports you to spawn.", "<gray>Stand still for the countdown."]
+  setspawn: ["<gray>Sets the spawn where you stand."]
   menu: ["<gray>Opens the main menu.", "<gray>Everything else starts here."]
   punish: ["<gray>Pick a category for a player.", "<gray>PlayBan works out the punishment", "<gray>from their earlier offenses.", "", "<dark_gray>Example: /punish Steve"]
   apply: ["<gray>Same as /punish, but without a menu.", "<gray>Works from the console too.", "", "<dark_gray>Example: /playban apply Steve x-ray"]
@@ -104,6 +106,22 @@ guide:
   ticket: ["<gray>Write to the server team:", "<gray>report a player, ask something,", "<gray>report a bug."]
   appeal: ["<gray>Ask to be unbanned. You need", "<gray>the ban ID from your ban screen."]
   tasks: ["<gray>When you are punished: shows", "<gray>time left, the reason and the", "<gray>tasks that shorten your time."]
+
+spawn:
+  disabled: "<red>/spawn is switched off on this server."
+  warmup: "<gray>Teleporting to spawn in <white>{seconds}</white> seconds. Do not move."
+  countdown: "<#ffc371>Spawn in <white>{seconds}</white>..."
+  done: "<green>Welcome to spawn."
+  moved: "<red>You moved, so the teleport was cancelled."
+  hurt: "<red>You took damage, so the teleport was cancelled."
+  cooldown: "<red>You can use /spawn again in <white>{time}</white>."
+  set: "<green>Spawn set to <white>{world} {x} {y} {z}</white>."
+  sent: "<gray>Sent <white>{player}</white> to spawn."
+  sent-you: "<gray><white>{staff}</white> sent you to spawn."
+  join-mode:
+    NEVER: "never"
+    FIRST_JOIN: "only new players"
+    ALWAYS: "every time"
 
 help: |-
   <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- commands
@@ -741,6 +759,27 @@ menu:
     title: "<dark_gray>Command guide"
     entry: "<#ffc371>{command}"
 
+  spawn:
+    title: "<dark_gray>Spawn"
+    world-spawn: "world spawn"
+    set:
+      name: "<#ffc371>Set spawn here"
+      lore: ["<gray>Now: <white>{value}", "", "<#ffc371>Click to use where you stand"]
+    go:
+      name: "<#ffc371>Go to spawn"
+    enabled:
+      name: "<#ffc371>/spawn"
+      lore: ["{value}", "<gray>Switch off if another plugin", "<gray>already handles /spawn."]
+    on-join:
+      name: "<#ffc371>Send to spawn on join"
+      lore: ["<gray>Now: <white>{value}", "", "<#ffc371>Click to switch"]
+    on-death:
+      name: "<#ffc371>Respawn at spawn"
+      lore: ["{value}", "<gray>Players without a bed come", "<gray>back at spawn after dying."]
+    warmup:
+      name: "<#ffc371>Countdown"
+      lore: ["<gray>Now: <white>{value}</white> seconds", "<gray>Standing still is needed, moving", "<gray>or damage cancels it.", "", "<#ffc371>Click to switch: 0, 3, 5, 10"]
+
   select-player:
     title: "<dark_gray>Who do you want to punish?"
     entry:
@@ -1030,6 +1069,9 @@ menu:
     "on": "<green>● On"
     "off": "<red>● Off"
     click: "<#ffc371>Click to switch"
+    spawn:
+      name: "<#ffc371>Spawn"
+      lore: ["<gray>Where /spawn leads, joining,", "<gray>dying and the countdown.", "", "<#ffc371>Click to open"]
     hidden-commands:
       name: "<#ffc371>Hidden commands"
       lore: ["<gray>Players do not see these", "<gray>and cannot use them: <white>{count}", "<white>{list}", "", "<#ffc371>Click to change"]

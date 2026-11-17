@@ -36,6 +36,8 @@ Everything is controlled through in-game menus: punishing, categories, reviewing
 | `/unban <player or ban-ID>` | Lift a ban or spectator ban | `playban.staff` |
 | `/vanish` | Turn invisible to players; the team still sees you. Your name is left out of kill, join, quit and advancement messages, the server list does not count you, and your chat goes to the team unless it starts with `!` | `playban.vanish` |
 | `/guide` | Every command with what it does and an example | - |
+| `/spawn` | Teleport to spawn after a short countdown; staff go at once and can send others with `/spawn <player>` | `playban.spawn` |
+| `/setspawn` | Set the spawn where you stand | `playban.admin` |
 | `/appeal <ban-ID> <text>` | Ask to be unbanned, with the ID from the ban screen | - |
 | `/playban note <player> <text>` | Write a note about a player | `playban.staff` |
 | `/playban profile <player>` | Notes and punishments of a player | `playban.staff` |

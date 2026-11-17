@@ -1554,6 +1554,91 @@ class PlayBanTest {
         assertNull(plugin.store().bans.get(troll.getUniqueId()));
     }
 
+    // ------------------------------------------------------------------ spawn
+
+    @Test
+    void setspawnAndSpawnWithCountdown() {
+        var spot = admin.getLocation().clone().add(100, 0, 100);
+        admin.teleport(spot);
+        assertTrue(admin.performCommand("setspawn"));
+        assertTrue(plugin.spawn().isSet());
+
+        bystander.teleport(spot.clone().add(-500, 0, 0));
+        assertTrue(bystander.performCommand("spawn"));
+        assertNotEquals(spot.getX(), bystander.getLocation().getX(), "not before the countdown");
+        server.getScheduler().performTicks(20 * 4);
+        assertEquals(spot.getX(), bystander.getLocation().getX(), 0.01, "after the countdown at spawn");
+
+        // and it stops there instead of teleporting again and again
+        bystander.teleport(spot.clone().add(-500, 0, 0));
+        server.getScheduler().performTicks(20 * 5);
+        assertNotEquals(spot.getX(), bystander.getLocation().getX(), "no second teleport by itself");
+    }
+
+    @Test
+    void movingCancelsTheSpawnCountdown() {
+        var spot = admin.getLocation().clone().add(100, 0, 100);
+        plugin.spawn().setSpawn(spot);
+        var start = spot.clone().add(-500, 0, 0);
+        bystander.teleport(start);
+        bystander.performCommand("spawn");
+        var move = new org.bukkit.event.player.PlayerMoveEvent(bystander, start, start.clone().add(3, 0, 0));
+        server.getPluginManager().callEvent(move);
+        server.getScheduler().performTicks(20 * 5);
+        assertNotEquals(spot.getX(), bystander.getLocation().getX(), "moving cancelled it");
+    }
+
+    @Test
+    void staffTeleportAtOnceAndCanSendOthers() {
+        var spot = admin.getLocation().clone().add(100, 0, 100);
+        plugin.spawn().setSpawn(spot);
+        admin.teleport(spot.clone().add(50, 0, 0));
+        admin.performCommand("spawn");
+        server.getScheduler().performTicks(2);
+        assertEquals(spot.getX(), admin.getLocation().getX(), 0.01, "no countdown for staff");
+        bystander.teleport(spot.clone().add(-50, 0, 0));
+        admin.performCommand("spawn Bystander");
+        server.getScheduler().performTicks(2);
+        assertEquals(spot.getX(), bystander.getLocation().getX(), 0.01);
+    }
+
+    @Test
+    void punishedPlayersMayUseSpawnButSpectatorBannedMayNot() {
+        var spot = admin.getLocation().clone().add(100, 0, 100);
+        plugin.spawn().setSpawn(spot);
+        plugin.getConfig().set("spawn.warmup", 0);
+        punish("1h");
+        PlayerCommandPreprocessEvent pre = new PlayerCommandPreprocessEvent(troll, "/spawn");
+        server.getPluginManager().callEvent(pre);
+        assertFalse(pre.isCancelled(), "spawn is on the list of allowed commands");
+        admin.performCommand("playban specban Bystander 1h test");
+        var limboPos = bystander.getLocation().clone();
+        bystander.performCommand("spawn");
+        server.getScheduler().performTicks(2);
+        assertEquals(limboPos.getX(), bystander.getLocation().getX(), 0.01, "stuck in the spectator ban");
+    }
+
+    @Test
+    void respawnAtSpawnWithoutBed() {
+        var spot = admin.getLocation().clone().add(100, 0, 100);
+        plugin.spawn().setSpawn(spot);
+        var event = new org.bukkit.event.player.PlayerRespawnEvent(bystander, bystander.getWorld().getSpawnLocation(), false, false,
+                org.bukkit.event.player.PlayerRespawnEvent.RespawnReason.DEATH);
+        server.getPluginManager().callEvent(event);
+        assertEquals(spot.getX(), event.getRespawnLocation().getX(), 0.01);
+    }
+
+    @Test
+    void spawnMenuOpensInBothLanguages() {
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.adminMenus().spawnSettings(admin);
+            assertNoMissingTexts(admin, code);
+            plugin.adminMenus().guide(admin, 0);
+            assertNoMissingTexts(admin, code);
+        }
+    }
+
     @Test
     void timeParsing() {
         assertEquals(90_000_000L + 1_800_000L, TimeUtil.parse("1d 1h 30m"));

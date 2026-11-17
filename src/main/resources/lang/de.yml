@@ -87,6 +87,8 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  spawn: ["<gray>Bringt dich zum Spawn.", "<gray>Bleib beim Countdown stehen."]
+  setspawn: ["<gray>Setzt den Spawn dort, wo du stehst."]
   menu: ["<gray>Öffnet das Hauptmenü.", "<gray>Von hier aus geht alles."]
   punish: ["<gray>Kategorie für einen Spieler wählen.", "<gray>PlayBan berechnet die Strafe aus", "<gray>seinen früheren Verstößen.", "", "<dark_gray>Beispiel: /punish Steve"]
   apply: ["<gray>Wie /punish, aber ohne Menü.", "<gray>Geht auch von der Konsole.", "", "<dark_gray>Beispiel: /playban apply Steve x-ray"]
@@ -104,6 +106,22 @@ guide:
   ticket: ["<gray>Dem Serverteam schreiben:", "<gray>Spieler melden, etwas fragen,", "<gray>einen Bug melden."]
   appeal: ["<gray>Entbannung beantragen. Du brauchst", "<gray>die Ban-ID von deinem Bann-Bildschirm."]
   tasks: ["<gray>Wenn du bestraft bist: zeigt", "<gray>Restzeit, Grund und die Aufgaben,", "<gray>die deine Zeit verkürzen."]
+
+spawn:
+  disabled: "<red>/spawn ist auf diesem Server ausgeschaltet."
+  warmup: "<gray>Teleport zum Spawn in <white>{seconds}</white> Sekunden. Nicht bewegen."
+  countdown: "<#ffc371>Spawn in <white>{seconds}</white>..."
+  done: "<green>Willkommen am Spawn."
+  moved: "<red>Du hast dich bewegt, der Teleport wurde abgebrochen."
+  hurt: "<red>Du hast Schaden bekommen, der Teleport wurde abgebrochen."
+  cooldown: "<red>Du kannst /spawn erst in <white>{time}</white> wieder nutzen."
+  set: "<green>Spawn gesetzt auf <white>{world} {x} {y} {z}</white>."
+  sent: "<gray><white>{player}</white> zum Spawn geschickt."
+  sent-you: "<gray><white>{staff}</white> hat dich zum Spawn geschickt."
+  join-mode:
+    NEVER: "nie"
+    FIRST_JOIN: "nur neue Spieler"
+    ALWAYS: "jedes Mal"
 
 help: |-
   <gradient:#ff5f6d:#ffc371><bold>PlayBan</bold></gradient> <gray>- Befehle
@@ -742,6 +760,27 @@ menu:
     title: "<dark_gray>Befehls-Anleitung"
     entry: "<#ffc371>{command}"
 
+  spawn:
+    title: "<dark_gray>Spawn"
+    world-spawn: "Welt-Spawn"
+    set:
+      name: "<#ffc371>Spawn hier setzen"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#ffc371>Klicken, um deinen Standort zu nehmen"]
+    go:
+      name: "<#ffc371>Zum Spawn"
+    enabled:
+      name: "<#ffc371>/spawn"
+      lore: ["{value}", "<gray>Ausschalten, wenn ein anderes Plugin", "<gray>schon /spawn übernimmt."]
+    on-join:
+      name: "<#ffc371>Beim Beitreten zum Spawn"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#ffc371>Klicken zum Wechseln"]
+    on-death:
+      name: "<#ffc371>Nach dem Tod am Spawn"
+      lore: ["{value}", "<gray>Spieler ohne Bett kommen nach", "<gray>dem Tod am Spawn wieder."]
+    warmup:
+      name: "<#ffc371>Countdown"
+      lore: ["<gray>Jetzt: <white>{value}</white> Sekunden", "<gray>Stillstehen nötig, Bewegen oder", "<gray>Schaden bricht ab.", "", "<#ffc371>Klicken zum Wechseln: 0, 3, 5, 10"]
+
   select-player:
     title: "<dark_gray>Wen willst du bestrafen?"
     entry:
@@ -1030,6 +1069,9 @@ menu:
     "on": "<green>● An"
     "off": "<red>● Aus"
     click: "<#ffc371>Klicken zum Umschalten"
+    spawn:
+      name: "<#ffc371>Spawn"
+      lore: ["<gray>Wohin /spawn führt, Beitreten,", "<gray>Sterben und der Countdown.", "", "<#ffc371>Klicken zum Öffnen"]
     hidden-commands:
       name: "<#ffc371>Versteckte Befehle"
       lore: ["<gray>Spieler sehen diese Befehle nicht", "<gray>und können sie nicht nutzen: <white>{count}", "<white>{list}", "", "<#ffc371>Klicken zum Ändern"]

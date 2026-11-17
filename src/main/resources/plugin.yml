@@ -29,6 +29,12 @@ commands:
     permission: playban.vanish
   guide:
     description: Every command with what it does
+  spawn:
+    description: Teleport to spawn
+    permission: playban.spawn
+  setspawn:
+    description: Set the spawn where you stand
+    permission: playban.admin
   ticket:
     description: Open a ticket for the server team
     aliases: [pbticket]
@@ -54,6 +60,8 @@ permissions:
       playban.voice: true
       playban.vanish: true
       playban.commands.all: true
+      playban.spawn.instant: true
+      playban.spawn.others: true
   playban.see:
     description: Can still see punished players
     default: op
@@ -68,6 +76,15 @@ permissions:
     default: op
   playban.voice:
     description: Can moderate voice groups - kick, mute, ban, close, passwords, join unseen
+    default: op
+  playban.spawn:
+    description: Can use /spawn
+    default: true
+  playban.spawn.instant:
+    description: /spawn without countdown and cooldown
+    default: op
+  playban.spawn.others:
+    description: Can send other players to spawn with /spawn <player>
     default: op
   playban.ticket:
     description: Can open tickets

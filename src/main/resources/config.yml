@@ -138,3 +138,18 @@ command-hiding:
   # Also hide forms like bukkit:plugins or minecraft:tp, which people use to get around blocks
   hide-namespaced: true
   hidden: [plugins, pl, version, ver, about, icanhasbukkit, "?"]
+
+# ---- Spawn (/spawn, /setspawn) ----
+# Switch off if another plugin (for example EssentialsX) already handles /spawn.
+spawn:
+  enabled: true
+  # NEVER, FIRST_JOIN (new players only) or ALWAYS
+  on-join: FIRST_JOIN
+  # after death, players without a bed or respawn anchor come back at spawn
+  on-death: true
+  # seconds to stand still before /spawn teleports. Moving or taking damage cancels it. 0 = at once
+  warmup: 3
+  # seconds between two uses of /spawn. 0 = no limit
+  cooldown: 0
+  # set with /setspawn or in the menu; without it the world spawn is used
+  # location: {world: world, x: 0, y: 64, z: 0, yaw: 0, pitch: 0}

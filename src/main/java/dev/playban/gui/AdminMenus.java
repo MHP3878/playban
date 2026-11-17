@@ -397,6 +397,8 @@ public final class AdminMenus {
             new GuideEntry("vanish", "/vanish", Material.GLASS, "playban.vanish"),
             new GuideEntry("ticket-show", "/ticket show [reason]", Material.HOPPER, "playban.staff"),
             new GuideEntry("voice", "/voice", Material.JUKEBOX, "playban.voice"),
+            new GuideEntry("setspawn", "/setspawn", Material.RESPAWN_ANCHOR, "playban.admin"),
+            new GuideEntry("spawn", "/spawn", Material.ENDER_PEARL, "playban.spawn"),
             new GuideEntry("ticket", "/ticket", Material.PAPER, ""),
             new GuideEntry("appeal", "/appeal <ban-ID> <text>", Material.NAME_TAG, ""),
             new GuideEntry("tasks", "/playban", Material.FEATHER, ""));
@@ -714,6 +716,7 @@ public final class AdminMenus {
                 settings(p);
             });
         }
+        m.set(51, item(Material.RESPAWN_ANCHOR, "menu.settings.spawn"), e -> spawnSettings(p));
         List<String> hiddenCommands = plugin.getConfig().getStringList("command-hiding.hidden");
         m.set(50, item(Material.STRUCTURE_VOID, "menu.settings.hidden-commands", "count", hiddenCommands.size(),
                 "list", hiddenCommands.isEmpty() ? lang().raw("none") : String.join(", ", hiddenCommands)), e ->
@@ -754,6 +757,54 @@ public final class AdminMenus {
             settings(p);
         });
         m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
+        m.fill().open(p);
+    }
+
+    // ---------------------------------------------------------------- spawn
+
+    public void spawnSettings(Player p) {
+        if (!admin(p)) return;
+        Menu m = new Menu(4, lang().msg("menu.spawn.title"));
+        org.bukkit.Location s = plugin.spawn().spawn();
+        String where = s == null ? "-" : s.getWorld().getName() + " " + s.getBlockX() + " " + s.getBlockY() + " " + s.getBlockZ();
+        m.set(10, item(Material.RESPAWN_ANCHOR, "menu.spawn.set", "value", plugin.spawn().isSet() ? where : lang().raw("menu.spawn.world-spawn")), e -> {
+            plugin.spawn().setSpawn(p.getLocation());
+            lang().send(p, "spawn.set", "world", p.getWorld().getName(),
+                    "x", p.getLocation().getBlockX(), "y", p.getLocation().getBlockY(), "z", p.getLocation().getBlockZ());
+            spawnSettings(p);
+        });
+        m.set(11, item(Material.ENDER_PEARL, "menu.spawn.go"), e -> {
+            p.closeInventory();
+            plugin.spawn().teleport(p);
+        });
+        boolean on = plugin.spawn().enabled();
+        m.set(13, item(on ? Material.LIME_DYE : Material.GRAY_DYE, "menu.spawn.enabled", "value", lang().msg(on ? "menu.settings.on" : "menu.settings.off")), e -> {
+            plugin.getConfig().set("spawn.enabled", !on);
+            plugin.saveConfig();
+            spawnSettings(p);
+        });
+        String join = plugin.getConfig().getString("spawn.on-join", "FIRST_JOIN").toUpperCase();
+        m.set(14, item(Material.OAK_DOOR, "menu.spawn.on-join", "value", lang().raw("spawn.join-mode." + join)), e -> {
+            List<String> modes = dev.playban.SpawnManager.JOIN_MODES;
+            plugin.getConfig().set("spawn.on-join", modes.get((Math.max(0, modes.indexOf(join)) + 1) % modes.size()));
+            plugin.saveConfig();
+            spawnSettings(p);
+        });
+        boolean death = plugin.getConfig().getBoolean("spawn.on-death", true);
+        m.set(15, item(death ? Material.LIME_DYE : Material.GRAY_DYE, "menu.spawn.on-death", "value", lang().msg(death ? "menu.settings.on" : "menu.settings.off")), e -> {
+            plugin.getConfig().set("spawn.on-death", !death);
+            plugin.saveConfig();
+            spawnSettings(p);
+        });
+        int warmup = plugin.getConfig().getInt("spawn.warmup", 3);
+        m.set(16, item(Material.CLOCK, "menu.spawn.warmup", "value", warmup), e -> {
+            List<Integer> steps = List.of(0, 3, 5, 10);
+            int next = steps.get((Math.max(0, steps.indexOf(warmup)) + 1) % steps.size());
+            plugin.getConfig().set("spawn.warmup", next);
+            plugin.saveConfig();
+            spawnSettings(p);
+        });
+        m.set(31, item(Material.OAK_DOOR, "menu.back"), e -> settings(p));
         m.fill().open(p);
     }
 

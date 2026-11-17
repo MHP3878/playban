@@ -10,7 +10,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -38,7 +37,6 @@ public final class TrollManager implements Listener, TabExecutor {
             new Troll("launch", Material.FIREWORK_ROCKET),
             new Troll("creeper", Material.CREEPER_HEAD),
             new Troll("explosion", Material.TNT),
-            new Troll("stash", Material.CHEST),
             new Troll("fakeop", Material.COMMAND_BLOCK),
             new Troll("spin", Material.COMPASS),
             new Troll("lightning", Material.LIGHTNING_ROD),
@@ -90,7 +88,6 @@ public final class TrollManager implements Listener, TabExecutor {
                 target.playSound(target.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
                 particle(target, Particle.EXPLOSION_EMITTER, target.getLocation(), 1);
             }
-            case "stash" -> stash(target);
             case "fakeop" -> target.sendMessage(Component.text("[Server: Made " + target.getName() + " a server operator]",
                     NamedTextColor.GRAY).decorate(TextDecoration.ITALIC));
             case "spin" -> spin(target);
@@ -160,28 +157,6 @@ public final class TrollManager implements Listener, TabExecutor {
             e.getDrops().clear();
             e.setDroppedExp(0);
         }
-    }
-
-    /** A "stash" of chests and diamond blocks appears in front of the player, only for them, and is gone when they touch it. */
-    private void stash(Player target) {
-        Location base = target.getLocation().add(target.getLocation().getDirection().setY(0).normalize().multiply(3)).getBlock().getLocation();
-        BlockData chest = Bukkit.createBlockData(Material.CHEST);
-        BlockData diamonds = Bukkit.createBlockData(Material.DIAMOND_BLOCK);
-        BlockData shulker = Bukkit.createBlockData(Material.PURPLE_SHULKER_BOX);
-        List<Location> spots = new ArrayList<>();
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                Location l = base.clone().add(dx, 0, dz);
-                if (l.getBlock().getType().isSolid()) continue;
-                spots.add(l);
-                target.sendBlockChange(l, (dx + dz) % 2 == 0 ? chest : (dx == 0 ? shulker : diamonds));
-            }
-        }
-        target.playSound(target.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.6f, 1f);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!target.isOnline()) return;
-            for (Location l : spots) if (l.getWorld() == target.getWorld()) target.sendBlockChange(l, l.getBlock().getBlockData());
-        }, 20L * 30);
     }
 
     /** Turns the player's view around a few times. */

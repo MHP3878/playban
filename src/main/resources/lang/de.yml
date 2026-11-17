@@ -89,6 +89,7 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  fakebase: ["<gray>Eine Köder-Base tief unter der Erde:", "<gray>Kisten, Öfen, Betten und zwei Fake-", "<gray>Spieler. Wer direkt hingräbt oder eine", "<gray>Kiste öffnet, wird gemeldet. Nichts ist", "<gray>abbaubar, nach 30 Minuten ist sie weg", "<gray>und alles sieht aus wie vorher.", "", "<dark_gray>Beispiel: /fakebase Steve"]
   prison: ["<gray>Mauert den Spieler in eine Grundstein-", "<gray>Zelle ein. Das Inventar wird zu grauen", "<gray>Schlössern: keine Items, kein Scrollen,", "<gray>keine Befehle. Danach kommt alles zurück.", "", "<dark_gray>Beispiel: /prison Steve 30m Griefing"]
   unprison: ["<gray>Lässt einen Spieler aus dem Gefängnis.", "<gray>Die Blöcke drumherum und die Items", "<gray>kommen zurück wie vorher."]
   troll: ["<gray>Harmlose Späße: Hühnerregen, Fake-", "<gray>Stash, Fake-OP-Nachricht, Drehen.", "<gray>Niemand wird verletzt oder verliert was.", "", "<dark_gray>Beispiel: /troll Steve chickens"]
@@ -1575,7 +1576,7 @@ troll:
   title: "<light_purple>Trollen: {player}"
   harmless: ["<gray>Nur harmlose Späße:", "<gray>kein Schaden, keine verlorenen Items."]
   done: "<light_purple>{troll}</light_purple> <gray>bei <white>{player}</white>."
-  usage: "<gray>Benutzung: <white>/troll <spieler> [chickens|launch|creeper|explosion|stash|fakeop|spin|lightning|demo|sneeze]</white>"
+  usage: "<gray>Benutzung: <white>/troll <spieler> [chickens|launch|creeper|explosion|fakeop|spin|lightning|demo|sneeze]</white>"
   chickens:
     name: "<yellow><bold>Hühnerregen</bold>"
     lore: ["<gray>Hühner fallen vom Himmel.", "<gray>Nach 8 Sekunden wieder weg."]
@@ -1588,9 +1589,6 @@ troll:
   explosion:
     name: "<gold><bold>Fake-Explosion</bold>"
     lore: ["<gray>Knall und Rauch, nur für ihn.", "<gray>Nichts geht kaputt."]
-  stash:
-    name: "<aqua><bold>Fake-Stash</bold>"
-    lore: ["<gray>Kisten und Diamantblöcke erscheinen", "<gray>vor ihm, nur für ihn.", "<gray>Weg, sobald er sie anfasst."]
   fakeop:
     name: "<white><bold>Fake-OP</bold>"
     lore: ["<gray>Er liest, dass er OP bekommen hat."]
@@ -1612,3 +1610,30 @@ stafflog:
   everyone: "alle"
   empty: "<gray>Noch nichts."
   line: "<dark_gray>{time} <white>{actor}</white> <#ffc371>{action}</#ffc371> <white>{target}</white> <gray>{detail}"
+
+fakebase:
+  usage: "<gray>Benutzung: <white>/fakebase [here|<spieler>] [1-8|random]</white>, <white>/fakebase at <x> <y> <z> [1-8]</white>, <white>/fakebase list</white>, <white>/fakebase tp <id></white>, <white>/fakebase remove <id|all></white>, <white>/fakebase designs</white>"
+  spawned: "<green>Fake-Base <white>#{id}</white> ({design}) steht bei <white>{x} {y} {z}</white>. In {minutes} Minuten ist sie wieder weg. <gray>Klick, um hinzugehen."
+  spawned-near: "<green>Fake-Base <white>#{id}</white> ({design}) ist tief unter der Erde in der Nähe von <white>{player}</white> versteckt, bei <white>{x} {y} {z}</white>. In {minutes} Minuten ist sie wieder weg. <gray>Klick, um hinzugehen."
+  no-room: "<red>Dort ist kein Platz für eine Base (zu nah am unteren oder oberen Weltrand)."
+  too-many: "<red>Es stehen schon so viele Fake-Basen wie erlaubt. <white>/fakebase list</white>"
+  unknown: "<red>Es gibt keine Fake-Base <white>{id}</white>."
+  unknown-design: "<red>Das Design <white>{design}</white> gibt es nicht. <white>/fakebase designs</white> zeigt alle acht."
+  none: "<gray>Gerade steht keine Fake-Base."
+  entry: "<gray>#{id} <white>{design}</white> bei <white>{x} {y} {z}</white>, noch {time} <dark_gray>(Klick: hingehen)"
+  design-line: "<gray>{number}: <white>{design}</white>"
+  removed: "<gray>Fake-Base #{id} ist weg, alles sieht aus wie vorher."
+  removed-all: "<gray>Alle Fake-Basen sind weg, alles sieht aus wie vorher."
+  gone: "<gray>Fake-Base #{id} ist abgelaufen und wieder weg."
+  alert-near: "<gold>⚠ <white>{player}</white> gräbt unter der Erde auf Fake-Base #{id} zu, noch 10 Blöcke entfernt. ESP oder X-Ray? <gray>Klick zum Zuschauen."
+  alert-inside: "<red>⚠ <white>{player}</white> hat Fake-Base #{id} gefunden. <gray>Klick zum Zuschauen."
+  alert-chest: "<red>⚠ <white>{player}</white> hat eine Kiste in Fake-Base #{id} geöffnet. <gray>Klick zum Zuschauen."
+  design:
+    vault: "Tiefenschiefer-Tresor"
+    bunker: "Stein-Bunker"
+    hideout: "Schwarzstein-Versteck"
+    lab: "Kupfer-Labor"
+    cellar: "Lehmziegel-Keller"
+    storage: "Quarz-Lager"
+    hall: "Tuff-Halle"
+    stash: "Obsidian-Stash"

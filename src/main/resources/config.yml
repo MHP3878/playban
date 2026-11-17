@@ -200,3 +200,9 @@ staff-log:
 
 # Chests marked as bait with the bait tool. The team is told when a player opens one.
 bait-chests: []
+
+# /fakebase: bait bases deep underground. Gone again after this many minutes, everything as before.
+fakebase:
+  minutes: 30
+  # at most this many at the same time
+  max: 5

@@ -409,6 +409,7 @@ public final class AdminMenus {
             new GuideEntry("prison", "/prison <player> [time] [reason]", Material.BEDROCK, "staffcore.prison"),
             new GuideEntry("unprison", "/unprison <player>", Material.TRIPWIRE_HOOK, "staffcore.prison"),
             new GuideEntry("troll", "/troll <player> [joke]", Material.EGG, "staffcore.troll"),
+            new GuideEntry("fakebase", "/fakebase [here|<player>] [1-8]", Material.CHEST, "staffcore.fakebase"),
             new GuideEntry("stafflog", "/stafflog [player]", Material.WRITABLE_BOOK, "staffcore.stafflog"),
             new GuideEntry("report", "/report <player> <reason>", Material.WRITABLE_BOOK, ""),
             new GuideEntry("unban", "/unban <player|ban-ID>", Material.MILK_BUCKET, "staffcore.staff"),

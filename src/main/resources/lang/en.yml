@@ -89,6 +89,7 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  fakebase: ["<gray>A bait base deep underground: chests,", "<gray>furnaces, beds and two fake players.", "<gray>Whoever digs straight to it or opens", "<gray>a chest is reported. Nothing can be", "<gray>broken, after 30 minutes it is gone", "<gray>and everything looks like before.", "", "<dark_gray>Example: /fakebase Steve"]
   prison: ["<gray>Walls the player into a bedrock cell.", "<gray>Their inventory turns into grey locks:", "<gray>no items, no scrolling, no commands.", "<gray>Everything comes back on release.", "", "<dark_gray>Example: /prison Steve 30m Griefing"]
   unprison: ["<gray>Lets a player out of the prison.", "<gray>The blocks around and the items", "<gray>come back as they were."]
   troll: ["<gray>Harmless jokes: chicken rain, a fake", "<gray>stash, a fake op message, a spin.", "<gray>Nobody gets hurt or loses items.", "", "<dark_gray>Example: /troll Steve chickens"]
@@ -1575,7 +1576,7 @@ troll:
   title: "<light_purple>Troll: {player}"
   harmless: ["<gray>Only harmless jokes:", "<gray>no damage, no lost items."]
   done: "<light_purple>{troll}</light_purple> <gray>on <white>{player}</white>."
-  usage: "<gray>Usage: <white>/troll <player> [chickens|launch|creeper|explosion|stash|fakeop|spin|lightning|demo|sneeze]</white>"
+  usage: "<gray>Usage: <white>/troll <player> [chickens|launch|creeper|explosion|fakeop|spin|lightning|demo|sneeze]</white>"
   chickens:
     name: "<yellow><bold>Chicken rain</bold>"
     lore: ["<gray>Chickens fall from the sky.", "<gray>Gone again after 8 seconds."]
@@ -1588,9 +1589,6 @@ troll:
   explosion:
     name: "<gold><bold>Fake explosion</bold>"
     lore: ["<gray>Bang and smoke, only for them.", "<gray>Nothing breaks."]
-  stash:
-    name: "<aqua><bold>Fake stash</bold>"
-    lore: ["<gray>Chests and diamond blocks appear", "<gray>in front of them, only for them.", "<gray>Gone when touched."]
   fakeop:
     name: "<white><bold>Fake OP</bold>"
     lore: ["<gray>They read that they got OP."]
@@ -1612,3 +1610,30 @@ stafflog:
   everyone: "everyone"
   empty: "<gray>Nothing yet."
   line: "<dark_gray>{time} <white>{actor}</white> <#ffc371>{action}</#ffc371> <white>{target}</white> <gray>{detail}"
+
+fakebase:
+  usage: "<gray>Usage: <white>/fakebase [here|<player>] [1-8|random]</white>, <white>/fakebase at <x> <y> <z> [1-8]</white>, <white>/fakebase list</white>, <white>/fakebase tp <id></white>, <white>/fakebase remove <id|all></white>, <white>/fakebase designs</white>"
+  spawned: "<green>Fake base <white>#{id}</white> ({design}) is standing at <white>{x} {y} {z}</white>. Gone again in {minutes} minutes. <gray>Click to go there."
+  spawned-near: "<green>Fake base <white>#{id}</white> ({design}) is hidden deep under the ground near <white>{player}</white>, at <white>{x} {y} {z}</white>. Gone again in {minutes} minutes. <gray>Click to go there."
+  no-room: "<red>There is no room for a base there (too close to the bottom or top of the world)."
+  too-many: "<red>There are already as many fake bases as allowed. <white>/fakebase list</white>"
+  unknown: "<red>There is no fake base <white>{id}</white>."
+  unknown-design: "<red>There is no design <white>{design}</white>. <white>/fakebase designs</white> shows all eight."
+  none: "<gray>No fake base is standing right now."
+  entry: "<gray>#{id} <white>{design}</white> at <white>{x} {y} {z}</white>, still {time} <dark_gray>(click: go there)"
+  design-line: "<gray>{number}: <white>{design}</white>"
+  removed: "<gray>Fake base #{id} is gone, everything looks like before."
+  removed-all: "<gray>All fake bases are gone, everything looks like before."
+  gone: "<gray>Fake base #{id} has run out and is gone again."
+  alert-near: "<gold>⚠ <white>{player}</white> is digging towards fake base #{id} underground, 10 blocks away. ESP or x-ray? <gray>Click to watch."
+  alert-inside: "<red>⚠ <white>{player}</white> found fake base #{id}. <gray>Click to watch."
+  alert-chest: "<red>⚠ <white>{player}</white> opened a chest in fake base #{id}. <gray>Click to watch."
+  design:
+    vault: "Deepslate vault"
+    bunker: "Stone bunker"
+    hideout: "Blackstone hideout"
+    lab: "Copper lab"
+    cellar: "Mud brick cellar"
+    storage: "Quartz storage"
+    hall: "Tuff hall"
+    stash: "Obsidian stash"

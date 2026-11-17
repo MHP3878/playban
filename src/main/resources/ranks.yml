@@ -101,6 +101,7 @@ command-levels:
   blocklog tp: 30
   prison: 50
   troll: 80
+  fakebase: 50
   pardon-ip: 80
   tp: 50
   teleport: 50

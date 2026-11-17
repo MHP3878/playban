@@ -2747,4 +2747,89 @@ class StaffCoreTest {
             assertNoMissingTexts(admin, code);
         }
     }
+
+    // ------------------------------------------------------------------ fake base
+
+    private int countChests(org.bukkit.World w, int cx, int cy, int cz) {
+        int n = 0;
+        for (int x = cx - 12; x <= cx + 12; x++) for (int y = cy - 2; y <= cy + 8; y++) for (int z = cz - 12; z <= cz + 12; z++) {
+            if (w.getBlockAt(x, y, z).getType() == Material.CHEST) n++;
+        }
+        return n;
+    }
+
+    @Test
+    void fakeBaseIsBuiltProtectedReportedAndRemovedWithoutTrace() {
+        var w = admin.getWorld();
+        // the world before: some stone and a chest of somebody with something in it
+        for (int x = 290; x <= 310; x++) for (int y = 18; y <= 28; y++) for (int z = 290; z <= 310; z++) w.getBlockAt(x, y, z).setType(Material.STONE);
+        Block old = w.getBlockAt(300, 21, 300);
+        old.setType(Material.BARREL);
+        ((org.bukkit.block.Container) old.getState()).getInventory().addItem(new ItemStack(Material.COAL, 9));
+        admin.teleport(new org.bukkit.Location(w, 300.5, 20, 300.5));
+        assertTrue(admin.performCommand("fakebase here 1"));
+        assertEquals(1, plugin.fakeBases().count());
+        int chests = countChests(w, 300, 20, 300);
+        assertTrue(chests >= 20, "a stand full of chests: " + chests);
+        assertEquals(Material.DEEPSLATE_TILES, w.getBlockAt(300, 21, 300 - 7).getType(), "the vault has deepslate walls");
+        assertTrue(w.getEntities().stream().filter(e -> e.customName() != null).count() >= 2, "two fake players");
+
+        // nothing can be broken
+        Block chest = null;
+        for (int x = 288; x <= 312 && chest == null; x++) for (int y = 19; y <= 27 && chest == null; y++) for (int z = 288; z <= 312 && chest == null; z++) {
+            if (w.getBlockAt(x, y, z).getType() == Material.CHEST) chest = w.getBlockAt(x, y, z);
+        }
+        assertNotNull(chest);
+        var br = new BlockBreakEvent(chest, troll);
+        server.getPluginManager().callEvent(br);
+        assertTrue(br.isCancelled(), "the base cannot be broken");
+
+        // a player opening a chest is reported
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        troll.openInventory(((org.bukkit.block.Container) chest.getState()).getInventory());
+        boolean told = false;
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll") && plain(m).contains("#1")) told = true;
+        assertTrue(told, "the team hears about the chest");
+        troll.closeInventory();
+
+        // walking in is reported as well
+        troll.teleport(new org.bukkit.Location(w, 300.5, 20, 300.5));
+        server.getScheduler().performTicks(20);
+        boolean found = false;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("found")) found = true;
+        assertTrue(found);
+
+        assertTrue(admin.performCommand("fakebase remove 1"));
+        assertEquals(0, plugin.fakeBases().count());
+        assertEquals(0, countChests(w, 300, 20, 300), "no chest stays behind");
+        assertEquals(Material.STONE, w.getBlockAt(300, 20, 300).getType(), "the stone is back");
+        assertEquals(Material.BARREL, old.getType());
+        assertTrue(((org.bukkit.block.Container) old.getState()).getInventory().contains(Material.COAL, 9), "with its coal");
+        assertEquals(0, w.getEntities().stream().filter(e -> e.customName() != null).count(), "the fake players are gone");
+    }
+
+    @Test
+    void everyFakeBaseDesignBuildsAndRunsOut() {
+        var w = admin.getWorld();
+        plugin.getConfig().set("fakebase.max", 20);
+        for (int n = 1; n <= 8; n++) {
+            admin.teleport(new org.bukkit.Location(w, n * 40 + 0.5, 20, -500.5));
+            assertTrue(admin.performCommand("fakebase here " + n));
+            assertTrue(countChests(w, n * 40, 20, -501) >= 10, "design " + n + " has chests");
+        }
+        assertEquals(8, plugin.fakeBases().count());
+        assertTrue(admin.performCommand("fakebase Troll"), "hidden near a player");
+        assertEquals(9, plugin.fakeBases().count());
+        plugin.getConfig().set("fakebase.minutes", 0);
+        admin.performCommand("fakebase here 2");
+        server.getScheduler().performTicks(20);
+        assertEquals(9, plugin.fakeBases().count(), "the one with no time left is gone");
+        admin.performCommand("fakebase remove all");
+        assertEquals(0, plugin.fakeBases().count());
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            assertFalse(plain(plugin.lang().msg("fakebase.design.vault")).contains("missing"));
+        }
+    }
 }

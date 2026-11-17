@@ -35,6 +35,7 @@ public class StaffCorePlugin extends JavaPlugin {
     private ModerationManager moderation;
     private PrisonManager prison;
     private TrollManager trolls;
+    private FakeBaseManager fakeBases;
     private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
@@ -130,6 +131,10 @@ public class StaffCorePlugin extends JavaPlugin {
         trolls = new TrollManager(this);
         getServer().getPluginManager().registerEvents(trolls, this);
         register("troll", "Harmless jokes on a player", "staffcore.troll", trolls);
+        fakeBases = new FakeBaseManager(this);
+        getServer().getPluginManager().registerEvents(fakeBases, this);
+        fakeBases.start();
+        register("fakebase", "Bait base underground: catches ESP and x-ray", "staffcore.fakebase", fakeBases);
         tools = new ToolManager(this);
         getServer().getPluginManager().registerEvents(tools, this);
         register("tools", "Admin items: bannhammer, freeze wand, handcuffs and more", "staffcore.tools", tools);
@@ -205,6 +210,7 @@ public class StaffCorePlugin extends JavaPlugin {
     public void onDisable() {
         if (admin != null) admin.stop();
         if (prison != null) prison.stop();
+        if (fakeBases != null) fakeBases.stop();
         if (ranks != null) for (org.bukkit.entity.Player online : getServer().getOnlinePlayers()) ranks.unapply(online);
         if (tools != null) tools.leaveAll();
         if (blockLog != null) blockLog.stop();
@@ -256,6 +262,8 @@ public class StaffCorePlugin extends JavaPlugin {
     public PrisonManager prison() { return prison; }
 
     public TrollManager trolls() { return trolls; }
+
+    public FakeBaseManager fakeBases() { return fakeBases; }
 
     /** One line in the team protocol (/stafflog). */
     public void staffLog(String actor, String action, String target, String detail) {

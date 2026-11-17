@@ -128,10 +128,13 @@ The rules hold on every way a command can be run: below the level the command's 
 | `/prison <player> [time] [reason]` | Wall the player into a bedrock cell; `/unprison` lets them out | `staffcore.prison` |
 | `/troll <player> [joke]` | Harmless jokes, menu without a joke | `staffcore.troll` |
 | `/stafflog [player]` | Team protocol: who did what | `staffcore.stafflog` |
+| `/fakebase [here\|<player>] [1-8]` | Bait base deep underground against ESP and x-ray | `staffcore.fakebase` |
 
 **Prison.** The player is walled in with bedrock where they stand. Their inventory turns into grey lock panes: no items, no scrolling through the hotbar, no opening inventories, no commands except `/ticket` and `/appeal`. The blocks of the cell and the items are stored in `prisons.yml` and come back exactly as they were on release, also after a restart; someone released while offline gets their items on the next join. Nobody can break the cage.
 
-**Trolls.** Chicken rain (gone after 8 seconds, no drops), launch (no fall damage), creeper hiss, fake explosion, fake stash (chests and diamond blocks only the player sees), fake OP message, spin, lightning effect, demo screen, sneeze. Nothing hurts, nothing is taken, nobody else sees it. Protected players cannot be trolled.
+**Trolls.** Chicken rain (gone after 8 seconds, no drops), launch (no fall damage), creeper hiss, fake explosion, fake OP message, spin, lightning effect, demo screen, sneeze. Nothing hurts, nothing is taken, nobody else sees it. Protected players cannot be trolled.
+
+**Fake base.** `/fakebase Steve` hides a base deep underground, 40 to 70 blocks away from Steve, where nobody finds it without seeing through walls. The room is dug out and filled with one of eight designs (deepslate vault, stone bunker, blackstone hideout, copper lab, mud brick cellar, quartz storage, tuff hall, obsidian stash): a stand of double chests rising one block back and one block up per row, or chest walls or rows, plus furnaces, crafting table, enchanting table, anvil, beds and an ender chest. Two fake players with name tags walk around in it (real player figures on 1.21.9 and newer, dressed armor stands before). The chests look stocked, but nothing can be taken out, and nothing in the base can be broken, blown up or flooded. The team is told when a player digs towards it underground (10 blocks away), walks in or opens a chest, with a click to watch. After `fakebase.minutes` (30) the base is gone and everything, including chests that were there before and their contents, looks like before; also on shutdown and after a crash. `/fakebase here [1-8]` builds it where you stand, `/fakebase at <x> <y> <z>` works from the console, `/fakebase list`, `tp`, `remove <id|all>`.
 
 **Team protocol.** Punishments, pardons, prison, trolls, failed knockback tests, opened bait chests and every command a team member types (private messages left out, `staff-log.commands`) are written to `blocklog.db`. `/stafflog Steve` shows what was done by or to Steve.
 
@@ -214,6 +217,7 @@ Messages are only delivered and only count after a team member approved them in 
 - `ranks.yml` - ranks, who has which, command levels
 - `prisons.yml`, `prisons-return.yml` - prison cells and items waiting for their owner
 - `blocklog.db` - block log and team protocol (SQLite)
+- `fakebases.yml` - only while a fake base stands: the blocks to put back
 
 ## Build
 

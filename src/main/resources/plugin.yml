@@ -70,6 +70,7 @@ permissions:
       staffcore.tool.kbstick: true
       staffcore.tool.spectate: true
       staffcore.tool.bait: true
+      staffcore.fakebase: true
   staffcore.see:
     description: Can still see punished players
     default: op
@@ -183,6 +184,12 @@ permissions:
     default: op
   staffcore.troll:
     description: "/troll - harmless jokes like chicken rain or a fake stash, troll wand"
+    default: op
+  staffcore.fakebase:
+    description: "/fakebase - a bait base deep underground with chests and two fake players; catches ESP and x-ray"
+    default: op
+  staffcore.fakebase:
+    description: "/fakebase - a bait base deep underground with chests and two fake players; catches ESP and x-ray"
     default: op
   staffcore.stafflog:
     description: "/stafflog - the team protocol: who punished, jailed or trolled whom, and which commands the team typed"

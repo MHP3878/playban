@@ -55,7 +55,9 @@ public final class TicketMenus {
 
     public boolean watching(Player staff, int ticketId) {
         Window w = windows.get(staff.getUniqueId());
-        return w != null && w.ticketId == ticketId && staff.getOpenInventory().getTopInventory().getHolder() == w.menu;
+        if (w == null || w.ticketId != ticketId) return false;
+        var top = staff.getOpenInventory().getTopInventory();
+        return top != null && top.getHolder() == w.menu;
     }
 
     public void refresh(int ticketId) {

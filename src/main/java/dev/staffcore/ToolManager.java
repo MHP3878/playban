@@ -197,12 +197,19 @@ public final class ToolManager implements Listener, TabExecutor {
             return;
         }
         if (!tool.id().equals("banhammer") || usable(staff) == null) return;
-        try {
-            target.getWorld().strikeLightningEffect(target.getLocation());
-        } catch (RuntimeException ignored) {
-            // only the effect
+        // sneaking: the punish menu, to choose
+        if (staff.isSneaking() || !plugin.modules().on("banhammer")) {
+            Bukkit.getScheduler().runTask(plugin, () -> plugin.adminMenus().punishPlayer(staff, target.getUniqueId(), target.getName()));
+            return;
         }
-        Bukkit.getScheduler().runTask(plugin, () -> plugin.adminMenus().punishPlayer(staff, target.getUniqueId(), target.getName()));
+        if (exempt(staff, target) || plugin.antiCheat().animation().playing(target.getUniqueId())) return;
+        // a plain hit: the hammer comes down, then what is set (kick by default)
+        String step = plugin.getConfig().getString("banhammer.action", "KICK");
+        String reason = plugin.getConfig().getString("banhammer.reason", "");
+        if (reason.isBlank()) reason = lang().raw("tools.banhammer-reason");
+        String why = reason;
+        plugin.staffLog(staff.getName(), "banhammer", target.getName(), step);
+        plugin.antiCheat().animation().hammer(target, staff, () -> plugin.antiCheat().applyStep(target.getUniqueId(), target.getName(), step, why, staff.getName()));
     }
 
     /** Right-click on a player: handcuffs, inspector, freeze wand. */

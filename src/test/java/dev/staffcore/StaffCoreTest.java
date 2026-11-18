@@ -2108,8 +2108,41 @@ class StaffCoreTest {
     }
 
     @Test
-    void bannhammerOpensThePunishMenuInsteadOfHurting() {
+    void bannhammerKicksAfterTheHammerComesDown() {
         admin.getInventory().setItemInMainHand(tool("banhammer"));
+        troll.teleport(admin.getLocation().clone().add(2, 0, 0));
+        var hit = new org.bukkit.event.entity.EntityDamageByEntityEvent(admin, troll, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).withCausingEntity(admin).withDirectEntity(admin).build(), 6);
+        server.getPluginManager().callEvent(hit);
+        assertTrue(hit.isCancelled(), "no damage");
+        assertTrue(troll.isOnline(), "first the animation");
+        server.getScheduler().performTicks(60);
+        assertFalse(troll.isOnline(), "then the kick");
+        // set to a PlayBan
+        plugin.getConfig().set("banhammer.action", "PLAYBAN 1h");
+        server.getPluginManager().callEvent(new org.bukkit.event.entity.EntityDamageByEntityEvent(admin, bystander, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).withCausingEntity(admin).withDirectEntity(admin).build(), 6));
+        server.getScheduler().performTicks(60);
+        assertTrue(plugin.punishments().isPunished(bystander.getUniqueId()));
+        assertEquals("Admin", plugin.punishments().get(bystander.getUniqueId()).staff);
+    }
+
+    @Test
+    void unfreezingFreesAPlayerHeldInABush() {
+        Block bush = troll.getLocation().getBlock();
+        bush.setType(Material.SWEET_BERRY_BUSH);
+        plugin.admin().setFrozen(troll, true, "Admin");
+        server.getScheduler().performTicks(25);
+        assertTrue(troll.getFreezeTicks() < 140, "never fully frozen: the game would slow them down itself");
+        plugin.admin().setFrozen(troll, false, "Admin");
+        assertEquals(0, troll.getFreezeTicks());
+        assertNotEquals(Material.SWEET_BERRY_BUSH, troll.getLocation().getBlock().getType(), "out of the bush");
+    }
+
+    @Test
+    void bannhammerWhileSneakingOpensThePunishMenu() {
+        admin.getInventory().setItemInMainHand(tool("banhammer"));
+        admin.setSneaking(true);
         var hit = new org.bukkit.event.entity.EntityDamageByEntityEvent(admin, troll, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                 org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).withCausingEntity(admin).withDirectEntity(admin).build(), 6);
         server.getPluginManager().callEvent(hit);

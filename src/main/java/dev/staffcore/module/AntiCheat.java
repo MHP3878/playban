@@ -484,6 +484,10 @@ public final class AntiCheat implements Listener, TabExecutor {
     }
 
     /** Catches a player for something found outside the point account (a forbidden mod, a test): animation, then this step. */
+    public CatchAnimation animation() {
+        return animation;
+    }
+
     public void catchWith(Player p, String step, String reason) {
         if (!catching.add(p.getUniqueId())) return;
         UUID id = p.getUniqueId();
@@ -497,6 +501,11 @@ public final class AntiCheat implements Listener, TabExecutor {
     }
 
     private void apply(UUID id, String name, String step, String reason) {
+        applyStep(id, name, step, reason, "AntiCheat");
+    }
+
+    /** Carries out a step like "KICK", "PLAYBAN 5m", "BAN 7d", "BAN perm" or "CATEGORY cheating" in the name of staff. */
+    public void applyStep(UUID id, String name, String step, String reason, String staff) {
         String[] parts = step.trim().split("\\s+", 2);
         String kind = parts[0].toUpperCase(Locale.ROOT);
         String arg = parts.length > 1 ? parts[1] : "";
@@ -512,14 +521,14 @@ public final class AntiCheat implements Listener, TabExecutor {
                     return;
                 }
                 Category.Step next = plugin.punishments().nextStep(id, category);
-                if (next != null) plugin.punishments().execute(id, name, next.type, next.durationMs, reason, "AntiCheat", category.id, null, null);
+                if (next != null) plugin.punishments().execute(id, name, next.type, next.durationMs, reason, staff, category.id, null, null);
             }
             default -> {
                 // PLAYBAN 5m, BAN 1d, SPECBAN 1h, MUTE 10m
                 long ms = arg.isEmpty() || arg.equalsIgnoreCase("perm") ? 0 : TimeUtil.parse(arg);
                 if (ms < 0) ms = 5 * 60_000L;
                 if (kind.equals("PLAYBAN") && ms <= 0) ms = 5 * 60_000L;
-                String error = plugin.punishments().execute(id, name, kind, ms, reason, "AntiCheat", null, null, null);
+                String error = plugin.punishments().execute(id, name, kind, ms, reason, staff, null, null, null);
                 Player online = Bukkit.getPlayer(id);
                 if (error == null && online != null && kind.equals("PLAYBAN")) {
                     lang().send(online, "anticheat.playbanned", "time", TimeUtil.format(ms));

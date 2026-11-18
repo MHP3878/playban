@@ -331,6 +331,8 @@ public class StaffCorePlugin extends JavaPlugin {
                 .setting("announcer.interval-seconds", CYCLE, org.bukkit.Material.CLOCK, 300, 60, 180, 300, 600, 1200)
                 .setting("announcer.random", BOOL, org.bukkit.Material.COMPARATOR, false)
                 .setting("announcer.sound", BOOL, org.bukkit.Material.NOTE_BLOCK, true);
+        modules.add("banhammer", org.bukkit.Material.MACE, "modules.banhammer", true)
+                .setting("banhammer.action", CYCLE, org.bukkit.Material.MACE, "KICK", "KICK", "PLAYBAN 1h", "PLAYBAN 1d", "BAN 1d", "BAN 7d", "BAN perm", "CATEGORY cheating");
         modules.add("trolls", org.bukkit.Material.EGG, "modules.trolls", true)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("troll", "Harmless jokes on a player", "staffcore.troll", trolls));
     }

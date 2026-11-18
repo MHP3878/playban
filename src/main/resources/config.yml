@@ -374,3 +374,11 @@ mod-guard:
 investigation:
   # shown as a clickable link in the screen check, e.g. your Discord voice channel
   screenshare-link: ""
+
+# ---- Banhammer (admin item) ----
+# A hit: the hammer animation, then this. KICK, PLAYBAN <time>, BAN <time|perm>, CATEGORY <id>.
+# Sneaking while hitting opens the punish menu instead.
+banhammer:
+  action: KICK
+  # empty = the text from the language file
+  reason: ""

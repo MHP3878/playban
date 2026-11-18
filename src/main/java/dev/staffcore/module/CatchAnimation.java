@@ -11,6 +11,7 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
@@ -260,5 +261,140 @@ public final class CatchAnimation {
                 done.run();
             }
         }, 1L, 1L);
+    }
+
+    /**
+     * The banhammer: a giant hammer swings down onto the player from behind the one holding it, the
+     * ground cracks in a ring, the player is thrown up spinning and bursts into sparks with a big
+     * "BANNED" above them. Everybody around sees it.
+     */
+    public void hammer(Player victim, Player staff, Runnable done) {
+        if (!playing.add(victim.getUniqueId())) return;
+        Location base = victim.getLocation().clone();
+        World w = base.getWorld();
+        // the swing comes from the side of the one who hits
+        org.bukkit.util.Vector side = staff.getLocation().toVector().subtract(base.toVector()).setY(0);
+        final org.bukkit.util.Vector from = side.lengthSquared() < 0.01 ? new org.bukkit.util.Vector(1, 0, 0) : side.normalize();
+        // the axis the hammer turns around: across the line between the two
+        Vector3f axis = new Vector3f((float) -from.getZ(), 0, (float) from.getX());
+        Location pivot = base.clone().add(from.clone().multiply(2.2)).add(0, 0.2, 0);
+        ItemDisplay hammer;
+        try {
+            hammer = w.spawn(pivot, ItemDisplay.class, d -> {
+                d.setItemStack(new ItemStack(Material.MACE));
+                d.setPersistent(false);
+                d.setGlowing(true);
+                d.setGlowColorOverride(org.bukkit.Color.fromRGB(0xffc371));
+                d.setBrightness(new Display.Brightness(15, 15));
+                d.setTransformation(swing(axis, -1.9f));
+            });
+        } catch (RuntimeException e) {
+            playing.remove(victim.getUniqueId());
+            done.run();
+            return;
+        }
+        sound(base, "minecraft:item.trident.riptide_3", 1.2f, 0.7f);
+        Material ground = base.clone().add(0, -1, 0).getBlock().getType();
+        org.bukkit.block.data.BlockData groundData = (ground.isAir() ? Material.STONE : ground).createBlockData();
+        List<Entity> extra = new ArrayList<>();
+        int[] t = {0};
+        BukkitTask[] task = new BukkitTask[1];
+        task[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            t[0]++;
+            // the swing: slow at first, then down with full force
+            if (t[0] <= 10) {
+                float f = t[0] / 10f;
+                float angle = -1.9f + (float) Math.pow(f, 2.2) * 2.05f;
+                try {
+                    hammer.setInterpolationDelay(0);
+                    hammer.setInterpolationDuration(1);
+                    hammer.setTransformation(swing(axis, angle));
+                } catch (RuntimeException ignored) {
+                    // older display API
+                }
+                if (victim.isOnline()) {
+                    victim.teleport(base.clone().setDirection(from.clone()));
+                    victim.setFallDistance(0);
+                }
+            }
+            if (t[0] == 10) {
+                sound(base, "minecraft:item.mace.smash_ground_heavy", 2f, 0.7f);
+                sound(base, "minecraft:block.anvil.land", 1.6f, 0.5f);
+                sound(base, "minecraft:entity.generic.explode", 1.4f, 0.8f);
+                particle(w, Particle.EXPLOSION_EMITTER, base, 1, 0, 0);
+                try {
+                    w.spawnParticle(Particle.BLOCK, base.clone().add(0, 0.1, 0), 80, 1.2, 0.1, 1.2, 0.2, groundData);
+                } catch (RuntimeException ignored) {
+                    // only the effect
+                }
+            }
+            // a shockwave runs outward over the ground
+            if (t[0] >= 10 && t[0] <= 18) {
+                double r = (t[0] - 9) * 0.6;
+                for (int i = 0; i < 28; i++) {
+                    double a = i * Math.PI * 2 / 28;
+                    Location ring = base.clone().add(Math.cos(a) * r, 0.15, Math.sin(a) * r);
+                    particle(w, Particle.CLOUD, ring, 1, 0.02, 0.01);
+                    try {
+                        w.spawnParticle(Particle.BLOCK, ring, 2, 0.1, 0.05, 0.1, 0.1, groundData);
+                    } catch (RuntimeException ignored) {
+                        // only the effect
+                    }
+                }
+            }
+            // thrown up, spinning
+            if (t[0] > 10 && t[0] <= 34 && victim.isOnline()) {
+                double up = Math.min(1, (t[0] - 10) / 24.0);
+                Location to = base.clone().add(0, Math.sin(up * Math.PI / 2) * 6, 0);
+                to.setYaw(victim.getLocation().getYaw() + 40);
+                to.setPitch(-40);
+                victim.teleport(to);
+                victim.setFallDistance(0);
+                particle(w, Particle.CRIT, to.clone().add(0, 1, 0), 6, 0.3, 0.1);
+            }
+            if (t[0] == 34) {
+                Location top = victim.isOnline() ? victim.getLocation().add(0, 1, 0) : base.clone().add(0, 7, 0);
+                sound(top, "minecraft:entity.firework_rocket.large_blast", 2f, 0.9f);
+                sound(top, "minecraft:entity.firework_rocket.twinkle", 2f, 1f);
+                sound(top, "minecraft:entity.lightning_bolt.thunder", 1f, 1.4f);
+                particle(w, Particle.FIREWORK, top, 120, 0.3, 0.35);
+                particle(w, Particle.FLAME, top, 40, 0.4, 0.15);
+                particle(w, Particle.EXPLOSION, top, 4, 0.6, 0);
+                try {
+                    TextDisplay banned = w.spawn(top.clone().add(0, 1.2, 0), TextDisplay.class, d -> {
+                        d.text(plugin.lang().msg("tools.banhammer-text"));
+                        d.setPersistent(false);
+                        d.setBillboard(Display.Billboard.CENTER);
+                        d.setShadowed(true);
+                        d.setBackgroundColor(org.bukkit.Color.fromARGB(0, 0, 0, 0));
+                        d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(3f), new Quaternionf()));
+                    });
+                    extra.add(banned);
+                } catch (RuntimeException ignored) {
+                    // only the effect
+                }
+                hammer.remove();
+            }
+            if (t[0] >= 36) {
+                task[0].cancel();
+                playing.remove(victim.getUniqueId());
+                done.run();
+            }
+            if (t[0] >= 60) {
+                extra.forEach(Entity::remove);
+            }
+        }, 1L, 1L);
+        // the text stays a moment after the player is gone
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            hammer.remove();
+            extra.forEach(Entity::remove);
+        }, 90L);
+    }
+
+    private static Transformation swing(Vector3f axis, float angle) {
+        // the hammer stands on its handle end at the pivot and turns around the axis
+        Quaternionf rot = new Quaternionf(new AxisAngle4f(angle, axis.x, axis.y, axis.z));
+        Quaternionf tilt = new Quaternionf(new AxisAngle4f((float) Math.toRadians(-45), 0, 0, 1));
+        return new Transformation(new Vector3f(0, 2.2f, 0).rotate(rot), rot.mul(tilt, new Quaternionf()), new Vector3f(4.5f), new Quaternionf());
     }
 }

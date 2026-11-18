@@ -7,6 +7,7 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -63,7 +64,8 @@ public final class AdminManager implements Listener {
                 Player p = Bukkit.getPlayer(id);
                 if (p == null) continue;
                 // the frost overlay of powder snow shows the player that they are frozen
-                p.setFreezeTicks(Math.max(p.getFreezeTicks(), 140));
+                // just below "fully frozen": the same picture, without the game's own slowdown and frost damage
+                p.setFreezeTicks(Math.max(p.getFreezeTicks(), 130));
                 p.sendActionBar(lang().msg("admin.frozen-bar"));
             }
         }, 20L, 20L);
@@ -122,6 +124,17 @@ public final class AdminManager implements Listener {
         } else {
             frozen.remove(target.getUniqueId());
             target.setFreezeTicks(0);
+            // no leftovers: no slowdown from the frost, and out of a bush or cobweb it may have been held in
+            target.removePotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS);
+            target.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+            Material at = target.getLocation().getBlock().getType();
+            if (at == Material.SWEET_BERRY_BUSH || at == Material.COBWEB || at == Material.POWDER_SNOW) {
+                Location free = target.getLocation().getBlock().getLocation().add(0.5, 1, 0.5);
+                for (int up = 1; up <= 4 && !free.getBlock().getType().isAir(); up++) free.add(0, 1, 0);
+                free.setYaw(target.getLocation().getYaw());
+                free.setPitch(target.getLocation().getPitch());
+                target.teleport(free);
+            }
             target.playSound(target.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1.2f);
             lang().send(target, "admin.unfrozen-you");
         }

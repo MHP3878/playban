@@ -447,6 +447,8 @@ moderation:
   report-sent: "<green>Danke, deine Meldung über <white>{player}</white> ging an das Team."
 
 tools:
+  banhammer-reason: "Vom Bannhammer getroffen"
+  banhammer-text: "<red><bold>GEBANNT"
   ghost:
     name: "<dark_aqua><bold>Geistermodus</bold>"
     lore: ["<gray>Rechtsklick: Kreativ und unsichtbar,", "<gray>und du läufst durch Wände wie ein", "<gray>Zuschauer. Nochmal zum Beenden."]
@@ -517,7 +519,7 @@ tools:
   compass-entry: ["<gray>{world} <white>{x} {y} {z}", "", "<#ffc371>Klicken, um unsichtbar hinzuspringen"]
   banhammer:
     name: "<dark_red><bold>Bannhammer</bold>"
-    lore: ["<gray>Schlag einen Spieler, um das", "<gray>Straf-Menü für ihn zu öffnen."]
+    lore: ["<gray>Spieler schlagen: der Hammer saust runter,", "<gray>dann ein Kick (oder was in /sc modules", "<gray>eingestellt ist). Schleichen + Schlag: Strafmenü."]
   freeze:
     name: "<aqua><bold>Freeze-Stab</bold>"
     lore: ["<gray>Rechtsklick, während du auf einen Spieler", "<gray>bis 40 Blöcke weit zielst, friert ihn", "<gray>ein oder taut ihn auf."]
@@ -1761,6 +1763,9 @@ module:
   modguard:
     name: "<#ffc371><bold>Mod-Sperre</bold>"
     lore: ["<gray>Verbotene Clients und Mods: erst warnen", "<gray>und kicken, beim nächsten Mal bestrafen.", "<gray>Regeln in config.yml unter mod-guard.rules."]
+  banhammer:
+    name: "<#ffc371><bold>Bannhammer</bold>"
+    lore: ["<gray>Ein Schlag mit dem Bannhammer: die Hammer-", "<gray>Animation, dann die Aktion, die du wählst.", "<gray>Schleichen + Schlag öffnet das Strafmenü."]
   homes:
     name: "<#ffc371><bold>Homes</bold>"
     lore: ["<gray>Spieler speichern Orte und", "<gray>teleportieren zurück: /sethome, /home."]
@@ -1799,6 +1804,10 @@ module:
     lore: ["<gray>/troll: harmlose Späße."]
 
 module-setting:
+  banhammer:
+    action:
+      name: "<white>Was ein Schlag macht"
+      lore: ["<gray>Kick, PlayBan, Bann oder eine Kategorie."]
   mod-guard:
     mode:
       name: "<white>Modus"

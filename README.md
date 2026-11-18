@@ -177,6 +177,10 @@ Honest limit: many cheat clients (Meteor too) pretend to be plain Fabric and reg
 - **X-ray bait**: 5, 10 or 20 fake ores (diamond, ancient debris, emerald, gold) deep in the stone, walled in on every side, visible only to the suspect (and to you if you like). Digging straight to one gives 6 points each and a message to you.
 - **Fake base nearby** with a design of your choice, **knockback test**, **record and replay** the last ten seconds, **screen check** (title and message, optional freeze, a clickable link from `investigation.screenshare-link`), and **client and mods** once more.
 
+## Status: see and lift what lies on a player
+
+`/status <player>` shows everything that lies on a player right now: frozen, handcuffed, in prison, PlayBan, mute, ban, watched by the anti-cheat, anti-cheat points. A click lifts one thing, "Lift everything" all of them (only what your permissions allow). `/release <player>` lifts everything straight away. The same page opens from a ticket (a button for the author, right-click on any person in the ticket, whose restrictions are also listed on their head) and from `/check`.
+
 ## More team tools
 
 - **`/check <player>`**: everything about one player on one page that updates every second. Ping, client, game mode, health, where they are, clicks per second right now, the anti-cheat account per check, the last findings and the last ten commands (passwords of `/login` and the like are hidden). Buttons: inventory, ender chest, freeze, watch, follow unseen (admin mode, ghost mode, to the player), reset points, punish, profile, block log of the last day, other accounts, teleport, prison for 15 minutes.

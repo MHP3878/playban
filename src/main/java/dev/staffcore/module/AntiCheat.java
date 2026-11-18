@@ -258,6 +258,11 @@ public final class AntiCheat implements Listener, TabExecutor {
         plugin.staffLog(by, "ac-case", s.name, String.format(Locale.ROOT, "%.0f", s.score()));
     }
 
+    /** Back to zero points. */
+    public void reset(UUID id) {
+        points.remove(id);
+    }
+
     /** Points a player has right now, all checks together. */
     public double total(UUID id) {
         double t = 0;

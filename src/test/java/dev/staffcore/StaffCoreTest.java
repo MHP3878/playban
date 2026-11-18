@@ -3483,4 +3483,50 @@ class StaffCoreTest {
             assertNoMissingTexts(admin, code);
         }
     }
+
+    // ------------------------------------------------------------------ status and release
+
+    @Test
+    void statusShowsWhatLiesOnAPlayerAndLiftsIt() {
+        troll.teleport(new org.bukkit.Location(troll.getWorld(), 700.5, 70, 700.5));
+        plugin.antiCheat().flag(troll, "reach", 9, null);
+        plugin.admin().setFrozen(troll, true, "Admin");
+        admin.performCommand("prison Troll 10m");
+        admin.performCommand("mute Troll 1h spam");
+        var list = plugin.playerStatus().of(troll.getUniqueId(), "Troll", "Admin");
+        var kinds = list.stream().map(dev.staffcore.module.PlayerStatus.Restriction::key).toList();
+        assertTrue(kinds.containsAll(java.util.List.of("frozen", "prison", "mute", "watched", "points")), kinds.toString());
+        // one click lifts one thing
+        assertTrue(admin.performCommand("status Troll"));
+        admin.simulateInventoryClick(10);
+        assertFalse(plugin.admin().isFrozen(troll.getUniqueId()), "the first entry, the freeze, is lifted");
+        assertTrue(plugin.prison().isJailed(troll.getUniqueId()), "the rest stays");
+        // and /release lifts everything
+        assertTrue(admin.performCommand("release Troll"));
+        assertFalse(plugin.prison().isJailed(troll.getUniqueId()));
+        assertNull(plugin.punishments().activeMute(troll.getUniqueId()));
+        assertFalse(plugin.antiCheat().watched(troll.getUniqueId()));
+        assertTrue(plugin.playerStatus().of(troll.getUniqueId(), "Troll", "Admin").isEmpty());
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.admin().setFrozen(troll, true, "Admin");
+            plugin.playerStatus().menu(admin, troll.getUniqueId(), "Troll", null);
+            assertNoMissingTexts(admin, code);
+        }
+    }
+
+    @Test
+    void ticketShowsTheAuthorsStatus() {
+        bystander.performCommand("report Troll griefing my house");
+        var t = plugin.tickets().all().get(0);
+        plugin.admin().setFrozen(bystander, true, "Admin");
+        plugin.ticketMenus().view(admin, t);
+        var item = admin.getOpenInventory().getTopInventory().getItem(22);
+        assertNotNull(item);
+        assertTrue(plain(item.getItemMeta().displayName()).contains("Bystander"));
+        admin.simulateInventoryClick(22);
+        assertTrue(plain(admin.getOpenInventory().title()).contains("Bystander"), "the status opens");
+        admin.simulateInventoryClick(10);
+        assertFalse(plugin.admin().isFrozen(bystander.getUniqueId()), "and the freeze is lifted from the ticket");
+    }
 }

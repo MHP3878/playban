@@ -89,6 +89,7 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  status: ["<gray>Was auf einem Spieler liegt: eingefroren,", "<gray>Handschellen, Gefängnis, PlayBan, Mute,", "<gray>Bann, Beobachtung. Ein Klick hebt es auf.", "<gray>/release hebt alles auf einmal auf."]
   mods: ["<gray>Welchen Client und welche Mods ein", "<gray>Spieler hat, soweit der Client es sagt.", "<gray>/mods reset <spieler> löscht Verwarnungen."]
   check: ["<gray>Alles über einen Spieler auf einer", "<gray>Live-Seite: Ping, Client, Klicks,", "<gray>Anti-Cheat-Punkte und Funde, letzte", "<gray>Befehle, und Knöpfe für Inventar,", "<gray>Einfrieren, Beobachten, Bestrafen."]
   lag: ["<gray>TPS, Tick-Zeit und die vollsten", "<gray>Chunks, ein Klick bringt dich hin.", "<gray>/cleanup räumt herumliegende Items weg."]
@@ -1316,8 +1317,8 @@ menu:
       unstar: ["", "<#ffc371>Klicken, um den Stern zu entfernen"]
     person:
       name: "<white>{player}"
-      actions: ["", "<#ffc371>Linksklick: nur diesem Spieler schreiben", "<#ffc371>Rechtsklick: Profil", "<red>Shift + Klick: aus dem Ticket entfernen"]
-      actions-closed: ["", "<#ffc371>Klick: Profil"]
+      actions: ["", "<#ffc371>Linksklick: nur diesem Spieler schreiben", "<#ffc371>Rechtsklick: Status (Einfrieren, Gefängnis... aufheben) und Profil", "<red>Shift + Klick: aus dem Ticket entfernen"]
+      actions-closed: ["", "<#ffc371>Klick: Status und Profil"]
     older:
       name: "<gray>« Ältere Nachrichten"
     newer:
@@ -2191,3 +2192,41 @@ tests:
   ss-chat: "<red>Das Team (<white>{staff}</white>) bittet dich um eine Bildschirm-Prüfung. Nicht rausgehen und nichts schließen."
   ss-link: "<#ffc371><underlined>In den Sprachkanal"
   ss-started: "<gray>Bildschirm-Prüfung für <white>{player}</white> gestartet."
+
+pstatus:
+  title: "<dark_gray>Status: {player}"
+  usage: "<gray>Benutzung: <white>/status <spieler></white> oder <white>/release <spieler></white>"
+  free: "<green>Nichts liegt auf ihm"
+  count: "<red>{count} aktiv"
+  nothing: "<green>Auf diesem Spieler liegt nichts."
+  click-lift: "<#ffc371>Klick: aufheben"
+  not-allowed: "<dark_gray>Das darfst du nicht aufheben"
+  release-all: "<green><bold>Alles aufheben"
+  release-all-lore: ["<gray>Alles oben, was du aufheben", "<gray>darfst, auf einmal."]
+  lifted: "<green>{what} von <white>{player}</white> aufgehoben."
+  released: "<green><white>{player}</white>: {count} Sachen aufgehoben."
+  open-check: "<#ffc371>/check öffnen"
+  line: "<gray>- <white>{what}</white> {detail}"
+  lore-line: "<red>● {what}"
+  ticket-button: "<#ffc371><bold>Status von {player}</bold> <gray>({count})"
+  ticket-button-lore: ["<gray>Eingefroren, Gefängnis, PlayBan, Mute,", "<gray>Bann, Beobachtung: sehen und mit", "<gray>einem Klick aufheben."]
+  kind:
+    frozen: "<aqua><bold>Eingefroren"
+    cuffed: "<gray><bold>In Handschellen"
+    prison: "<dark_gray><bold>Im Gefängnis"
+    playban: "<gold><bold>PlayBan"
+    mute: "<yellow><bold>Stummgeschaltet"
+    ban: "<red><bold>Gebannt"
+    watched: "<gold><bold>Vom Anti-Cheat beobachtet"
+    points: "<white><bold>Anti-Cheat-Punkte"
+    vanished: "<gray><bold>Unsichtbar"
+  plain:
+    frozen: "Einfrieren"
+    cuffed: "Handschellen"
+    prison: "Gefängnis"
+    playban: "PlayBan"
+    mute: "Mute"
+    ban: "Bann"
+    watched: "Beobachtung"
+    points: "Anti-Cheat-Punkte"
+    vanished: "Unsichtbarkeit"

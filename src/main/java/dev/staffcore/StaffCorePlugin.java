@@ -49,6 +49,7 @@ public class StaffCorePlugin extends JavaPlugin {
     private dev.staffcore.module.Announcer announcer;
     private dev.staffcore.module.ModGuard modGuard;
     private dev.staffcore.module.Investigations investigations;
+    private dev.staffcore.module.PlayerStatus playerStatus;
     private dev.staffcore.log.BlockLog blockLog;
     private dev.staffcore.gui.RankMenus rankMenus;
     private TicketMenus ticketMenus;
@@ -154,6 +155,9 @@ public class StaffCorePlugin extends JavaPlugin {
         playerCheck = new dev.staffcore.module.PlayerCheck(this);
         getServer().getPluginManager().registerEvents(playerCheck, this);
         register("check", "Everything about a player on one live page", "staffcore.check", playerCheck);
+        playerStatus = new dev.staffcore.module.PlayerStatus(this);
+        register("status", "What lies on a player right now, with buttons to lift it", "staffcore.staff", playerStatus);
+        register("release", "Lift everything from a player: freeze, prison, PlayBan, mute, ban", "staffcore.staff", playerStatus);
         announcer = new dev.staffcore.module.Announcer(this);
         modGuard = new dev.staffcore.module.ModGuard(this);
         modGuard.load();
@@ -428,6 +432,8 @@ public class StaffCorePlugin extends JavaPlugin {
     public dev.staffcore.module.PlayerCheck playerCheck() { return playerCheck; }
 
     public dev.staffcore.module.ModGuard modGuard() { return modGuard; }
+
+    public dev.staffcore.module.PlayerStatus playerStatus() { return playerStatus; }
 
     public dev.staffcore.module.Investigations investigations() { return investigations; }
 

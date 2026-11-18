@@ -191,6 +191,9 @@ public final class PlayerCheck implements TabExecutor, Listener {
             staff.closeInventory();
             ac.replay(staff, t.getUniqueId(), e.isRightClick() ? "now" : null);
         });
+        int restrictions = plugin.playerStatus().of(t.getUniqueId(), t.getName(), staff.getName()).size();
+        m.set(44, Items.of(restrictions > 0 ? Material.MILK_BUCKET : Material.BUCKET, lang().msg("pstatus.ticket-button", "player", t.getName(), "count", restrictions),
+                lang().lore("pstatus.ticket-button-lore")), e -> plugin.playerStatus().menu(staff, t.getUniqueId(), t.getName(), () -> open(staff, t)));
         m.set(43, Items.of(Material.BREWING_STAND, lang().msg("check.tests"), lang().lore("check.tests-lore")), e -> plugin.investigations().menu(staff, t));
         ModGuard.Info mods = plugin.modGuard().info(t.getUniqueId());
         List<Component> modLore = new ArrayList<>();

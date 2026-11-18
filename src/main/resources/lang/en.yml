@@ -89,6 +89,7 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  status: ["<gray>What lies on a player: frozen,", "<gray>handcuffs, prison, PlayBan, mute, ban,", "<gray>watched. A click lifts it.", "<gray>/release lifts everything at once."]
   mods: ["<gray>Which client and which mods a player", "<gray>has, as far as the client tells.", "<gray>/mods reset <player> clears warnings."]
   check: ["<gray>Everything about a player on one", "<gray>live page: ping, client, clicks,", "<gray>anti-cheat points and findings,", "<gray>last commands, and buttons for", "<gray>inventory, freeze, watch, punish."]
   lag: ["<gray>TPS, tick time and the busiest", "<gray>chunks, a click takes you there.", "<gray>/cleanup removes items lying around."]
@@ -1316,8 +1317,8 @@ menu:
       unstar: ["", "<#ffc371>Click to remove the star"]
     person:
       name: "<white>{player}"
-      actions: ["", "<#ffc371>Left click: write only to this player", "<#ffc371>Right click: profile", "<red>Shift + click: remove from the ticket"]
-      actions-closed: ["", "<#ffc371>Click: profile"]
+      actions: ["", "<#ffc371>Left click: write only to this player", "<#ffc371>Right click: status (lift freeze, prison...) and profile", "<red>Shift + click: remove from the ticket"]
+      actions-closed: ["", "<#ffc371>Click: status and profile"]
     older:
       name: "<gray>« Older messages"
     newer:
@@ -2191,3 +2192,41 @@ tests:
   ss-chat: "<red>The team (<white>{staff}</white>) asks you for a screen check. Do not leave and do not close anything."
   ss-link: "<#ffc371><underlined>Join the voice channel"
   ss-started: "<gray>Screen check for <white>{player}</white> started."
+
+pstatus:
+  title: "<dark_gray>Status: {player}"
+  usage: "<gray>Usage: <white>/status <player></white> or <white>/release <player></white>"
+  free: "<green>Nothing lies on them"
+  count: "<red>{count} active"
+  nothing: "<green>Nothing lies on this player."
+  click-lift: "<#ffc371>Click: lift"
+  not-allowed: "<dark_gray>You may not lift this"
+  release-all: "<green><bold>Lift everything"
+  release-all-lore: ["<gray>Everything above that you", "<gray>may lift, in one go."]
+  lifted: "<green>{what} of <white>{player}</white> lifted."
+  released: "<green><white>{player}</white>: {count} things lifted."
+  open-check: "<#ffc371>Open /check"
+  line: "<gray>- <white>{what}</white> {detail}"
+  lore-line: "<red>● {what}"
+  ticket-button: "<#ffc371><bold>Status of {player}</bold> <gray>({count})"
+  ticket-button-lore: ["<gray>Frozen, in prison, PlayBan, mute,", "<gray>ban, watched: see it and lift it", "<gray>with a click."]
+  kind:
+    frozen: "<aqua><bold>Frozen"
+    cuffed: "<gray><bold>Handcuffed"
+    prison: "<dark_gray><bold>In prison"
+    playban: "<gold><bold>PlayBan"
+    mute: "<yellow><bold>Muted"
+    ban: "<red><bold>Banned"
+    watched: "<gold><bold>Watched by the anti-cheat"
+    points: "<white><bold>Anti-cheat points"
+    vanished: "<gray><bold>Invisible"
+  plain:
+    frozen: "Freeze"
+    cuffed: "Handcuffs"
+    prison: "Prison"
+    playban: "PlayBan"
+    mute: "Mute"
+    ban: "Ban"
+    watched: "Watching"
+    points: "Anti-cheat points"
+    vanished: "Invisibility"

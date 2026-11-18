@@ -185,6 +185,9 @@ public final class TicketMenus {
             view(p, t);
         });
         m.set(13, item(Material.BOOK, "menu.detail.profile"), e -> admin().profile(p, t.author, t.authorName));
+        int restrictions = plugin.playerStatus().of(t.author, t.authorName, p.getName()).size();
+        m.set(22, Items.of(restrictions > 0 ? Material.MILK_BUCKET : Material.BUCKET, lang().msg("pstatus.ticket-button", "player", t.authorName, "count", restrictions),
+                lang().lore("pstatus.ticket-button-lore")), e -> plugin.playerStatus().menu(p, t.author, t.authorName, () -> intake(p, t)));
         m.set(15, item(Material.RED_CONCRETE, "menu.ticket.decline"), e -> {
             plugin.tickets().decline(t, p);
             list(p, "ACTIVE", null, 0);
@@ -248,12 +251,15 @@ public final class TicketMenus {
             List<Component> lore = new ArrayList<>();
             lore.add(lang().msg(Bukkit.getPlayer(part.uuid) != null ? "online" : "offline"));
             if (part.outcome != null) lore.add(lang().msg("menu.tickets.outcome", "outcome", part.outcome));
+            for (var r : plugin.playerStatus().of(part.uuid, part.name, p.getName())) {
+                lore.add(lang().msg("pstatus.lore-line", "what", lang().raw("pstatus.plain." + r.key())));
+            }
             lore.addAll(lang().lore(live ? "menu.ticket.person.actions" : "menu.ticket.person.actions-closed"));
             m.set(36 + i, Items.head(Bukkit.getOfflinePlayer(part.uuid), lang().msg("menu.ticket.person.name", "player", part.name), lore), e -> {
                 if (e.isShiftClick() && live) {
                     plugin.tickets().removeParticipant(t, p, part);
                 } else if (e.isRightClick() || !live) {
-                    admin().profile(p, part.uuid, part.name);
+                    plugin.playerStatus().menu(p, part.uuid, part.name, () -> window(p, t, 0));
                 } else {
                     plugin.input().ask(p, "prompt.ticket-message-to", text -> {
                         plugin.tickets().staffMessage(t, p, text, part);
@@ -262,6 +268,9 @@ public final class TicketMenus {
                 }
             });
         }
+        int restrictions = plugin.playerStatus().of(t.author, t.authorName, p.getName()).size();
+        m.set(44, Items.of(restrictions > 0 ? Material.MILK_BUCKET : Material.BUCKET, lang().msg("pstatus.ticket-button", "player", t.authorName, "count", restrictions),
+                lang().lore("pstatus.ticket-button-lore")), e -> plugin.playerStatus().menu(p, t.author, t.authorName, () -> window(p, t, 0)));
         if (offset[0] < max) m.set(43, item(Material.ARROW, "menu.ticket.older"), e -> {
             offset[0] += 9;
             drawWindow(p, t, m, offset);

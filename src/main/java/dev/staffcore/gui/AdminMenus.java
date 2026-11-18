@@ -413,6 +413,7 @@ public final class AdminMenus {
             new GuideEntry("troll", "/troll <player> [joke]", Material.EGG, "staffcore.troll"),
             new GuideEntry("admin", "/admin", Material.NETHERITE_CHESTPLATE, "staffcore.panel"),
             new GuideEntry("check", "/check <player>", Material.SPYGLASS, "staffcore.check"),
+            new GuideEntry("status", "/status <player>, /release <player>", Material.MILK_BUCKET, "staffcore.staff"),
             new GuideEntry("lag", "/lag, /cleanup [all]", Material.REDSTONE, "staffcore.lag"),
             new GuideEntry("announce", "/announce <text>", Material.BELL, "staffcore.announce"),
             new GuideEntry("anticheat", "/anticheat [clear <player>]", Material.IRON_SWORD, "staffcore.anticheat"),

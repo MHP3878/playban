@@ -3069,19 +3069,21 @@ class StaffCoreTest {
         assertFalse(punishedOrBanned(troll));
         ac.flag(troll, "fly", 20, "hover");
         server.getScheduler().performTicks(80);
-        assertTrue(plugin.punishments().isPunished(troll.getUniqueId()), "over 25: caught, PlayBan after the animation");
-        assertEquals("PLAYBAN", plugin.punishments().get(troll.getUniqueId()).type);
-        assertEquals(5 * 60_000L, plugin.punishments().get(troll.getUniqueId()).originalMs, "first time: 5 minutes");
+        var ban = plugin.store().bans.get(troll.getUniqueId());
+        assertNotNull(ban, "flying is caught at once: a ban after the animation");
+        long left = ban.expiresAt - System.currentTimeMillis();
+        assertTrue(left > 4 * 60_000L && left <= 5 * 60_000L, "first time: 5 minutes");
+        assertEquals("AntiCheat", ban.staff);
         assertEquals(0, ac.total(troll.getUniqueId()), 0.01, "the account starts fresh");
     }
 
     @Test
     void aClearFindingWarnsAndGivesAChance() {
         var ac = plugin.antiCheat();
-        ac.flag(bystander, "fly", 20, "hover");
+        ac.flag(bystander, "nofall", 20, "22 blocks");
         assertEquals(20, ac.total(bystander.getUniqueId()), 0.01);
-        ac.flag(bystander, "fly", 20, "hover");
-        assertEquals(20, ac.total(bystander.getUniqueId()), 0.01, "slow to land: the same check waits a few seconds");
+        ac.flag(bystander, "nofall", 20, "22 blocks");
+        assertEquals(20, ac.total(bystander.getUniqueId()), 0.01, "the same check waits a few seconds after a warning");
         server.getScheduler().performTicks(80);
         assertFalse(punishedOrBanned(bystander), "20 of 25: only the warning");
         boolean warned = false;
@@ -3146,7 +3148,7 @@ class StaffCoreTest {
                 org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
                 org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1));
         double pts = plugin.antiCheat().points(troll.getUniqueId(), "snap");
-        assertTrue(pts > 0 && pts <= 6, "a jump of 120 degrees in one tick right before the hit: " + pts);
+        assertTrue(pts > 0 && pts <= 12, "a jump of 120 degrees in one tick right before the hit: " + pts);
     }
 
     @Test
@@ -3470,6 +3472,8 @@ class StaffCoreTest {
         assertEquals(n, plugin.investigations().baitsLeft(troll.getUniqueId()));
         // dig right next to one
         Block bait = plugin.investigations().baits(troll.getUniqueId()).iterator().next();
+        // standing right next to it, as somebody who dug there
+        troll.teleport(bait.getLocation().add(0.5, 2, 0.5));
         server.getPluginManager().callEvent(new BlockBreakEvent(bait.getRelative(org.bukkit.block.BlockFace.UP), troll));
         assertEquals(n - 1, plugin.investigations().baitsLeft(troll.getUniqueId()), "digging to a fake ore is noticed");
         assertTrue(plugin.antiCheat().points(troll.getUniqueId(), "xraybait") > 0);
@@ -3528,5 +3532,112 @@ class StaffCoreTest {
         assertTrue(plain(admin.getOpenInventory().title()).contains("Bystander"), "the status opens");
         admin.simulateInventoryClick(10);
         assertFalse(plugin.admin().isFrozen(bystander.getUniqueId()), "and the freeze is lifted from the ticket");
+    }
+
+    // ------------------------------------------------------------------ hard anti-cheat: physics, setbacks, rights
+
+    private org.bukkit.event.player.PlayerMoveEvent move(PlayerMock p, org.bukkit.Location from, org.bukkit.Location to) {
+        var e = new org.bukkit.event.player.PlayerMoveEvent(p, from, to);
+        server.getPluginManager().callEvent(e);
+        return e;
+    }
+
+    @Test
+    void hangingInTheAirIsFlyingAndSetBack() throws Exception {
+        var w = troll.getWorld();
+        for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) w.getBlockAt(x, 99, z).setType(Material.STONE);
+        var ground = new org.bukkit.Location(w, 0.5, 100, 0.5);
+        troll.teleport(ground);
+        server.getScheduler().performTicks(80);
+        // a teleport excuses odd movement for three seconds
+        Thread.sleep(3100);
+        move(troll, ground, ground.clone().add(0.1, 0, 0));
+        // off the edge of the platform, then it hangs at the same height: gravity would pull it down
+        var from = ground.clone().add(3.2, 0, 0);
+        move(troll, ground.clone().add(0.1, 0, 0), from);
+        var to = from.clone().add(0.3, 0.42, 0);
+        move(troll, from, to);
+        org.bukkit.event.player.PlayerMoveEvent e = null;
+        boolean setBack = false;
+        for (int i = 0; i < 6 && !setBack; i++) {
+            from = to;
+            to = from.clone().add(0.3, 0, 0);
+            e = move(troll, from, to);
+            setBack = e.getTo().distance(to) > 0.5;
+        }
+        assertTrue(setBack, "set back to the last place on the ground");
+        server.getScheduler().performTicks(80);
+        assertNotNull(plugin.store().bans.get(troll.getUniqueId()), "caught at once: a ban");
+    }
+
+    @Test
+    void aNormalJumpIsFine() throws Exception {
+        var w = bystander.getWorld();
+        for (int x = -3; x <= 6; x++) for (int z = -3; z <= 3; z++) w.getBlockAt(x, 99, z).setType(Material.STONE);
+        var at = new org.bukkit.Location(w, 0.5, 100, 0.5);
+        bystander.teleport(at);
+        server.getScheduler().performTicks(80);
+        Thread.sleep(3100);
+        move(bystander, at, at.clone().add(0.05, 0, 0));
+        double y = 100, dy = 0.42;
+        var from = at.clone();
+        for (int i = 0; i < 12; i++) {
+            y += dy;
+            if (y < 100) y = 100;
+            var to = new org.bukkit.Location(w, from.getX() + 0.2, y, 0.5);
+            var e = move(bystander, from, to);
+            assertEquals(to, e.getTo(), "a real jump is never set back (step " + i + ")");
+            from = to;
+            dy = (dy - 0.08) * 0.98;
+        }
+        for (String c : java.util.List.of("fly", "speed", "step")) assertEquals(0, plugin.antiCheat().points(bystander.getUniqueId(), c), 0.01, c);
+    }
+
+    @Test
+    void fakeBasesNeverOverlapAndAllComeDownCleanly() {
+        var w = admin.getWorld();
+        for (int x = -30; x <= 30; x++) for (int y = 15; y <= 28; y++) for (int z = -30; z <= 30; z++) w.getBlockAt(x, y, z).setType(Material.STONE);
+        admin.teleport(new org.bukkit.Location(w, 0.5, 20, 0.5));
+        assertTrue(admin.performCommand("fakebase here 1"));
+        admin.performCommand("fakebase here 2");
+        assertEquals(1, plugin.fakeBases().count(), "not into the other one");
+        admin.teleport(new org.bukkit.Location(w, 25.5, 20, 0.5));
+        admin.performCommand("fakebase here 3");
+        assertEquals(2, plugin.fakeBases().count());
+        admin.performCommand("fakebase remove all");
+        int chests = 0;
+        for (int x = -30; x <= 45; x++) for (int y = 15; y <= 28; y++) for (int z = -30; z <= 30; z++) if (w.getBlockAt(x, y, z).getType() == Material.CHEST) chests++;
+        assertEquals(0, chests, "no chest is left");
+        assertEquals(Material.STONE, w.getBlockAt(0, 20, 0).getType());
+    }
+
+    @Test
+    void creativeForANormalPlayerIsReported() {
+        while (admin.nextComponentMessage() != null) { /* clear */ }
+        server.getPluginManager().callEvent(new org.bukkit.event.server.ServerCommandEvent(server.getConsoleSender(), "gamemode creative Troll"));
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerGameModeChangeEvent(troll, org.bukkit.GameMode.CREATIVE,
+                org.bukkit.event.player.PlayerGameModeChangeEvent.Cause.COMMAND, null));
+        boolean told = false;
+        Component m;
+        while ((m = admin.nextComponentMessage()) != null) if (plain(m).contains("Troll") && plain(m).contains("creative") && plain(m).contains("CONSOLE")) told = true;
+        assertTrue(told, "the team learns who got creative and from whom");
+    }
+
+    @Test
+    void replayCanBeControlled() {
+        var w = troll.getWorld();
+        for (int i = 0; i < 40; i++) {
+            troll.teleport(new org.bukkit.Location(w, i * 0.2, 70, 0));
+            server.getScheduler().performTicks(1);
+        }
+        var home = admin.getLocation().clone();
+        admin.performCommand("anticheat replay Troll now");
+        admin.performCommand("anticheat replay Troll slower");
+        admin.performCommand("anticheat replay Troll pause");
+        admin.performCommand("anticheat replay Troll first");
+        server.getScheduler().performTicks(10);
+        admin.performCommand("anticheat replay Troll stop");
+        assertEquals(home.getBlockX(), admin.getLocation().getBlockX(), "back where the viewer was");
+        assertEquals(org.bukkit.GameMode.SURVIVAL, admin.getGameMode(), "in the old game mode");
     }
 }

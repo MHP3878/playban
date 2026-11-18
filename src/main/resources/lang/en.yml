@@ -1642,7 +1642,7 @@ fakebase:
   usage: "<gray>Usage: <white>/fakebase [here|<player>] [1-8|random]</white>, <white>/fakebase at <x> <y> <z> [1-8]</white>, <white>/fakebase list</white>, <white>/fakebase tp <id></white>, <white>/fakebase remove <id|all></white>, <white>/fakebase designs</white>"
   spawned: "<green>Fake base <white>#{id}</white> ({design}) is standing at <white>{x} {y} {z}</white>. Gone again in {minutes} minutes. <gray>Click to go there."
   spawned-near: "<green>Fake base <white>#{id}</white> ({design}) is hidden deep under the ground near <white>{player}</white>, at <white>{x} {y} {z}</white>. Gone again in {minutes} minutes. <gray>Click to go there."
-  no-room: "<red>There is no room for a base there (too close to the bottom or top of the world)."
+  no-room: "<red>There is no room for a base there: too close to the edge of the world or to another fake base (<white>/fakebase list</white>)."
   too-many: "<red>There are already as many fake bases as allowed. <white>/fakebase list</white>"
   unknown: "<red>There is no fake base <white>{id}</white>."
   unknown-design: "<red>There is no design <white>{design}</white>. <white>/fakebase designs</white> shows all eight."
@@ -1833,6 +1833,15 @@ module-setting:
       name: "<white>Sound"
       lore: ["<gray>A quiet chime with each message."]
   anticheat:
+    setback:
+      name: "<white>Set back"
+      lore: ["<gray>A movement against the rules", "<gray>puts the player back at once."]
+    block-hits:
+      name: "<white>Block cheated hits"
+      lore: ["<gray>Too much reach, behind the back,", "<gray>through walls: no damage."]
+    creative-guard:
+      name: "<white>Take creative back"
+      lore: ["<gray>Off: only tell the team.", "<gray>On: normal players go back", "<gray>to survival at once."]
     limit:
       name: "<white>Point limit"
       lore: ["<gray>Whoever reaches it is caught."]
@@ -1983,6 +1992,10 @@ panel:
   close: "<red>Close"
 
 anticheat:
+  antixray-state: "<gray>Paper anti-xray: <white>{state}</white>. <white>/ac antixray on</white> or <white>off</white>."
+  antixray-on: "<green>Paper anti-xray is switched on for the overworld and the nether (ores, ancient debris, spawners, chests). It works after the next restart. Backups: *.staffcore-backup"
+  antixray-off: "<gray>Paper anti-xray is switched off. Takes effect after the next restart."
+  antixray-failed: "<red>Could not write the Paper config: {error}"
   alerts-on: "<green>Anti-cheat alerts are on for you."
   alerts-off: "<gray>Anti-cheat alerts are off for you. <white>/alerts</white> switches them on again."
   warn-title: "<red><bold>⚠ ANTI-CHEAT ⚠</bold>"
@@ -2007,6 +2020,8 @@ anticheat:
   unknown: "<red>No player called <white>{player}</white> is known."
   cleared: "<gray>The mark of <white>{player}</white> is gone."
   check:
+    elytra: "Elytra fly / speed"
+    trident: "Trident boost"
     xraybait: "Dug to fake ores"
     snap: "Sudden aim jump"
     botmine: "Mining like a bot"
@@ -2035,6 +2050,7 @@ anticheat:
     crystal: "Crystal macro"
     bot: "Bot"
   detail:
+    glide: "glides without sinking or a rocket"
     hover: "hangs in the air"
     rise: "rises without help"
     multi: "two targets at once"
@@ -2111,9 +2127,20 @@ announce:
   empty: "<gray>The list announcer.messages is empty."
 
 replay:
-  usage: "<gray>Usage: <white>/anticheat replay <player> [1-5|now|stop]</white>"
+  usage: "<gray>Usage: <white>/anticheat replay <player> [1-5|now] [first|follow|free]</white>"
+  state: "<gray>Replay: <white>{state}</white>, speed <white>{speed}x"
+  paused: "paused"
+  playing: "playing"
+  button:
+    first: "<#ffc371>[Eyes]"
+    follow: "<#ffc371>[Follow]"
+    free: "<#ffc371>[Free]"
+    pause: "<white>[Pause]"
+    slower: "<white>[Slower]"
+    faster: "<white>[Faster]"
+    stop: "<red>[Stop]"
   bar: "<red>Replay: <white>{player}</white> <gray>- {reason}"
-  started: "<gray>Replay of <white>{player}</white>, {seconds} seconds. Only you see the figure. <white>/ac replay {player} stop</white> ends it."
+  started: "<gray>Replay of <white>{player}</white>, {seconds} seconds. Only you see the figure. <white>[Stop]</white> ends it."
   ended: "<gray>Replay over."
   event: "<#ffc371>{event}"
   none: "<gray>There is no recording of this player."
@@ -2230,3 +2257,9 @@ pstatus:
     watched: "Watching"
     points: "Anti-cheat points"
     vanished: "Invisibility"
+
+rights:
+  gamemode: "<gold>⚠ <white>{player}</white> <gray>got <white>{mode}</white> <gray>· by <white>{by}</white>. Click for /check."
+  op: "<gold>⚠ <white>{player}</white> <gray>was made <white>OP</white> by <white>{by}</white>."
+  reverted: "<gray><white>{player}</white> was set back to survival (creative-guard)."
+  unknown: "unknown (a plugin or a command block)"

@@ -79,7 +79,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AntiCheat implements Listener, TabExecutor {
     public static final List<String> CHECKS = List.of("fly", "speed", "reach", "aura", "autoclick", "nofall", "velocity", "xray",
             "timer", "step", "jesus", "fastbreak", "nuker", "scaffold", "noslow", "badpackets", "autototem", "anchor", "crystal", "bot",
-            "aim", "criticals", "invmove", "fastbow", "snap", "botmine", "xraybait");
+            "aim", "criticals", "invmove", "fastbow", "snap", "botmine", "xraybait", "elytra", "trident");
     /** Checks that alone never catch anybody: they can only mark. */
     private static final Set<String> SOFT = Set.of("xray", "bot");
 
@@ -157,6 +157,15 @@ public final class AntiCheat implements Listener, TabExecutor {
         final Deque<Double> digAim = new ArrayDeque<>();
         final Deque<Long> digIntervals = new ArrayDeque<>();
         long lastBreakAt;
+        // movement physics, per packet
+        Location lastLegal;
+        int airPackets;
+        double airDy;
+        int flyBuffer;
+        double speedBuffer;
+        long boostUntil;
+        int glideFlat;
+        long lastSetback;
     }
 
     /** One moment of the recording. event is null for plain movement. */
@@ -369,6 +378,8 @@ public final class AntiCheat implements Listener, TabExecutor {
         Long graceUntil = st.grace.get(check);
         if (graceUntil != null && now < graceUntil) return;
         double amount = base * plugin.getConfig().getDouble("anticheat.checks." + check + ".weight", 1.0);
+        // the clear ones catch at once: no warning, no second try
+        if (plugin.getConfig().getStringList("anticheat.instant").contains(check)) amount = Math.max(amount, limit());
         if (watched.contains(p.getUniqueId())) amount *= plugin.getConfig().getDouble("anticheat.watch-multiplier", 1.5);
         Map<String, Double> account = points.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>());
         account.merge(check, amount, Double::sum);
@@ -467,8 +478,12 @@ public final class AntiCheat implements Listener, TabExecutor {
         }
         String reason = lang().raw("anticheat.reason").replace("{checks}", why.toString());
         int n = caughtCount.merge(p.getUniqueId(), 1, Integer::sum);
-        List<String> ladder = plugin.getConfig().getStringList("anticheat.ladder");
-        if (ladder.isEmpty()) ladder = List.of("PLAYBAN 5m", "PLAYBAN 1h", "CATEGORY cheating");
+        // real cheats (flying, speed, fighting ...) climb the hard ladder, small things the small one
+        String top = sorted.isEmpty() ? "fly" : sorted.get(0).getKey();
+        boolean hard = plugin.getConfig().getStringList("anticheat.hard-checks").contains(top);
+        List<String> ladder = plugin.getConfig().getStringList(hard ? "anticheat.ladder-hard" : "anticheat.ladder-small");
+        if (ladder.isEmpty()) ladder = plugin.getConfig().getStringList("anticheat.ladder");
+        if (ladder.isEmpty()) ladder = hard ? List.of("BAN 5m", "BAN 1h", "BAN 1d", "CATEGORY cheating") : List.of("PLAYBAN 10m", "PLAYBAN 1h", "PRISON 1h", "BAN 1h");
         String step = ladder.get(Math.min(n, ladder.size()) - 1);
         UUID id = p.getUniqueId();
         String name = p.getName();
@@ -518,6 +533,17 @@ public final class AntiCheat implements Listener, TabExecutor {
             case "KICK" -> {
                 Player online = Bukkit.getPlayer(id);
                 if (online != null) online.kick(lang().msg("anticheat.kicked", "reason", reason));
+            }
+            case "PRISON" -> {
+                Player online = Bukkit.getPlayer(id);
+                long ms = arg.isEmpty() || arg.equalsIgnoreCase("perm") ? 0 : TimeUtil.parse(arg);
+                if (online != null && plugin.prison() != null && !plugin.prison().isJailed(id)) {
+                    plugin.prison().jail(online, Math.max(0, ms), reason, staff);
+                    plugin.staffLog(staff, "prison", name, arg + " " + reason);
+                } else if (online == null) {
+                    // offline: a PlayBan instead, so nothing is lost
+                    plugin.punishments().execute(id, name, "PLAYBAN", ms > 0 ? ms : 3_600_000L, reason, staff, null, null, null);
+                }
             }
             case "CATEGORY" -> {
                 Category category = plugin.categories().get(arg.isEmpty() ? "cheating" : arg);
@@ -717,8 +743,10 @@ public final class AntiCheat implements Listener, TabExecutor {
                     if (st.riseTicks == 0) st.riseStartY = last.getY();
                     st.riseTicks++;
                 } else st.riseTicks = 0;
-                if (st.hoverTicks == 30) flag(p, "fly", 20, lang().raw("anticheat.detail.hover"));
-                if (st.hoverTicks > 30 && st.hoverTicks % 40 == 0) flag(p, "fly", 20, lang().raw("anticheat.detail.hover"));
+                if (st.hoverTicks == 20 || (st.hoverTicks > 20 && st.hoverTicks % 40 == 0)) {
+                    flag(p, "fly", 25, lang().raw("anticheat.detail.hover"));
+                    if (st.lastLegal != null && st.lastLegal.getWorld() == p.getWorld()) p.teleport(st.lastLegal);
+                }
                 if (amplifier(p, PotionEffectType.JUMP_BOOST) < 0 && st.riseTicks > 14 && loc.getY() - st.riseStartY > 2.5) {
                     flag(p, "fly", 20, lang().raw("anticheat.detail.rise"));
                     st.riseTicks = 0;
@@ -731,7 +759,7 @@ public final class AntiCheat implements Listener, TabExecutor {
             // step: more than a slab up in one tick, from ground to ground
             if (st.wasOnGround && ground && dy > 0.62 && dy < 3 && amplifier(p, PotionEffectType.JUMP_BOOST) < 0 && !special
                     && attribute(p, "step_height", 0.6) < 0.7) {
-                flag(p, "step", severity(dy, 0.62, 1.5, 12), String.format(Locale.ROOT, "%.2f", dy));
+                flag(p, "step", severity(dy, 0.62, 1.5, 18), String.format(Locale.ROOT, "%.2f", dy));
             }
 
             // walking on water
@@ -756,6 +784,8 @@ public final class AntiCheat implements Listener, TabExecutor {
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (!st.fallDamaged && st.landedAt == now && p.isOnline() && !p.isDead()) {
                             flag(p, "nofall", severity(height, 4, 22, 20), String.format(Locale.ROOT, "%.1f", height));
+                            // the fall still hurts
+                            if (plugin.getConfig().getBoolean("anticheat.nofall-damage", true) && !p.isDead()) p.damage(Math.max(0, height - 3));
                         }
                     }, 20L);
                 }
@@ -788,7 +818,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                 // no slow: full speed while eating or drawing a bow
                 if (st.usingTicks > 20 && second > 5.5 * (speed >= 0 ? 1 + 0.2 * (speed + 1) : 1) && now > st.iceUntil && !special) {
                     double slowLimit = 5.5 * (speed >= 0 ? 1 + 0.2 * (speed + 1) : 1);
-                    flag(p, "noslow", severity(second, slowLimit, slowLimit * 1.7, 8), String.format(Locale.ROOT, "%.1f b/s", second));
+                    flag(p, "noslow", severity(second, slowLimit, slowLimit * 1.7, 12), String.format(Locale.ROOT, "%.1f b/s", second));
                 }
             }
             st.lastYaw = loc.getYaw();
@@ -821,6 +851,10 @@ public final class AntiCheat implements Listener, TabExecutor {
      * player who is online right now.
      */
     public void replay(Player staff, UUID id, String which) {
+        replay(staff, id, which, EvidenceReplay.View.FOLLOW);
+    }
+
+    public void replay(Player staff, UUID id, String which, EvidenceReplay.View view) {
         Clip clip = null;
         Player online = Bukkit.getPlayer(id);
         if ("now".equalsIgnoreCase(which) && online != null) clip = keep(online, lang().raw("replay.live"));
@@ -836,7 +870,7 @@ public final class AntiCheat implements Listener, TabExecutor {
             else clip = loadLatestClip(id);
             if (clip == null && online != null) clip = keep(online, lang().raw("replay.live"));
         }
-        if (clip == null || !replay.play(staff, id, clip)) lang().send(staff, "replay.none");
+        if (clip == null || !replay.play(staff, id, clip, view)) lang().send(staff, "replay.none");
     }
 
     public List<Clip> clips(UUID id) {
@@ -896,7 +930,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         float spike = Math.max(d[n - 1], d[n - 2]);
         float before = d[n - 1] >= d[n - 2] ? d[n - 2] : d[n - 3];
         if (before < 3 && spike > 40) {
-            flag(p, "snap", severity(spike, 40, 160, 6), String.format(Locale.ROOT, "%s %.0f°", what, spike));
+            flag(p, "snap", severity(spike, 40, 160, 8), String.format(Locale.ROOT, "%s %.0f°", what, spike));
         }
     }
 
@@ -926,6 +960,191 @@ public final class AntiCheat implements Listener, TabExecutor {
         return Math.max(0.5, Math.round(pts * 2) / 2.0);
     }
 
+    // ---------------------------------------------------------------- physics: every movement packet against the game's rules
+
+    private static boolean groundAt(Location l) {
+        for (double dx : new double[]{-0.3, 0.3}) {
+            for (double dz : new double[]{-0.3, 0.3}) {
+                for (double dy : new double[]{-0.04, -0.55}) {
+                    Block b = l.getWorld().getBlockAt((int) Math.floor(l.getX() + dx), (int) Math.floor(l.getY() + dy), (int) Math.floor(l.getZ() + dz));
+                    if (solid(b) || climbable(b.getType())) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Standing on a boat, a shulker, a minecart: ground that is an entity. */
+    private static boolean entityGround(Player p) {
+        try {
+            for (Entity e : p.getNearbyEntities(1.0, 1.5, 1.0)) {
+                if (e instanceof org.bukkit.entity.Boat || e instanceof org.bukkit.entity.Shulker || e instanceof org.bukkit.entity.Minecart
+                        || e.getType().name().contains("RAFT")) return true;
+            }
+        } catch (RuntimeException ignored) {
+            // nothing around
+        }
+        return false;
+    }
+
+    private static boolean ceiling(Location l) {
+        for (double dx : new double[]{-0.3, 0.3}) {
+            for (double dz : new double[]{-0.3, 0.3}) {
+                if (solid(l.getWorld().getBlockAt((int) Math.floor(l.getX() + dx), (int) Math.floor(l.getY() + 2.0), (int) Math.floor(l.getZ() + dz)))) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Back to the last place that was in order. The cheat does not get them anywhere. */
+    private void setback(PlayerMoveEvent e, State st) {
+        if (!plugin.getConfig().getBoolean("anticheat.setback", true) || st.lastLegal == null || st.lastLegal.getWorld() != e.getTo().getWorld()) return;
+        Location back = st.lastLegal.clone();
+        back.setYaw(e.getTo().getYaw());
+        back.setPitch(e.getTo().getPitch());
+        e.setTo(back);
+        st.lastSetback = System.currentTimeMillis();
+        st.airPackets = 0;
+    }
+
+    /**
+     * In the air the game knows exactly how a player moves: each tick down by gravity, (dy - 0.08) * 0.98.
+     * Anything that rises or hangs beyond that is flying, whatever the cheat calls it. Too far in one step
+     * is speed, more than a slab up from ground to ground is step, gliding without a rocket that never
+     * sinks is elytra flying.
+     */
+    private void physics(PlayerMoveEvent e, Player p, State st, long now) {
+        Location from = e.getFrom();
+        Location to = e.getTo();
+        if (to == null || from.getWorld() != to.getWorld()) return;
+        if (!enabled() || exempt(p) || p.isFlying() || p.getAllowFlight() || p.isInsideVehicle() || p.isRiptiding() || now < st.exemptUntil
+                || p.isDead() || laggy()) {
+            st.airPackets = 0;
+            st.flyBuffer = 0;
+            st.lastLegal = to.clone();
+            return;
+        }
+        double dy = to.getY() - from.getY();
+        double horizontal = Math.hypot(to.getX() - from.getX(), to.getZ() - from.getZ());
+        if (horizontal > 10 || Math.abs(dy) > 10) return;
+
+        // elytra: speed, and gliding without a rocket that does not sink
+        if (p.isGliding()) {
+            boolean boosted = now < st.boostUntil;
+            if (!boosted && horizontal > plugin.getConfig().getDouble("anticheat.elytra-speed", 2.6)) {
+                flag(p, "elytra", severity(horizontal, 2.6, 5, 25), String.format(Locale.ROOT, "%.1f b/t", horizontal));
+                p.setGliding(false);
+                setback(e, st);
+                return;
+            }
+            st.glideFlat = !boosted && dy >= -0.005 ? st.glideFlat + 1 : Math.max(0, st.glideFlat - 2);
+            if (st.glideFlat > 80) {
+                flag(p, "elytra", 25, lang().raw("anticheat.detail.glide"));
+                p.setGliding(false);
+                st.glideFlat = 0;
+                setback(e, st);
+            }
+            st.airPackets = 0;
+            return;
+        }
+
+        boolean special = special(p);
+        boolean ground = groundAt(to) || (!special && entityGround(p));
+        int jump = amplifier(p, PotionEffectType.JUMP_BOOST);
+        boolean noGravity = amplifier(p, PotionEffectType.LEVITATION) >= 0 || amplifier(p, PotionEffectType.SLOW_FALLING) >= 0;
+
+        // speed, per step
+        double limit = plugin.getConfig().getDouble("anticheat.step-speed", 0.75);
+        int speed = amplifier(p, PotionEffectType.SPEED);
+        if (speed >= 0) limit *= 1 + 0.2 * (speed + 1);
+        if (now < st.iceUntil || onIce(p)) {
+            limit *= 2.4;
+            st.iceUntil = now + 1500;
+        }
+        if (special) limit *= 1.6;
+        if (amplifier(p, PotionEffectType.DOLPHINS_GRACE) >= 0) limit *= 2.5;
+        if (horizontal > limit) {
+            st.speedBuffer += 1;
+            if (st.speedBuffer >= 3) {
+                flag(p, "speed", severity(horizontal, limit, limit * 2, 20), String.format(Locale.ROOT, "%.2f b/t", horizontal));
+                setback(e, st);
+                st.speedBuffer = 1;
+                return;
+            }
+        } else st.speedBuffer = Math.max(0, st.speedBuffer - 0.25);
+
+        if (ground || special || noGravity) {
+            // step: more than a slab up in one step, from ground to ground
+            if (ground && st.airPackets == 0 && dy > 0.62 && dy < 3 && jump < 0 && !special && attribute(p, "step_height", 0.6) < 0.7) {
+                flag(p, "step", severity(dy, 0.62, 1.5, 18), String.format(Locale.ROOT, "%.2f", dy));
+                setback(e, st);
+                return;
+            }
+            st.airPackets = 0;
+            st.flyBuffer = 0;
+            if (ground && !special) st.lastLegal = to.clone();
+            st.airDy = dy;
+            return;
+        }
+
+        st.airPackets++;
+        if (st.airPackets == 1) {
+            // leaving the ground: a jump is at most 0.42 up (more with jump boost)
+            double maxJump = 0.42 + (jump >= 0 ? 0.1 * (jump + 1) : 0) + 0.05;
+            if (dy > maxJump + 0.2) {
+                flag(p, "fly", 25, String.format(Locale.ROOT, "jump %.2f", dy));
+                setback(e, st);
+                return;
+            }
+            st.airDy = dy;
+            return;
+        }
+        if (ceiling(to) || ceiling(from)) {
+            // a head hitting the ceiling stops the rise; no judging this step
+            st.airDy = dy;
+            return;
+        }
+        double predicted = (st.airDy - 0.08) * 0.98;
+        double off = dy - predicted;
+        st.airDy = dy;
+        if (off > 0.05) {
+            if (++st.flyBuffer >= 2) {
+                String how = dy > 0.02 ? lang().raw("anticheat.detail.rise") : lang().raw("anticheat.detail.hover");
+                flag(p, "fly", 25, String.format(Locale.ROOT, "%s %.3f/%.3f", how, dy, predicted));
+                setback(e, st);
+                st.flyBuffer = 0;
+            }
+        } else if (st.flyBuffer > 0) st.flyBuffer--;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBoost(com.destroystokyo.paper.event.player.PlayerElytraBoostEvent e) {
+        state(e.getPlayer()).boostUntil = System.currentTimeMillis() + 4000;
+    }
+
+    /** Riptide only works in water or rain. Anywhere else it is a trident boost cheat. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRiptide(org.bukkit.event.player.PlayerRiptideEvent e) {
+        Player p = e.getPlayer();
+        if (exempt(p)) return;
+        boolean wet = p.isInWater();
+        try {
+            wet |= p.isInRain();
+        } catch (RuntimeException | NoSuchMethodError ignored) {
+            wet |= p.getWorld().hasStorm() && p.getWorld().getHighestBlockYAt(p.getLocation()) <= p.getLocation().getBlockY();
+        }
+        if (wet) {
+            exemptFor(p, 3000);
+            return;
+        }
+        Location back = state(p).lastLegal;
+        flag(p, "trident", 25, null);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            p.setVelocity(new Vector(0, 0, 0));
+            if (back != null && back.getWorld() == p.getWorld()) p.teleport(back);
+        });
+    }
+
     private static boolean handRaised(Player p) {
         try {
             return p.isHandRaised();
@@ -943,11 +1162,12 @@ public final class AntiCheat implements Listener, TabExecutor {
         return a;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
         Player p = e.getPlayer();
         State st = state(p);
         long now = System.currentTimeMillis();
+        physics(e, p, st, now);
         aim(p, st, e.getFrom(), e.getTo(), now);
         st.movePackets.addLast(now);
         while (!st.movePackets.isEmpty() && now - st.movePackets.peekFirst() > 5000) st.movePackets.removeFirst();
@@ -955,7 +1175,7 @@ public final class AntiCheat implements Listener, TabExecutor {
             double rate = st.movePackets.size() / 5.0;
             if (rate > plugin.getConfig().getDouble("anticheat.max-packets", 23)) {
                 double maxRate = plugin.getConfig().getDouble("anticheat.max-packets", 23);
-                if (++st.timerStrikes % 20 == 0) flag(p, "timer", severity(rate, maxRate, maxRate * 1.6, 16), String.format(Locale.ROOT, "%.1f/s", rate));
+                if (++st.timerStrikes % 20 == 0) flag(p, "timer", severity(rate, maxRate, maxRate * 1.6, 22), String.format(Locale.ROOT, "%.1f/s", rate));
             } else st.timerStrikes = 0;
         }
     }
@@ -1027,6 +1247,7 @@ public final class AntiCheat implements Listener, TabExecutor {
     public void onTeleport(PlayerTeleportEvent e) {
         exemptFor(e.getPlayer(), 3000);
         state(e.getPlayer()).last = e.getTo();
+        state(e.getPlayer()).lastLegal = e.getTo().clone();
         state(e.getPlayer()).movePackets.clear();
         state(e.getPlayer()).yawSteps.clear();
     }
@@ -1056,7 +1277,7 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     // ---------------------------------------------------------------- fighting
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHit(EntityDamageByEntityEvent e) {
         if (e.getDamager() instanceof Player attacker && e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK && !exempt(attacker)) {
             Entity target = e.getEntity();
@@ -1070,18 +1291,26 @@ public final class AntiCheat implements Listener, TabExecutor {
             double distance = closest.distance(eye.toVector());
             double limit = attribute(attacker, "entity_interaction_range", 3.0) + 0.6 + Math.min(1.2, ping(attacker) / 150.0);
             double over = distance - limit;
-            if (over > 0) flag(attacker, "reach", severity(distance, limit, limit + 2.5, 14), String.format(Locale.ROOT, "%.2f", distance));
+            boolean block = plugin.getConfig().getBoolean("anticheat.block-hits", true);
+            if (over > 0) {
+                flag(attacker, "reach", severity(distance, limit, limit + 2.5, 20), String.format(Locale.ROOT, "%.2f", distance));
+                if (block && over > 0.3) e.setCancelled(true);
+            }
 
             Vector toTarget = box.getCenter().subtract(eye.toVector());
             double angle = Math.toDegrees(eye.getDirection().angle(toTarget));
-            if (distance > 1.5 && angle > 100) flag(attacker, "aura", severity(angle, 100, 180, 10), String.format(Locale.ROOT, "%.0f°", angle));
+            if (distance > 1.5 && angle > 100) {
+                flag(attacker, "aura", severity(angle, 100, 180, 16), String.format(Locale.ROOT, "%.0f°", angle));
+                if (block) e.setCancelled(true);
+            }
 
             if (st.lastTarget != null && !st.lastTarget.equals(target.getUniqueId()) && now - st.lastHit < 40) {
                 flag(attacker, "aura", 1, lang().raw("anticheat.detail.multi"));
             }
             // through a wall: both the middle and the top of the target hidden behind blocks
             if (distance > 1.2 && blocked(eye, box.getCenter()) && blocked(eye, new Vector(box.getCenterX(), box.getMaxY() - 0.1, box.getCenterZ()))) {
-                flag(attacker, "aura", 3, lang().raw("anticheat.detail.wall"));
+                flag(attacker, "aura", 5, lang().raw("anticheat.detail.wall"));
+                if (block) e.setCancelled(true);
             }
             event(attacker, "hit");
             snap(attacker, st, "hit");
@@ -1098,7 +1327,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                 // older API
             }
             if (critical && grounded(attacker) && st.lastDy >= -0.01 && !st.special && !attacker.isInsideVehicle()) {
-                flag(attacker, "criticals", 3, null);
+                flag(attacker, "criticals", 6, null);
             }
             st.lastTarget = target.getUniqueId();
             st.lastHit = now;
@@ -1116,7 +1345,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                 if (!victim.isOnline() || victim.getWorld() != start.getWorld()) return;
                 double moved = Math.hypot(victim.getLocation().getX() - start.getX(), victim.getLocation().getZ() - start.getZ());
                 if (moved < 0.1) {
-                    if (++st.kbLow >= 4) flag(victim, "velocity", severity(0.1 - moved, 0, 0.1, 8), String.format(Locale.ROOT, "%.2f", moved));
+                    if (++st.kbLow >= 4) flag(victim, "velocity", severity(0.1 - moved, 0, 0.1, 12), String.format(Locale.ROOT, "%.2f", moved));
                 } else st.kbLow = 0;
             }, 6L);
         }
@@ -1162,7 +1391,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         // judged once per second of clicking above the limit
         if (cps > max && now / 1000 != st.lastCpsSecond) {
             st.lastCpsSecond = now / 1000;
-            flag(p, "autoclick", severity(cps, max, max + 15, 8), cps + " CPS");
+            flag(p, "autoclick", severity(cps, max, max + 15, 10), cps + " CPS");
         }
     }
 
@@ -1225,7 +1454,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         return m == Material.DIAMOND_ORE || m == Material.DEEPSLATE_DIAMOND_ORE || m == Material.ANCIENT_DEBRIS;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent e) {
         Player p = e.getPlayer();
         if (exempt(p)) return;
@@ -1242,8 +1471,11 @@ public final class AntiCheat implements Listener, TabExecutor {
                     double expected = Math.ceil(1 / perTick) * 50.0;
                     double took = now - st.digStart;
                     double ratio = took / expected;
-                    if (expected > 200 && ratio < 0.7) flag(p, "fastbreak", severity(1 - ratio, 0.3, 0.9, 10),
-                            String.format(Locale.ROOT, "%.0f/%.0fms", took, expected));
+                    if (expected > 200 && ratio < 0.7) {
+                        flag(p, "fastbreak", severity(1 - ratio, 0.3, 0.9, 14), String.format(Locale.ROOT, "%.0f/%.0fms", took, expected));
+                        // too fast: the block stays
+                        if (ratio < 0.5) e.setCancelled(true);
+                    }
                 }
             } catch (RuntimeException | NoSuchMethodError ignored) {
                 // older API
@@ -1253,11 +1485,17 @@ public final class AntiCheat implements Listener, TabExecutor {
         if (b.getType().getHardness() > 0.3f) {
             st.breaks.addLast(now);
             while (!st.breaks.isEmpty() && now - st.breaks.peekFirst() > 1000) st.breaks.removeFirst();
-            if (st.breaks.size() > 12) flag(p, "nuker", severity(st.breaks.size(), 12, 30, 16), st.breaks.size() + "/s");
+            if (st.breaks.size() > 12) {
+                flag(p, "nuker", severity(st.breaks.size(), 12, 30, 22), st.breaks.size() + "/s");
+                e.setCancelled(true);
+            }
         }
         double far = p.getEyeLocation().toVector().distance(new Vector(b.getX() + 0.5, b.getY() + 0.5, b.getZ() + 0.5));
         double blockRange = attribute(p, "block_interaction_range", 4.5) + 1.5;
-        if (far > blockRange) flag(p, "nuker", severity(far, blockRange, blockRange + 4.5, 8), String.format(Locale.ROOT, "%.1f", far));
+        if (far > blockRange) {
+            flag(p, "nuker", severity(far, blockRange, blockRange + 4.5, 12), String.format(Locale.ROOT, "%.1f", far));
+            e.setCancelled(true);
+        }
         // x-ray by the share of rare ores
         if (now - st.miningWindowStart > 30 * 60_000L) {
             st.miningWindowStart = now;
@@ -1275,7 +1513,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent e) {
         Player p = e.getPlayer();
         if (exempt(p)) return;
@@ -1283,14 +1521,20 @@ public final class AntiCheat implements Listener, TabExecutor {
         long now = System.currentTimeMillis();
         st.places.addLast(now);
         while (!st.places.isEmpty() && now - st.places.peekFirst() > 1000) st.places.removeFirst();
-        if (st.places.size() > 12) flag(p, "scaffold", severity(st.places.size(), 12, 25, 12), st.places.size() + "/s");
+        if (st.places.size() > 12) {
+            flag(p, "scaffold", severity(st.places.size(), 12, 25, 16), st.places.size() + "/s");
+            e.setCancelled(true);
+        }
         // bridging under your own feet without looking down, at walking speed
         Location l = p.getLocation();
         Block placed = e.getBlockPlaced();
         boolean underFeet = placed.getY() < l.getY() - 0.5 && Math.abs(placed.getX() + 0.5 - l.getX()) < 1.6 && Math.abs(placed.getZ() + 0.5 - l.getZ()) < 1.6;
         double speed = 0;
         for (double[] mv : st.moves) speed += mv[1];
-        if (underFeet && l.getPitch() < 35 && speed > 3.5) flag(p, "scaffold", severity(35 - l.getPitch(), 0, 35, 6), String.format(Locale.ROOT, "pitch %.0f", l.getPitch()));
+        if (underFeet && l.getPitch() < 35 && speed > 3.5) {
+            flag(p, "scaffold", severity(35 - l.getPitch(), 0, 35, 10), String.format(Locale.ROOT, "pitch %.0f", l.getPitch()));
+            if (l.getPitch() < 15) e.setCancelled(true);
+        }
         event(p, "place");
         snap(p, st, "place");
         // respawn anchors: place, charge, blow up, faster than hands can
@@ -1454,6 +1698,28 @@ public final class AntiCheat implements Listener, TabExecutor {
             lang().send(staff, toggleAlerts(staff.getUniqueId()) ? "anticheat.alerts-on" : "anticheat.alerts-off");
             return true;
         }
+        if (sub.equals("antixray")) {
+            if (!sender.hasPermission("staffcore.admin")) {
+                lang().send(sender, "error.no-permission");
+                return true;
+            }
+            File server = Bukkit.getWorldContainer();
+            if (args.length < 2) {
+                lang().send(sender, "anticheat.antixray-state", "state", lang().raw(AntiXray.enabled(server) ? "module.word-on" : "module.word-off"));
+                return true;
+            }
+            boolean on = args[1].equalsIgnoreCase("on");
+            String nether = Bukkit.getWorlds().stream().filter(w -> w.getEnvironment() == org.bukkit.World.Environment.NETHER)
+                    .map(org.bukkit.World::getName).findFirst().orElse("world_nether");
+            try {
+                AntiXray.set(server, nether, on);
+                lang().send(sender, on ? "anticheat.antixray-on" : "anticheat.antixray-off");
+                plugin.staffLog(sender.getName(), "antixray " + (on ? "on" : "off"), null, null);
+            } catch (IOException ex) {
+                lang().send(sender, "anticheat.antixray-failed", "error", ex.getMessage());
+            }
+            return true;
+        }
         if (sub.equals("replay") && sender instanceof Player staff) {
             if (args.length < 2) {
                 lang().send(staff, "replay.usage");
@@ -1464,11 +1730,13 @@ public final class AntiCheat implements Listener, TabExecutor {
                 lang().send(staff, "anticheat.unknown", "player", args[1]);
                 return true;
             }
-            if (args.length >= 3 && args[2].equalsIgnoreCase("stop")) {
-                replay.stop(staff.getUniqueId());
-                return true;
-            }
-            replay(staff, id, args.length >= 3 ? args[2] : null);
+            if (args.length >= 3 && replay.running(staff.getUniqueId()) && replay.control(staff, args[2].toLowerCase(Locale.ROOT))) return true;
+            if (args.length >= 3 && args[2].equalsIgnoreCase("stop")) return true;
+            // /ac replay <player> [1-5|now] [first|follow|free]
+            String which = args.length >= 3 && !List.of("first", "follow", "free").contains(args[2].toLowerCase(Locale.ROOT)) ? args[2] : null;
+            String view = args[args.length - 1].toLowerCase(Locale.ROOT);
+            replay(staff, id, which, view.equals("first") ? EvidenceReplay.View.FIRST : view.equals("free") ? EvidenceReplay.View.FREE
+                    : EvidenceReplay.View.FOLLOW);
             return true;
         }
         if (args.length >= 2 && List.of("clear", "watch", "unwatch", "points", "reset").contains(sub)) {
@@ -1520,7 +1788,11 @@ public final class AntiCheat implements Listener, TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) for (String s : List.of("points", "watch", "unwatch", "reset", "clear", "alerts", "replay")) if (s.startsWith(args[0].toLowerCase())) out.add(s);
+        if (args.length == 1) for (String s : List.of("points", "watch", "unwatch", "reset", "clear", "alerts", "replay", "antixray")) if (s.startsWith(args[0].toLowerCase())) out.add(s);
+        if (args.length == 2 && args[0].equalsIgnoreCase("antixray")) {
+            for (String s : List.of("on", "off")) if (s.startsWith(args[1].toLowerCase())) out.add(s);
+            return out;
+        }
         if (args.length == 2) {
             for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase().startsWith(args[1].toLowerCase())) out.add(p.getName());
             for (Suspect s : suspects.values()) if (!out.contains(s.name) && s.name.toLowerCase().startsWith(args[1].toLowerCase())) out.add(s.name);

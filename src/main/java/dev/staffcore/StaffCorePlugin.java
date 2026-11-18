@@ -155,6 +155,7 @@ public class StaffCorePlugin extends JavaPlugin {
         playerCheck = new dev.staffcore.module.PlayerCheck(this);
         getServer().getPluginManager().registerEvents(playerCheck, this);
         register("check", "Everything about a player on one live page", "staffcore.check", playerCheck);
+        getServer().getPluginManager().registerEvents(new dev.staffcore.module.RightsWatch(this), this);
         playerStatus = new dev.staffcore.module.PlayerStatus(this);
         register("status", "What lies on a player right now, with buttons to lift it", "staffcore.staff", playerStatus);
         register("release", "Lift everything from a player: freeze, prison, PlayBan, mute, ban", "staffcore.staff", playerStatus);
@@ -276,6 +277,9 @@ public class StaffCorePlugin extends JavaPlugin {
                         java.util.List.of("ac")))
                 .command(new dev.staffcore.module.ModuleManager.Cmd("alerts", "Anti-cheat alerts on or off for you", "staffcore.anticheat", antiCheat))
                 .setting("anticheat.auto-punish", BOOL, org.bukkit.Material.ANVIL, true)
+                .setting("anticheat.setback", BOOL, org.bukkit.Material.ENDER_PEARL, true)
+                .setting("anticheat.block-hits", BOOL, org.bukkit.Material.SHIELD, true)
+                .setting("anticheat.creative-guard", BOOL, org.bukkit.Material.GRASS_BLOCK, false)
                 .setting("anticheat.limit", CYCLE, org.bukkit.Material.TARGET, 25, 15, 20, 25, 35, 50)
                 .setting("anticheat.animation", CYCLE, org.bukkit.Material.MACE, "random", "random", "blackhole", "mace", "lightning", "none")
                 .setting("anticheat.auto-watch", BOOL, org.bukkit.Material.ENDER_EYE, true)

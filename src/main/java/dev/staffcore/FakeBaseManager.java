@@ -161,7 +161,28 @@ public final class FakeBaseManager implements Listener, TabExecutor {
     /** On shutdown every base goes away again, so the world never keeps one. */
     public void stop() {
         if (ticker != null) ticker.cancel();
-        for (Base b : new ArrayList<>(bases.values())) remove(b, false);
+        removeAll();
+    }
+
+    /**
+     * Newest first: a base built later may have taken the blocks of an older one as its "before",
+     * so only taking them down in reverse order puts the world back exactly as it was.
+     */
+    public void removeAll() {
+        List<Base> list = new ArrayList<>(bases.values());
+        java.util.Collections.reverse(list);
+        for (Base b : list) remove(b, false);
+    }
+
+    /** Whether a box would touch a standing base (with a little room around it). */
+    private boolean overlaps(String world, int x0, int y0, int z0, int w, int h, int d) {
+        for (Base b : bases.values()) {
+            if (!b.world.equals(world)) continue;
+            boolean apart = x0 + w + 2 <= b.x || b.x + b.w + 2 <= x0 || y0 + h + 2 <= b.y || b.y + b.h + 2 <= y0
+                    || z0 + d + 2 <= b.z || b.z + b.d + 2 <= z0;
+            if (!apart) return true;
+        }
+        return false;
     }
 
     /** After a crash the old blocks are still in fakebases.yml: they are put back on the next start. */
@@ -170,12 +191,15 @@ public final class FakeBaseManager implements Listener, TabExecutor {
         YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file());
         ConfigurationSection root = cfg.getConfigurationSection("bases");
         if (root != null) {
+            List<Base> found = new ArrayList<>();
             for (String k : root.getKeys(false)) {
                 ConfigurationSection s = root.getConfigurationSection(k);
                 if (s == null) continue;
                 Base b = read(s);
-                if (b != null) restoreBlocks(b);
+                if (b != null) found.add(b);
             }
+            found.sort((a, b) -> Integer.compare(b.id, a.id));
+            for (Base b : found) restoreBlocks(b);
         }
         file().delete();
     }
@@ -236,6 +260,15 @@ public final class FakeBaseManager implements Listener, TabExecutor {
 
     /** Somewhere deep under the player, 40 to 70 blocks to the side, so only someone who sees through walls finds it. */
     public Location spotNear(Player target) {
+        Location spot = null;
+        for (int tries = 0; tries < 8; tries++) {
+            spot = spotOnce(target);
+            if (!overlaps(spot.getWorld().getName(), spot.getBlockX() - 10, spot.getBlockY() - 1, spot.getBlockZ() - 10, 20, 9, 20)) return spot;
+        }
+        return spot;
+    }
+
+    private Location spotOnce(Player target) {
         World w = target.getWorld();
         double angle = random.nextDouble() * Math.PI * 2;
         double dist = 40 + random.nextInt(31);
@@ -253,6 +286,8 @@ public final class FakeBaseManager implements Listener, TabExecutor {
         int w = design.width() + 2, h = design.height() + 2, d = design.depth() + 2;
         int x0 = at.getBlockX() - w / 2, y0 = at.getBlockY() - 1, z0 = at.getBlockZ() - d / 2;
         if (y0 < world.getMinHeight() || y0 + h >= world.getMaxHeight()) return null;
+        // never into another base: taking them down again would mix up what was there before
+        if (overlaps(world.getName(), x0, y0, z0, w, h, d)) return null;
         Base b = new Base();
         b.id = nextId++;
         b.design = design.id();
@@ -772,7 +807,7 @@ public final class FakeBaseManager implements Listener, TabExecutor {
                     return true;
                 }
                 if (args[1].equalsIgnoreCase("all")) {
-                    for (Base b : new ArrayList<>(bases.values())) remove(b, false);
+                    removeAll();
                     lang().send(sender, "fakebase.removed-all");
                     return true;
                 }

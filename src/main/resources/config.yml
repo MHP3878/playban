@@ -267,11 +267,33 @@ anticheat:
   grace-seconds: 6
   # one point fades every this many seconds
   fade-seconds: 60
-  # what happens the 1st, 2nd, 3rd ... time somebody is caught. PLAYBAN <time>, BAN <time|perm>, KICK, CATEGORY <id>
-  ladder:
-    - PLAYBAN 5m
-    - PLAYBAN 1h
+  # caught at once by these, no warning: clear cheats
+  instant: [fly, jesus, badpackets, elytra, trident]
+  # what happens the 1st, 2nd, 3rd ... time somebody is caught. Real cheats (hard-checks) climb ladder-hard,
+  # small things ladder-small. Steps: BAN <time|perm>, PLAYBAN <time>, PRISON <time>, KICK, CATEGORY <id>
+  hard-checks: [fly, speed, jesus, step, nofall, reach, aura, velocity, timer, badpackets, nuker, scaffold, elytra, trident, xraybait, botmine]
+  ladder-hard:
+    - BAN 5m
+    - BAN 1h
+    - BAN 1d
     - CATEGORY cheating
+  ladder-small:
+    - PLAYBAN 10m
+    - PLAYBAN 1h
+    - PRISON 1h
+    - BAN 1h
+  # set the player back to the last place that was in order when a movement breaks the rules
+  setback: true
+  # hits with too much reach, behind the back or through walls do no damage
+  block-hits: true
+  # the fall still hurts when no fall damage came
+  nofall-damage: true
+  # a normal player who gets creative or spectator: false = only tell the team, true = also back to survival
+  creative-guard: false
+  # blocks per movement step on foot, before effects and ice
+  step-speed: 0.75
+  # blocks per step while gliding without a rocket
+  elytra-speed: 2.6
   # blackhole, mace, lightning, random or none
   animation: random
   # below this TPS and above this ping movement is not judged, so lag never gets anyone punished
@@ -316,6 +338,8 @@ anticheat:
     snap: {enabled: true, weight: 1.0}
     botmine: {enabled: true, weight: 1.0}
     xraybait: {enabled: true, weight: 1.0}
+    elytra: {enabled: true, weight: 1.0}
+    trident: {enabled: true, weight: 1.0}
 
 # ---- PlayBan ----
 playban:

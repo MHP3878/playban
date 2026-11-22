@@ -55,6 +55,8 @@ public final class Guard implements Listener {
         public final Set<String> channels = new LinkedHashSet<>();
         /** mods that answered the hidden sign */
         public final Set<String> found = new LinkedHashSet<>();
+        /** How the hidden sign check went: unknown, works, blocked, no-answer, impossible */
+        public String sign = "unknown";
     }
 
     /** A blocked mod and what to do about it, all from the settings. */
@@ -510,13 +512,28 @@ public final class Guard implements Listener {
      * the sign only exists for the player; on older servers a real sign stands for two ticks two blocks
      * under the player and the block is put back.
      */
+    /** The sign check with the blocked mods only (on join). */
     public void probe(Player p) {
+        probe(p, false);
+    }
+
+    /**
+     * The sign check. First line is always a control: "key.jump" is known to every client, so the
+     * answer tells whether this trick works at all. With discover, the keys of well-known everyday
+     * mods are asked as well, to see more than the blocked ones.
+     */
+    public void probe(Player p, boolean discover) {
         List<String[]> all = new ArrayList<>();
-        for (Rule r : rules()) for (String k : r.keys()) all.add(new String[]{k, r.id()});
-        if (all.isEmpty()) return;
+        all.add(new String[]{"key.jump", CONTROL});
+        Set<String> seen = new HashSet<>();
+        for (Rule r : rules()) for (String k : r.keys()) if (seen.add(k)) all.add(new String[]{k, r.id()});
+        if (discover) for (KnownMods.Mod m : KnownMods.ALL) for (String k : m.keys()) if (seen.add(k)) all.add(new String[]{k, m.id()});
+        info(p.getUniqueId()).sign = "unknown";
         waiting.put(p.getUniqueId(), all);
         nextSign(p);
     }
+
+    private static final String CONTROL = "__control";
 
     private void nextSign(Player p) {
         List<String[]> left = waiting.get(p.getUniqueId());
@@ -533,6 +550,7 @@ public final class Guard implements Listener {
         if (!virtualSign(p, lines) && !realSign(p, lines)) {
             asked.remove(p.getUniqueId());
             waiting.remove(p.getUniqueId());
+            info(p.getUniqueId()).sign = "impossible";
             return;
         }
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -542,6 +560,12 @@ public final class Guard implements Listener {
             if (asked.get(p.getUniqueId()) == mine) {
                 asked.remove(p.getUniqueId());
                 cleanup(p);
+                if (info(p.getUniqueId()).sign.equals("unknown")) {
+                    // no answer at all: the client did not send the sign back
+                    info(p.getUniqueId()).sign = "no-answer";
+                    waiting.remove(p.getUniqueId());
+                    return;
+                }
                 nextSign(p);
             }
         }, 20L);
@@ -652,13 +676,23 @@ public final class Guard implements Listener {
             if (i >= lines.size()) continue;
             String[] keyMod = e.getValue().split("\\|", 2);
             String text = PlainTextComponentSerializer.plainText().serialize(lines.get(i)).trim();
+            if (keyMod[1].equals(CONTROL)) {
+                // "Jump" back: the client fills in texts, the check works; the raw key back: it does not
+                info.sign = !text.isEmpty() && !text.equals(keyMod[0]) ? "works" : "blocked";
+                continue;
+            }
             if (!text.isEmpty() && !text.equals(keyMod[0])) {
                 info.found.add(keyMod[1]);
                 found = true;
             }
         }
+        if (info.sign.equals("blocked")) {
+            // the trick does not work with this client: no need to ask further
+            waiting.remove(p.getUniqueId());
+            return;
+        }
         if (found) judge(p);
-        else Bukkit.getScheduler().runTaskLater(plugin, () -> nextSign(p), 2L);
+        if (p.isOnline()) Bukkit.getScheduler().runTaskLater(plugin, () -> nextSign(p), 2L);
     }
 
     // ---------------------------------------------------------------- log and Discord

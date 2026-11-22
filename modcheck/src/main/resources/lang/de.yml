@@ -43,6 +43,7 @@ check:
   reset: "<gray>Die Verwarnungen von <white>{player}</white> sind gelöscht."
   header: "<white>{player}</white><gray>: Client <white>{client}</white>, Verwarnungen <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
+  channels: "<gray>Mod-Kanäle: <white>{channels}"
 
 block:
   usage: "<gray>Benutzung: <white>/modblock <mod-name></white>, z. B. <white>/modblock freecam</white>"
@@ -102,9 +103,15 @@ menu:
     mod-free: "<gray>Nicht gesperrt"
     mod-click: "<#4facfe>Klick: bestrafen oder durchlassen"
     info: ["<gray>Client: <white>{client}", "<gray>Mod-Kanäle: <white>{channels}", "<gray>Verwarnungen: <white>{warnings}", "<gray>Zuletzt mit gesperrter Mod gekommen: <white>{recent}"]
+    sign:
+      unknown: "<gray>Schild-Prüfung: <white>noch nicht gefragt"
+      works: "<green>Schild-Prüfung: funktioniert bei diesem Client"
+      blocked: "<red>Schild-Prüfung: dieser Client füllt keine Texte aus"
+      no-answer: "<gold>Schild-Prüfung: keine Antwort vom Client"
+      impossible: "<gray>Schild-Prüfung: hier nicht möglich (kein fester Boden)"
     recheck:
       name: "<#4facfe>Nochmal prüfen"
-      lore: ["<gray>Client-Name, Kanäle und das", "<gray>versteckte Schild nochmal."]
+      lore: ["<gray>Client-Name, Kanäle und das versteckte", "<gray>Schild, auch für bekannte normale Mods", "<gray>(Sodium, Iris ...). Das Ergebnis kommt", "<gray>nach ein paar Sekunden."]
     none:
       name: "<green>Keine Mods gefunden"
       lore: ["<gray>Entweder Vanilla, oder Mods, die", "<gray>sich nicht verraten."]

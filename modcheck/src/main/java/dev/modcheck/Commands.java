@@ -142,6 +142,8 @@ public final class Commands implements TabExecutor {
         List<String> names = new ArrayList<>();
         for (String m : mods) names.add(guard().display(m));
         sender.sendMessage(lang().msg("check.mods", "mods", names.isEmpty() ? "-" : String.join(", ", names)));
+        sender.sendMessage(lang().msg("check.channels", "channels", info.channels.isEmpty() ? "-" : String.join(", ", info.channels)));
+        sender.sendMessage(lang().msg("menu.player.sign." + info.sign));
     }
 
     @Override

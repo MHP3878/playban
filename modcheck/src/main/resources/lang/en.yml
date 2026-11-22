@@ -43,6 +43,7 @@ check:
   reset: "<gray>The warnings of <white>{player}</white> are cleared."
   header: "<white>{player}</white><gray>: client <white>{client}</white>, warnings <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
+  channels: "<gray>Mod channels: <white>{channels}"
 
 block:
   usage: "<gray>Usage: <white>/modblock <mod name></white>, e.g. <white>/modblock freecam</white>"
@@ -102,9 +103,15 @@ menu:
     mod-free: "<gray>Not blocked"
     mod-click: "<#4facfe>Click: punish or let pass"
     info: ["<gray>Client: <white>{client}", "<gray>Mod channels: <white>{channels}", "<gray>Warnings: <white>{warnings}", "<gray>Came with a blocked mod recently: <white>{recent}"]
+    sign:
+      unknown: "<gray>Sign check: <white>not asked yet"
+      works: "<green>Sign check: works with this client"
+      blocked: "<red>Sign check: this client does not fill in texts"
+      no-answer: "<gold>Sign check: no answer from the client"
+      impossible: "<gray>Sign check: not possible here (no solid ground)"
     recheck:
       name: "<#4facfe>Check again"
-      lore: ["<gray>Client name, channels and the", "<gray>hidden sign once more."]
+      lore: ["<gray>Client name, channels and the", "<gray>hidden sign, also for well-known", "<gray>everyday mods (Sodium, Iris ...).", "<gray>The result shows after a few seconds."]
     none:
       name: "<green>No mods found"
       lore: ["<gray>Either vanilla, or mods that", "<gray>do not give themselves away."]

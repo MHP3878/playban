@@ -52,7 +52,24 @@ public final class KnownMods {
             mod("autofish", "AutoFish", List.of("auto-fish"), List.of("autofish"), List.of()),
             mod("inventoryprofilesnext", "Inventory Profiles Next", List.of("ipn", "inventoryprofiles"), List.of("inventoryprofilesnext"), List.of()),
             mod("wynntils", "Wynntils", List.of(), List.of("wynntils"), List.of()),
-            mod("replaymod", "Replay Mod", List.of("replay"), List.of("replaymod"), List.of()));
+            mod("replaymod", "Replay Mod", List.of("replay"), List.of("replaymod"), List.of("replaymod.gui.replayviewer", "key.replaymod.marker")),
+            // everyday mods: not cheats, but good to see; found by their texts
+            mod("sodium", "Sodium", List.of(), List.of(), List.of("sodium.options.pages.general", "sodium.options.pages.quality")),
+            mod("iris", "Iris Shaders", List.of("irisshaders"), List.of("iris"), List.of("iris.keybind.reload", "iris.keybind.shaderPackSelection")),
+            mod("modmenu", "Mod Menu", List.of("mod-menu"), List.of(), List.of("modmenu.title", "modmenu.config")),
+            mod("clothconfig", "Cloth Config", List.of("cloth-config", "cloth"), List.of(), List.of("text.cloth-config.save_and_done", "text.cloth-config.reset_value")),
+            mod("entityculling", "EntityCulling", List.of("entity-culling"), List.of(), List.of("key.entityculling.toggle", "text.entityculling.title")),
+            mod("etf", "Entity Texture Features", List.of("entitytexturefeatures", "entity_texture_features"), List.of(),
+                    List.of("config.entity_texture_features.title", "entity_texture_features.title")),
+            mod("emf", "Entity Model Features", List.of("entitymodelfeatures", "entity_model_features"), List.of(),
+                    List.of("entity_model_features.title", "config.entity_model_features.title")),
+            mod("sodiumextra", "Sodium Extra", List.of("sodium-extra"), List.of(), List.of("sodium-extra.pages.animation", "sodium-extra.option.fog")),
+            mod("immediatelyfast", "ImmediatelyFast", List.of("immediately-fast"), List.of(), List.of()),
+            mod("lithium", "Lithium", List.of(), List.of(), List.of()),
+            mod("ferritecore", "FerriteCore", List.of("ferrite-core"), List.of(), List.of()),
+            mod("zoomify", "Zoomify", List.of(), List.of(), List.of("zoomify.key.zoom")),
+            mod("appleskin", "AppleSkin", List.of("apple-skin"), List.of("appleskin"), List.of()),
+            mod("simplevoicechat", "Simple Voice Chat", List.of("voicechat", "simple-voice-chat"), List.of("voicechat"), List.of("key.voice_chat")));
 
     private static final Set<String> NOISE = Set.of("fabric", "forge", "neoforge", "quilt", "mc", "mod", "mods", "client", "universal",
             "release", "beta", "alpha", "snapshot", "jar", "v");

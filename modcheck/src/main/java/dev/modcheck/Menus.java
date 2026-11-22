@@ -106,13 +106,14 @@ public final class Menus {
         }, (mod, e) -> modAction(p, t, mod), n -> {}, () -> players(p, 0));
         List<Component> head = new ArrayList<>(lang().lore("menu.player.info", "client", info.brand == null ? "?" : info.brand,
                 "channels", info.channels.size(), "warnings", guard().warnings(t.getUniqueId()), "recent", guard().recentOffenses(t.getUniqueId())));
+        head.add(lang().msg("menu.player.sign." + info.sign));
         m.set(47, Menu.head(t, lang().msg("menu.players.name", "player", t.getName()), head), null);
         m.set(51, item(Material.OAK_SIGN, "menu.player.recheck"), e -> {
             guard().judge(t);
-            if (t.isOnline()) guard().probe(t);
+            if (t.isOnline()) guard().probe(t, true);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (p.isOnline() && t.isOnline()) player(p, t);
-            }, 30L);
+            }, 120L);
         });
         if (mods.isEmpty()) m.set(22, item(Material.LIME_DYE, "menu.player.none"), null);
         m.open(p);

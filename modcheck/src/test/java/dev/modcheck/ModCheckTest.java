@@ -257,4 +257,25 @@ class ModCheckTest {
             assertNull(plugin.guard().ban(p.getUniqueId()));
         }
     }
+
+    @Test
+    void controlKeyTellsWhetherTheSignCheckWorks() {
+        var g = plugin.guard();
+        g.expect(steve, List.of(new String[]{"key.jump", "__control"}, new String[]{"sodium.options.pages.general", "sodium"},
+                new String[]{"modmenu.title", "modmenu"}));
+        g.answer(steve, List.of(Component.text("Jump"), Component.text("General"), Component.text("modmenu.title"), Component.empty()));
+        assertEquals("works", g.info(steve.getUniqueId()).sign, "Jump came back filled in");
+        assertTrue(g.mods(steve.getUniqueId()).contains("sodium"), "an everyday mod is seen too");
+        assertFalse(g.mods(steve.getUniqueId()).contains("modmenu"), "a raw key means it is not there");
+        assertTrue(steve.isOnline(), "sodium is not blocked: nothing happens");
+        PlayerMock other = server.addPlayer("Other");
+        List<String[]> control = new ArrayList<>();
+        control.add(new String[]{"key.jump", "__control"});
+        g.expect(other, control);
+        g.answer(other, List.of(Component.text("key.jump"), Component.empty(), Component.empty(), Component.empty()));
+        assertEquals("blocked", g.info(other.getUniqueId()).sign, "the raw key back: this client does not fill in texts");
+        plugin.lang().load("de");
+        plugin.menus().player(admin, steve);
+        assertNoMissingTexts("player page with sign state");
+    }
 }

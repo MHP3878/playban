@@ -35,6 +35,7 @@ ban:
 alert:
   mod: "<red>⚠ <white>{player}</white> <gray>has <white>{mods}</white> → {action}. <dark_gray>Click to check"
   client: "<red>⚠ <white>{player}</white> <gray>uses the client <white>{mods}</white>, not on the allow list → {action}."
+  hiding: "<gold>⚠ <white>{player}</white> <gray>blocks the mod check (probably a mod that hides mods). <dark_gray>Click to check"
 discord:
   line: "⚠ {player} has {mods} → {action}"
 
@@ -50,7 +51,7 @@ check:
   result-blocked: "<red>✘ This client hides its mods. Only the client name is known."
   result-no-answer: "<gold>? The client did not answer. Try again on solid ground."
   result-impossible: "<gold>? No check possible here. Stand on solid ground and try again."
-  result-unknown: "<gray>? Not checked yet."
+  result-unknown: "<gray>? Not checked yet. If the player is dead, the check runs after the respawn."
 
 block:
   usage: "<gray>Usage: <white>/modblock <mod name></white>, e.g. <white>/modblock freecam</white>"

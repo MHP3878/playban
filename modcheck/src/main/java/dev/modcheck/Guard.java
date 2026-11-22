@@ -57,6 +57,7 @@ public final class Guard implements Listener {
         public final Set<String> found = new LinkedHashSet<>();
         /** How the hidden sign check went: unknown, works, blocked, no-answer, impossible */
         public String sign = "unknown";
+        public boolean hidingTold;
     }
 
     /** A blocked mod and what to do about it, all from the settings. */
@@ -67,8 +68,9 @@ public final class Guard implements Listener {
     private final Map<UUID, Info> infos = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> strikes = new HashMap<>();
     private final Map<UUID, Set<String>> passes = new HashMap<>();
-    private final Map<UUID, Map<String, String>> asked = new HashMap<>();
-    private final Map<UUID, List<String[]>> waiting = new HashMap<>();
+    private final Map<UUID, List<List<Ask>>> asked = new HashMap<>();
+    private final Map<UUID, List<Ask>> waiting = new HashMap<>();
+    private final Map<UUID, Boolean> afterRespawn = new HashMap<>();
     private final Map<UUID, Runnable> restore = new HashMap<>();
     private final Set<Location> realSigns = new HashSet<>();
     private YamlConfiguration data = new YamlConfiguration();
@@ -338,13 +340,32 @@ public final class Guard implements Listener {
             }
             info.channels.addAll(p.getListeningPluginChannels());
             judge(p);
-            if (p.isOnline() && cfg().getBoolean("sign-check", true)) probe(p);
         }, 60L);
+    }
+
+    /** The sign check waits until the client shows the world: a sign editor on the loading screen is lost. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onLoaded(io.papermc.paper.event.player.PlayerClientLoadedWorldEvent e) {
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline() && cfg().getBoolean("sign-check", true) && !probing(p.getUniqueId())) probe(p);
+        }, 10L);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRespawn(org.bukkit.event.player.PlayerRespawnEvent e) {
+        Player p = e.getPlayer();
+        Boolean discover = afterRespawn.remove(p.getUniqueId());
+        if (discover == null) return;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline() && !p.isDead() && !probing(p.getUniqueId())) probe(p, discover);
+        }, 20L);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         UUID id = e.getPlayer().getUniqueId();
+        afterRespawn.remove(id);
         infos.remove(id);
         asked.remove(id);
         waiting.remove(id);
@@ -518,40 +539,92 @@ public final class Guard implements Listener {
     }
 
     /**
-     * The sign check. First line is always a control: "key.jump" is known to every client, so the
-     * answer tells whether this trick works at all. With discover, the keys of well-known everyday
-     * mods are asked as well, to see more than the blocked ones.
+     * One question on the hidden sign: the text sent, what a client WITHOUT the mod sends back, and the
+     * mod it is about. A translation key goes with an empty fallback: a client without the mod gives the
+     * fallback (nothing) back, a client with the mod its own text, and a client that hides the key (old
+     * Meteor) the raw key. Anything but nothing means the mod is there. "bind:" asks for a key binding:
+     * a client without it gives the name back as it is.
      */
-    public void probe(Player p, boolean discover) {
-        List<String[]> all = new ArrayList<>();
-        all.add(new String[]{"key.jump", CONTROL});
-        Set<String> seen = new HashSet<>();
-        for (Rule r : rules()) for (String k : r.keys()) if (seen.add(k)) all.add(new String[]{k, r.id()});
-        if (discover) for (KnownMods.Mod m : KnownMods.ALL) for (String k : m.keys()) if (seen.add(k)) all.add(new String[]{k, m.id()});
-        info(p.getUniqueId()).sign = "unknown";
-        waiting.put(p.getUniqueId(), all);
-        nextSign(p);
+    public record Ask(Component text, String expect, String mod) {}
+
+    public static Ask ask(String key, String mod) {
+        if (key.startsWith("bind:")) {
+            String id = key.substring(5);
+            return new Ask(Component.keybind(id), id, mod);
+        }
+        return new Ask(Component.translatable().key(key).fallback("").build(), "", mod);
     }
 
     private static final String CONTROL = "__control";
 
+    private static final String DUMMY = "__dummy";
+    private static final String NONE = "modcheck.probe.none";
+
+    /** "key.jump" with an empty fallback: every client fills it in, unless texts are blocked. */
+    public static Ask control() {
+        return new Ask(Component.translatable().key("key.jump").fallback("").build(), "", CONTROL);
+    }
+
+    /**
+     * A key and a key binding no mod has: a clean client answers nothing and the name as it is. A client
+     * that answers anything else changes texts on its own, and then nothing it says can be trusted.
+     */
+    public static List<Ask> dummies() {
+        return List.of(new Ask(Component.translatable().key(NONE).fallback("").build(), "", DUMMY),
+                new Ask(Component.keybind(NONE), NONE, DUMMY));
+    }
+    private static final String SEP = "|";
+    /** Paper cuts sign lines after 80 characters: three answers fit in one line. */
+    private static final int PER_LINE = 3;
+
+    /**
+     * The sign check. The first question is always the control "key.jump": every client knows it, so
+     * the answer tells whether this trick works at all. With discover, the texts of well-known mods are
+     * asked as well, to see more than the blocked ones.
+     */
+    public void probe(Player p, boolean discover) {
+        if (p.isDead()) {
+            // a dead player looks at the respawn screen and cannot answer a sign: ask after the respawn
+            afterRespawn.put(p.getUniqueId(), discover || afterRespawn.getOrDefault(p.getUniqueId(), false));
+            info(p.getUniqueId()).sign = "unknown";
+            return;
+        }
+        List<Ask> all = new ArrayList<>();
+        all.add(control());
+        all.addAll(dummies());
+        Set<String> seen = new HashSet<>();
+        for (Rule r : rules()) {
+            for (String k : r.keys()) if (seen.add(k)) all.add(ask(k, r.id()));
+            // a known mod also brings its own up-to-date texts, so older settings files keep working
+            KnownMods.Mod known = KnownMods.find(r.id());
+            if (known != null) for (String k : known.keys()) if (seen.add(k)) all.add(ask(k, r.id()));
+        }
+        if (discover) for (KnownMods.Mod m : KnownMods.ALL) for (String k : m.keys()) if (seen.add(k)) all.add(ask(k, m.id()));
+        info(p.getUniqueId()).sign = "unknown";
+        asked.remove(p.getUniqueId());
+        waiting.put(p.getUniqueId(), all);
+        nextSign(p);
+    }
+
     /** True while the sign check for this player still runs. */
     public boolean probing(UUID id) {
-        return waiting.containsKey(id) || asked.containsKey(id);
+        return waiting.containsKey(id) || asked.containsKey(id) || afterRespawn.containsKey(id);
     }
 
     private void nextSign(Player p) {
-        List<String[]> left = waiting.get(p.getUniqueId());
+        List<Ask> left = waiting.get(p.getUniqueId());
         if (left == null || left.isEmpty() || !p.isOnline()) {
             waiting.remove(p.getUniqueId());
             return;
         }
-        List<String[]> batch = new ArrayList<>(left.subList(0, Math.min(4, left.size())));
+        List<Ask> batch = new ArrayList<>(left.subList(0, Math.min(4 * PER_LINE, left.size())));
         left.subList(0, batch.size()).clear();
-        expect(p, batch);
-        Map<String, String> mine = asked.get(p.getUniqueId());
+        List<List<Ask>> rows = new ArrayList<>();
+        for (int i = 0; i < batch.size(); i += PER_LINE) rows.add(new ArrayList<>(batch.subList(i, Math.min(i + PER_LINE, batch.size()))));
+        expectRows(p, rows);
+        List<List<Ask>> mine = asked.get(p.getUniqueId());
         List<Component> lines = new ArrayList<>();
-        for (int i = 0; i < 4; i++) lines.add(i < batch.size() ? Component.translatable(batch.get(i)[0]) : Component.empty());
+        for (int i = 0; i < 4; i++) lines.add(i < rows.size() ? line(rows.get(i)) : Component.empty());
         if (!virtualSign(p, lines) && !realSign(p, lines)) {
             asked.remove(p.getUniqueId());
             waiting.remove(p.getUniqueId());
@@ -573,14 +646,29 @@ public final class Guard implements Listener {
                 }
                 nextSign(p);
             }
-        }, 20L);
+        }, 30L);
     }
 
-    /** Waits for an answer to these keys (key, mod id). */
+    private static Component line(List<Ask> row) {
+        var b = Component.text();
+        for (int i = 0; i < row.size(); i++) {
+            if (i > 0) b.append(Component.text(SEP));
+            b.append(row.get(i).text());
+        }
+        return b.build();
+    }
+
+    /** Waits for an answer: one question per sign line (key, mod id), for tests and simple use. */
     public void expect(Player p, List<String[]> keysAndMods) {
-        Map<String, String> m = new LinkedHashMap<>();
-        for (int i = 0; i < Math.min(4, keysAndMods.size()); i++) m.put(String.valueOf(i), keysAndMods.get(i)[0] + "|" + keysAndMods.get(i)[1]);
-        asked.put(p.getUniqueId(), m);
+        List<List<Ask>> rows = new ArrayList<>();
+        for (String[] km : keysAndMods) rows.add(List.of(km[1].equals(CONTROL)
+                ? control() : ask(km[0], km[1])));
+        expectRows(p, rows);
+    }
+
+    /** Waits for an answer to these sign lines, each with up to three questions. */
+    public void expectRows(Player p, List<List<Ask>> rows) {
+        asked.put(p.getUniqueId(), new ArrayList<>(rows.subList(0, Math.min(4, rows.size()))));
     }
 
     private boolean virtualSign(Player p, List<Component> lines) {
@@ -625,6 +713,10 @@ public final class Guard implements Listener {
                     spot.setBlockData(before, false);
                 }
             }, 40L);
+            // the block and its text must be at the client BEFORE the editor opens: the world sends its
+            // own updates only at the end of the tick, and an editor on an empty sign answers nothing
+            p.sendBlockChange(loc, spot.getBlockData());
+            p.sendSignChange(loc, lines);
             try {
                 p.openSign(sign, org.bukkit.block.sign.Side.FRONT);
             } catch (RuntimeException failed) {
@@ -669,31 +761,49 @@ public final class Guard implements Listener {
         }
     }
 
-    /** A line that is not the key any more means the mod is there. */
+    /** Every answer that is not what a client without the mod says means the mod is there. */
     public void answer(Player p, List<Component> lines) {
-        Map<String, String> mine = asked.remove(p.getUniqueId());
+        List<List<Ask>> mine = asked.remove(p.getUniqueId());
         if (mine == null) return;
         cleanup(p);
         Info info = info(p.getUniqueId());
         boolean found = false;
-        for (Map.Entry<String, String> e : mine.entrySet()) {
-            int i = Integer.parseInt(e.getKey());
-            if (i >= lines.size()) continue;
-            String[] keyMod = e.getValue().split("\\|", 2);
-            String text = PlainTextComponentSerializer.plainText().serialize(lines.get(i)).trim();
-            if (keyMod[1].equals(CONTROL)) {
-                // "Jump" back: the client fills in texts, the check works; the raw key back: it does not
-                info.sign = !text.isEmpty() && !text.equals(keyMod[0]) ? "works" : "blocked";
-                continue;
-            }
-            if (!text.isEmpty() && !text.equals(keyMod[0])) {
-                info.found.add(keyMod[1]);
-                found = true;
+        // first the controls, then the mods: a client that changes texts on its own gives nothing away
+        Map<Ask, String> answers = new LinkedHashMap<>();
+        for (int i = 0; i < mine.size() && i < lines.size(); i++) {
+            List<Ask> row = mine.get(i);
+            String text = PlainTextComponentSerializer.plainText().serialize(lines.get(i));
+            String[] parts = text.split(Pattern.quote(SEP), -1);
+            // more parts than questions: a text had the separator in it, so it is unclear which is which
+            if (parts.length > row.size()) continue;
+            for (int j = 0; j < parts.length; j++) answers.put(row.get(j), parts[j].trim());
+        }
+        for (Map.Entry<Ask, String> e : answers.entrySet()) {
+            Ask a = e.getKey();
+            String got = e.getValue();
+            // "Jump" (in any language) back: the client fills in texts; nothing or the raw key: it does not
+            if (a.mod().equals(CONTROL)) info.sign = !got.isEmpty() && !got.equals("key.jump") ? "works" : "blocked";
+        }
+        for (Map.Entry<Ask, String> e : answers.entrySet()) {
+            if (e.getKey().mod().equals(DUMMY) && !e.getValue().equals(e.getKey().expect())) info.sign = "blocked";
+        }
+        if (!info.sign.equals("blocked")) {
+            for (Map.Entry<Ask, String> e : answers.entrySet()) {
+                Ask a = e.getKey();
+                if (a.mod().equals(CONTROL) || a.mod().equals(DUMMY)) continue;
+                if (!e.getValue().equals(a.expect()) && info.found.add(a.mod())) found = true;
             }
         }
         if (info.sign.equals("blocked")) {
-            // the trick does not work with this client: no need to ask further
+            // the trick does not work with this client: no need to ask further, but the team may want to know
             waiting.remove(p.getUniqueId());
+            if (!info.hidingTold && cfg().getBoolean("notify-team", true)) {
+                info.hidingTold = true;
+                Component line = lang().prefixed("alert.hiding", "player", p.getName())
+                        .clickEvent(ClickEvent.runCommand("/modcheck " + p.getName()));
+                for (Player staff : Bukkit.getOnlinePlayers()) if (staff.hasPermission("modcheck.notify")) staff.sendMessage(line);
+                Bukkit.getConsoleSender().sendMessage(line);
+            }
             return;
         }
         if (found) judge(p);

@@ -173,8 +173,10 @@ class ModCheckTest {
     @Test
     void hiddenSignAnswerFindsAMod() {
         plugin.guard().expect(steve, List.of(new String[]{"key.freecam.toggle", "freecam"}, new String[]{"key.wurst.zoom", "wurst"}));
-        plugin.guard().answer(steve, List.of(Component.text("Toggle Freecam"), Component.text("key.wurst.zoom"), Component.empty(), Component.empty()));
+        // the fallback is empty: a client without Wurst sends nothing back
+        plugin.guard().answer(steve, List.of(Component.text("Toggle Freecam"), Component.empty(), Component.empty(), Component.empty()));
         assertTrue(plugin.guard().info(steve.getUniqueId()).found.contains("freecam"));
+        assertFalse(plugin.guard().info(steve.getUniqueId()).found.contains("wurst"));
         assertFalse(steve.isOnline(), "and judged at once");
     }
 
@@ -265,10 +267,10 @@ class ModCheckTest {
         var g = plugin.guard();
         g.expect(steve, List.of(new String[]{"key.jump", "__control"}, new String[]{"sodium.options.pages.general", "sodium"},
                 new String[]{"modmenu.title", "modmenu"}));
-        g.answer(steve, List.of(Component.text("Jump"), Component.text("General"), Component.text("modmenu.title"), Component.empty()));
+        g.answer(steve, List.of(Component.text("Jump"), Component.text("General"), Component.empty(), Component.empty()));
         assertEquals("works", g.info(steve.getUniqueId()).sign, "Jump came back filled in");
         assertTrue(g.mods(steve.getUniqueId()).contains("sodium"), "an everyday mod is seen too");
-        assertFalse(g.mods(steve.getUniqueId()).contains("modmenu"), "a raw key means it is not there");
+        assertFalse(g.mods(steve.getUniqueId()).contains("modmenu"), "the empty fallback means it is not there");
         assertTrue(steve.isOnline(), "sodium is not blocked: nothing happens");
         PlayerMock other = server.addPlayer("Other");
         List<String[]> control = new ArrayList<>();
@@ -279,5 +281,52 @@ class ModCheckTest {
         plugin.lang().load("de");
         plugin.menus().player(admin, steve);
         assertNoMissingTexts("player page with sign state");
+    }
+
+    @Test
+    void hiddenKeysAndPackedLinesAreSeen() {
+        var g = plugin.guard();
+        // old Meteor turns its own keys into their raw text: that is not what a clean client sends (nothing)
+        g.expect(steve, List.<String[]>of(new String[]{"key.meteor-client.open-gui", "meteor"}));
+        g.answer(steve, List.of(Component.text("key.meteor-client.open-gui"), Component.empty(), Component.empty(), Component.empty()));
+        assertTrue(g.info(steve.getUniqueId()).found.contains("meteor"), "the raw key gives old Meteor away");
+        // a key binding: a clean client gives its name back, a client with it the key it is bound to
+        PlayerMock other = server.addPlayer("Other");
+        g.expect(other, List.<String[]>of(new String[]{"bind:iris.keybind.reload", "iris"}, new String[]{"bind:key.freecam.toggle", "freecam"}));
+        g.answer(other, List.of(Component.text("R"), Component.text("key.freecam.toggle"), Component.empty(), Component.empty()));
+        assertTrue(g.mods(other.getUniqueId()).contains("iris"));
+        assertFalse(g.mods(other.getUniqueId()).contains("freecam"));
+        // a real probe packs three questions into a line, split by "|"
+        PlayerMock third = server.addPlayer("Third");
+        List<List<Guard.Ask>> rows = List.of(
+                List.of(Guard.control(), Guard.ask("key.meteor-client.open-gui", "meteor"), Guard.ask("sodium.options.pages.general", "sodium")),
+                List.of(Guard.ask("modmenu.title", "modmenu"), Guard.ask("bind:iris.keybind.reload", "iris"), Guard.ask("key.freecam.toggle", "freecam")));
+        g.expectRows(third, rows);
+        g.answer(third, List.of(Component.text("Jump|Open GUI|"), Component.text("Mods|iris.keybind.reload|"), Component.empty(), Component.empty()));
+        assertEquals("works", g.info(third.getUniqueId()).sign);
+        assertEquals(List.of("meteor", "modmenu"), new ArrayList<>(g.info(third.getUniqueId()).found), "only what differs from a clean client");
+        PlayerMock fourth = server.addPlayer("Fourth");
+        g.expectRows(fourth, rows);
+        g.answer(fourth, List.of(Component.text("||"), Component.text("|iris.keybind.reload|"), Component.empty(), Component.empty()));
+        assertEquals("blocked", g.info(fourth.getUniqueId()).sign, "nothing for key.jump: texts are not filled in");
+        assertTrue(g.info(fourth.getUniqueId()).found.isEmpty());
+        // a client that sends raw keys for everything must not look like it has every mod
+        PlayerMock fifth = server.addPlayer("Fifth");
+        List<Guard.Ask> first = new ArrayList<>();
+        first.add(Guard.control());
+        first.addAll(Guard.dummies());
+        g.expectRows(fifth, List.of(first, List.of(Guard.ask("key.meteor-client.open-gui", "meteor"))));
+        g.answer(fifth, List.of(Component.text("Jump|modcheck.probe.none|modcheck.probe.none"), Component.text("key.meteor-client.open-gui"),
+                Component.empty(), Component.empty()));
+        assertEquals("blocked", g.info(fifth.getUniqueId()).sign, "the made-up key came back: this client changes texts");
+        assertTrue(g.info(fifth.getUniqueId()).found.isEmpty(), "so nothing it says counts");
+        assertTrue(fifth.isOnline());
+        // a clean client with old Meteor: the made-up key is empty, Meteor's own key is raw
+        PlayerMock sixth = server.addPlayer("Sixth");
+        g.expectRows(sixth, List.of(first, List.of(Guard.ask("key.meteor-client.open-gui", "meteor"))));
+        g.answer(sixth, List.of(Component.text("Jump||modcheck.probe.none"), Component.text("key.meteor-client.open-gui"),
+                Component.empty(), Component.empty()));
+        assertEquals("works", g.info(sixth.getUniqueId()).sign);
+        assertTrue(g.info(sixth.getUniqueId()).found.contains("meteor"));
     }
 }

@@ -121,15 +121,15 @@ public final class Menus {
      * The whole check in one go: client name, channels and the hidden sign. Says in chat that it runs,
      * writes the result in chat when done and then opens the player's page.
      */
-    public void check(Player p, Player t) {
-        p.closeInventory();
+    public void check(org.bukkit.command.CommandSender p, Player t) {
+        if (p instanceof Player staff) staff.closeInventory();
         lang().send(p, "check.running", "player", t.getName());
         guard().judge(t);
         guard().probe(t, true);
         int[] waited = {0};
         Bukkit.getScheduler().runTaskTimer(plugin, task -> {
             waited[0] += 10;
-            if (!p.isOnline() || !t.isOnline()) {
+            if ((p instanceof Player staff && !staff.isOnline()) || !t.isOnline()) {
                 task.cancel();
                 return;
             }
@@ -142,7 +142,8 @@ public final class Menus {
             lang().send(p, "check.result", "player", t.getName(), "client", info.brand == null ? "?" : info.brand,
                     "count", mods.size(), "mods", names.isEmpty() ? "-" : String.join(", ", names));
             lang().send(p, "check.result-" + info.sign);
-            player(p, t);
+            if (p instanceof Player staff) player(staff, t);
+            else p.sendMessage(lang().msg("check.channels", "channels", info.channels.isEmpty() ? "-" : String.join(", ", info.channels)));
         }, 10L, 10L);
     }
 

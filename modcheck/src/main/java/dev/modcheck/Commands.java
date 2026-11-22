@@ -131,19 +131,7 @@ public final class Commands implements TabExecutor {
             lang().send(sender, "not-found", "player", args[0]);
             return;
         }
-        if (sender instanceof Player p) {
-            plugin.menus().check(p, t);
-            return;
-        }
-        Guard.Info info = guard().info(t.getUniqueId());
-        lang().send(sender, "check.header", "player", t.getName(), "client", info.brand == null ? "?" : info.brand,
-                "warnings", guard().warnings(t.getUniqueId()));
-        List<String> mods = guard().mods(t.getUniqueId());
-        List<String> names = new ArrayList<>();
-        for (String m : mods) names.add(guard().display(m));
-        sender.sendMessage(lang().msg("check.mods", "mods", names.isEmpty() ? "-" : String.join(", ", names)));
-        sender.sendMessage(lang().msg("check.channels", "channels", info.channels.isEmpty() ? "-" : String.join(", ", info.channels)));
-        sender.sendMessage(lang().msg("menu.player.sign." + info.sign));
+        plugin.menus().check(sender, t);
     }
 
     @Override

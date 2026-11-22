@@ -62,7 +62,7 @@ rules:
     display: Meteor Client
     brand: [meteor]
     channel: [meteor]
-    keys: [key.meteor-client.open-gui, key.category.meteor-client]
+    keys: [key.meteor-client.open-gui, key.category.meteor-client.meteor-client, "bind:key.meteor-client.open-gui"]
     action: DEFAULT
     reason: ""
     ban-duration: ""
@@ -74,7 +74,7 @@ rules:
     display: Wurst
     brand: [wurst]
     channel: [wurst]
-    keys: [key.wurst.zoom, key.categories.wurst]
+    keys: [key.wurst.zoom, "bind:key.wurst.zoom"]
     action: DEFAULT
     reason: ""
     ban-duration: ""
@@ -98,7 +98,7 @@ rules:
     display: Freecam
     brand: []
     channel: [freecam]
-    keys: [key.freecam.toggle, category.freecam.freecam]
+    keys: [key.freecam.toggle, key.category.freecam.controls]
     action: DEFAULT
     reason: ""
     ban-duration: ""

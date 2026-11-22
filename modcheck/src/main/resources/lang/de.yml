@@ -1,0 +1,203 @@
+prefix: "<gradient:#4facfe:#00f2fe><bold>ModCheck</bold></gradient> <dark_gray>» "
+word-on: "an"
+word-off: "aus"
+no-permission: "<red>Das darfst du nicht."
+reloaded: "<green>ModCheck neu geladen."
+not-found: "<red><white>{player}</white> ist nicht online oder unbekannt."
+
+action:
+  alert: "nur das Team informieren"
+  kick: "kicken"
+  warn: "verwarnen (kicken), dann bannen"
+  ban: "bannen"
+  command: "Befehl ausführen"
+mode:
+  blocklist: "Sperrliste (alles außer gesperrten Mods)"
+  allowlist: "Erlaubt-Liste (nur erlaubte Clients)"
+
+input:
+  cancel-hint: "<dark_gray>Schreib <white>abbrechen</white>, um abzubrechen."
+  reason: "<#4facfe>Schreib den Grund. <white>{mods}</white> wird zu den Mod-Namen, z. B. <white>Kein Cheaten mit {mods}!</white>"
+  command: "<#4facfe>Schreib den Befehl ohne /. <white>{player} {reason} {duration} {mods}</white> werden eingesetzt, mehrere mit <white>;</white> trennen"
+  mod: "<#4facfe>Schreib den Namen der Mod, z. B. <white>freecam</white> oder <white>beelocator-21.11.jar</white>."
+  ban-command: "<#4facfe>Schreib den Befehl deines Bann-Plugins ohne /, z. B. <white>tempban {player} {duration} {reason}</white>"
+  webhook: "<#4facfe>Füge den Discord-Webhook-Link ein (https://discord.com/api/webhooks/...)."
+
+kick:
+  screen: "<red><bold>Gekickt</bold>\n\n<gray>{reason}"
+  warn-screen: "<gold><bold>Bitte entfernen</bold>\n\n<gray>{reason}\n\n<white>Entferne die Mod und join neu.\n<red>Verwarnungen bis zum Bann: {left}"
+ban:
+  screen: "<red><bold>Gebannt</bold>\n\n<gray>{reason}\n\n<white>Dauer: {time}"
+  forever: "permanent"
+  unbanned: "<green><white>{player}</white> ist entbannt."
+  not-banned: "<gray><white>{player}</white> ist nicht von ModCheck gebannt."
+
+alert:
+  mod: "<red>⚠ <white>{player}</white> <gray>hat <white>{mods}</white> → {action}. <dark_gray>Klick zum Prüfen"
+  client: "<red>⚠ <white>{player}</white> <gray>nutzt den Client <white>{mods}</white>, nicht erlaubt → {action}."
+discord:
+  line: "⚠ {player} hat {mods} → {action}"
+
+check:
+  usage: "<gray>Benutzung: <white>/modcheck [spieler]</white>, <white>/modcheck unban <spieler></white>, <white>/modcheck reset <spieler></white>, <white>/modcheck reload</white>"
+  reset: "<gray>Die Verwarnungen von <white>{player}</white> sind gelöscht."
+  header: "<white>{player}</white><gray>: Client <white>{client}</white>, Verwarnungen <white>{warnings}</white>"
+  mods: "<gray>Mods: <white>{mods}"
+
+block:
+  usage: "<gray>Benutzung: <white>/modblock <mod-name></white>, z. B. <white>/modblock freecam</white>"
+  usage-unblock: "<gray>Benutzung: <white>/modunblock <mod-name></white>"
+  did-you-mean: "<gray>Keine bekannte Mod namens <white>{mod}</white>. Meintest du:"
+  suggestion: "<#4facfe>  ▶ {mod} <dark_gray>({id}) <gray>Klick zum Sperren"
+  as-typed: "<gray>  ▶ Trotzdem als <white>{mod}</white> sperren <dark_gray>(Klick)"
+  done: "<green><white>{mod}</white> ist gesperrt: <white>{action}</white>. Alle, die online sind, wurden geprüft."
+  done-unknown: "<green><white>{mod}</white> ist gesperrt: <white>{action}</white>. <gray>Keine bekannte Mod: sie wird gefunden, wenn sie unter diesem Namen einen Kanal anmeldet oder auf das Schild antwortet."
+  unblocked: "<gray><white>{mod}</white> ist wieder erlaubt."
+  not-blocked: "<gray><white>{mod}</white> ist nicht gesperrt."
+
+decide:
+  punished: "<red><white>{player}</white> wurde wegen <white>{mod}</white> bestraft: {action}."
+  passed: "<green><white>{player}</white> darf <white>{mod}</white> behalten."
+
+menu:
+  previous:
+    name: "<white>Vorherige Seite"
+    lore: []
+  next:
+    name: "<white>Nächste Seite"
+    lore: []
+  back:
+    name: "<gray>Zurück"
+    lore: []
+  main:
+    title: "<dark_gray>ModCheck"
+    players:
+      name: "<#4facfe><bold>Spieler prüfen"
+      lore: ["<gray>{count} online. Klick auf einen Spieler,", "<gray>um Client und Mods zu sehen.", "", "<#4facfe>Klick zum Öffnen"]
+    blocked:
+      name: "<#4facfe><bold>Gesperrte Mods"
+      lore: ["<gray>{count} gesperrt. Klick auf eine Mod,", "<gray>um einzustellen, was passiert.", "", "<#4facfe>Klick zum Öffnen"]
+    add:
+      name: "<green><bold>Mod sperren"
+      lore: ["<gray>Einfach den Namen schreiben.", "<gray>Version und .jar sind egal."]
+    suggestions:
+      name: "<#4facfe><bold>Vorschläge"
+      lore: ["<gray>Bekannte Mods und Cheat-Clients,", "<gray>die noch nicht gesperrt sind."]
+    settings:
+      name: "<#4facfe><bold>Einstellungen"
+      lore: ["<gray>Standard-Aktion, Grund, Bann-Dauer,", "<gray>Verwarnungen, Erlaubt-Liste, Discord ..."]
+    bans:
+      name: "<#4facfe><bold>Gebannte Spieler"
+      lore: ["<gray>{count} von ModCheck gebannt.", "", "<#4facfe>Klick zum Öffnen"]
+  players:
+    title: "<dark_gray>Spieler"
+    name: "<white><bold>{player}"
+    lore: ["<gray>Client: <white>{client}", "<gray>Gefundene Mods: <white>{mods}", "", "<#4facfe>Klick zum Prüfen"]
+    blocked: "<red>{count} gesperrte Mod(s)!"
+  player:
+    title: "<dark_gray>Mods von {player}"
+    mod: "<white><bold>{mod}"
+    mod-blocked: "<red>Gesperrt"
+    mod-passed: "<green>Für diesen Spieler erlaubt"
+    mod-free: "<gray>Nicht gesperrt"
+    mod-click: "<#4facfe>Klick: bestrafen oder durchlassen"
+    info: ["<gray>Client: <white>{client}", "<gray>Mod-Kanäle: <white>{channels}", "<gray>Verwarnungen: <white>{warnings}"]
+    recheck:
+      name: "<#4facfe>Nochmal prüfen"
+      lore: ["<gray>Client-Name, Kanäle und das", "<gray>versteckte Schild nochmal."]
+    none:
+      name: "<green>Keine Mods gefunden"
+      lore: ["<gray>Entweder Vanilla, oder Mods, die", "<gray>sich nicht verraten."]
+  decide:
+    title: "<dark_gray>{player}: {mod}"
+    blocked: ["<red>Gesperrt", "", "<gray>Bestrafen macht: <white>{action}", "<gray>Grund: <white>{reason}", "<gray>Bann-Dauer: <white>{duration}"]
+    not-blocked: ["<gray>Nicht gesperrt. Bestrafen nutzt die Standards:", "<gray>Aktion: <white>{action}", "<gray>Grund: <white>{reason}", "<gray>Bann-Dauer: <white>{duration}"]
+    punish:
+      name: "<red><bold>Bestrafen"
+      lore: ["<gray>Macht, was eingestellt ist: <white>{action}", "<gray>Grund: <white>{reason}"]
+    pass:
+      name: "<green><bold>Durchlassen"
+      lore: ["<gray>Dieser Spieler darf die Mod behalten.", "<gray>Er wird dafür nicht mehr geprüft."]
+    block:
+      name: "<#4facfe><bold>Für alle sperren"
+      lore: ["<gray>Setzt die Mod auf die Sperrliste."]
+    settings:
+      name: "<#4facfe><bold>Einstellungen dieser Mod"
+      lore: ["<gray>Aktion, Grund, Bann-Dauer ..."]
+  blocked:
+    title: "<dark_gray>Gesperrte Mods ({count})"
+    entry: ["<gray>Aktion: <white>{action}", "<gray>Grund: <white>{reason}", "", "<#4facfe>Klick: Einstellungen"]
+  rule:
+    title: "<dark_gray>Einstellungen: {mod}"
+    default: "Standard"
+    what: ["<gray>Was passiert, wenn jemand", "<gray>mit dieser Mod joint oder ein", "<gray>Moderator auf Bestrafen drückt."]
+    action:
+      name: "<#4facfe><bold>Aktion"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Ändern"]
+    reason:
+      name: "<#4facfe><bold>Grund"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>{mods} wird zum Mod-Namen.", "", "<#4facfe>Klick: neuen schreiben", "<red>Shift-Klick: zurück zum Standard"]
+    duration:
+      name: "<#4facfe><bold>Bann-Dauer"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Für Bann, und Verwarnen nach den Verwarnungen.", "", "<#4facfe>Klick zum Ändern"]
+    warnings:
+      name: "<#4facfe><bold>Verwarnungen vor dem Bann"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Wie oft Verwarnen nur kickt.", "", "<#4facfe>Klick zum Ändern"]
+    command:
+      name: "<#4facfe><bold>Eigener Befehl"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>z. B. tempban {player} 3d {reason}", "", "<#4facfe>Klick: eintippen (setzt die Aktion)", "<red>Shift-Klick: entfernen"]
+    notify:
+      name: "<#4facfe><bold>Team informieren"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Umschalten"]
+    discord:
+      name: "<#4facfe><bold>Discord"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Braucht einen Webhook in den Einstellungen.", "", "<#4facfe>Klick zum Umschalten"]
+    preview:
+      name: "<white>Was der Spieler liest"
+      lore: ["<gray>{reason}"]
+    unblock:
+      name: "<red><bold>Wieder erlauben"
+      lore: ["<red>Shift-Klick: Sperre entfernen"]
+  suggestions:
+    title: "<dark_gray>Bekannte Mods"
+    client: ["<red>Cheat-Client", "", "<#4facfe>Klick zum Sperren"]
+    mod: ["<gray>Mod", "", "<#4facfe>Klick zum Sperren"]
+  settings:
+    title: "<dark_gray>Einstellungen"
+    own-ban: "ModChecks eigener Bann"
+    action:
+      name: "<#4facfe><bold>Standard-Aktion"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Für Mods ohne eigene.", "", "<#4facfe>Klick zum Ändern"]
+    reason:
+      name: "<#4facfe><bold>Standard-Grund"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>{mods} wird zu den Mod-Namen.", "", "<#4facfe>Klick: neuen schreiben"]
+    duration:
+      name: "<#4facfe><bold>Standard-Bann-Dauer"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Ändern"]
+    warnings:
+      name: "<#4facfe><bold>Verwarnungen vor dem Bann"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Ändern"]
+    ban-command:
+      name: "<#4facfe><bold>Bannen mit"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>dem Befehl deines Bann-Plugins oder", "<gray>ModChecks eigener Bann.", "", "<#4facfe>Klick: Befehl eintippen", "<red>Shift-Klick: eigener Bann"]
+    notify:
+      name: "<#4facfe><bold>Team informieren"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Umschalten"]
+    discord:
+      name: "<#4facfe><bold>Discord webhook"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick: Link einfügen", "<red>Shift-Klick: aus"]
+    mode:
+      name: "<#4facfe><bold>Modus"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Erlaubte Clients: <white>{clients}", "", "<#4facfe>Klick zum Umschalten"]
+    not-allowed:
+      name: "<#4facfe><bold>Client nicht erlaubt"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Nur im Erlaubt-Liste-Modus.", "", "<#4facfe>Klick zum Ändern"]
+    sign:
+      name: "<#4facfe><bold>Verstecktes Schild"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Fragt den Client nach Mod-Texten;", "<gray>ein Schild-Editor blitzt kurz auf.", "", "<#4facfe>Klick zum Umschalten"]
+    language:
+      name: "<#4facfe><bold>Sprache"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Umschalten"]
+  bans:
+    title: "<dark_gray>Gebannte Spieler ({count})"
+    entry: ["<gray>Grund: <white>{reason}", "<gray>Dauer: <white>{time}", "", "<red>Shift-Klick: entbannen"]

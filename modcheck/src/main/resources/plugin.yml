@@ -1,0 +1,48 @@
+name: ModCheck
+version: '${project.version}'
+main: dev.modcheck.ModCheckPlugin
+api-version: '1.21'
+description: See which client and mods players use, and block mods by name - kick, warn or ban on join.
+
+commands:
+  modcheck:
+    description: Which client and mods a player has
+    aliases: [modscheck, mods]
+    permission: modcheck.check
+  modblock:
+    description: Forbid a mod just by its name
+    aliases: [modsperre, blockmod]
+    permission: modcheck.block
+  modunblock:
+    description: Allow a mod again
+    aliases: [modentsperren, unblockmod]
+    permission: modcheck.block
+
+permissions:
+  modcheck.admin:
+    description: Everything in ModCheck
+    default: op
+    children:
+      modcheck.check: true
+      modcheck.block: true
+      modcheck.notify: true
+      modcheck.unban: true
+      modcheck.reload: true
+  modcheck.check:
+    description: "/modcheck - see a player's client and mods"
+    default: op
+  modcheck.block:
+    description: "/modblock and /modunblock"
+    default: op
+  modcheck.notify:
+    description: Is told when somebody joins with a blocked mod
+    default: op
+  modcheck.unban:
+    description: "/modcheck unban <player>"
+    default: op
+  modcheck.reload:
+    description: "/modcheck reload"
+    default: op
+  modcheck.bypass:
+    description: Never checked
+    default: false

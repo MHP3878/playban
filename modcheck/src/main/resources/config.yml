@@ -1,0 +1,110 @@
+# ModCheck
+# Finds clients and mods by three things: the client name the game sends (fabric, forge, lunarclient ...),
+# the mod channels a client registers, and a hidden sign with translation keys of mods, which a client
+# that has the mod fills in with its own text. Mods that never talk to the server and hide their key
+# names cannot be seen by any server plugin.
+
+# en or de
+language: en
+
+# Everything here can also be set in the menu: /modcheck -> Settings, and per mod /modblock -> click a mod.
+
+# What happens to a player with a blocked mod (unless the mod has its own setting):
+#   ALERT   - only tell the team
+#   KICK    - kick, the player may come back without the mod
+#   WARN    - kick with "remove it, next time you are banned"; after the warnings: ban
+#   BAN     - ban right away
+#   COMMAND - run the mod's own command (e.g. a ban in your ban plugin)
+default-action: WARN
+
+# The reason in kick and ban screens. {mods} (also (mods), [mod] ...) becomes the mod names.
+default-reason: "Forbidden mod: {mods}"
+
+# How many times WARN only kicks before it bans
+warnings: 1
+
+# How long a ban lasts: e.g. 1h, 1d, 7d, 30d, or perm
+ban-duration: 7d
+
+# Ban with another plugin instead (LiteBans, EssentialsX, AdvancedBan ...). Empty = ModCheck's own ban.
+# {player} {duration} {reason} {mods} are filled in. Example: "tempban {player} {duration} {reason}"
+ban-command: ""
+
+# Tell the team (permission modcheck.notify) when somebody joins with a blocked mod
+notify-team: true
+
+# BLOCKLIST: every client except the blocked mods. ALLOWLIST: only the clients below may join at all.
+mode: BLOCKLIST
+allowed-clients: [vanilla, fabric, forge, neoforge, quilt, lunarclient, feather, badlion, labymod]
+# what happens to a client not on the allow list: KICK or BAN
+not-allowed-action: KICK
+
+# The hidden sign check (a sign editor shows for a blink on join).
+sign-check: true
+
+# Discord webhook for alerts (optional). Empty = off.
+discord-webhook: ""
+
+# Blocked mods. Easiest with /modblock <name> and the menu. Per mod: action (DEFAULT = the default above),
+# reason, ban-duration, warnings (-1 = default), command (for COMMAND; several separated by ;), notify, discord.
+rules:
+  meteor:
+    display: Meteor Client
+    brand: [meteor]
+    channel: [meteor]
+    keys: [key.meteor-client.open-gui, key.category.meteor-client]
+    action: DEFAULT
+    reason: ""
+    ban-duration: ""
+    warnings: -1
+    command: ""
+    notify: true
+    discord: true
+  wurst:
+    display: Wurst
+    brand: [wurst]
+    channel: [wurst]
+    keys: [key.wurst.zoom, key.categories.wurst]
+    action: DEFAULT
+    reason: ""
+    ban-duration: ""
+    warnings: -1
+    command: ""
+    notify: true
+    discord: true
+  liquidbounce:
+    display: LiquidBounce
+    brand: [liquidbounce]
+    channel: [liquidbounce]
+    keys: []
+    action: DEFAULT
+    reason: ""
+    ban-duration: ""
+    warnings: -1
+    command: ""
+    notify: true
+    discord: true
+  freecam:
+    display: Freecam
+    brand: []
+    channel: [freecam]
+    keys: [key.freecam.toggle, category.freecam.freecam]
+    action: DEFAULT
+    reason: ""
+    ban-duration: ""
+    warnings: -1
+    command: ""
+    notify: true
+    discord: true
+  xray:
+    display: X-Ray mods
+    brand: []
+    channel: [xray, advanced-xray]
+    keys: [key.xray.toggle, keybinding.category.xray]
+    action: DEFAULT
+    reason: ""
+    ban-duration: ""
+    warnings: -1
+    command: ""
+    notify: true
+    discord: true

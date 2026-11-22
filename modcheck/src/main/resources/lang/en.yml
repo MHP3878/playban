@@ -1,0 +1,203 @@
+prefix: "<gradient:#4facfe:#00f2fe><bold>ModCheck</bold></gradient> <dark_gray>» "
+word-on: "on"
+word-off: "off"
+no-permission: "<red>You may not do that."
+reloaded: "<green>ModCheck reloaded."
+not-found: "<red><white>{player}</white> is not online or unknown."
+
+action:
+  alert: "only tell the team"
+  kick: "kick"
+  warn: "warn (kick), then ban"
+  ban: "ban"
+  command: "run the command"
+mode:
+  blocklist: "block list (everything except blocked mods)"
+  allowlist: "allow list (only allowed clients)"
+
+input:
+  cancel-hint: "<dark_gray>Type <white>cancel</white> to stop."
+  reason: "<#4facfe>Type the reason. <white>{mods}</white> becomes the mod names, e.g. <white>No cheating with {mods}!</white>"
+  command: "<#4facfe>Type the command, without /. <white>{player} {reason} {duration} {mods}</white> are filled in, several separated by <white>;</white>"
+  mod: "<#4facfe>Type the mod's name, e.g. <white>freecam</white> or <white>beelocator-21.11.jar</white>."
+  ban-command: "<#4facfe>Type your ban plugin's command, without /, e.g. <white>tempban {player} {duration} {reason}</white>"
+  webhook: "<#4facfe>Paste the Discord webhook link (https://discord.com/api/webhooks/...)."
+
+kick:
+  screen: "<red><bold>Kicked</bold>\n\n<gray>{reason}"
+  warn-screen: "<gold><bold>Please remove it</bold>\n\n<gray>{reason}\n\n<white>Remove the mod and join again.\n<red>Warnings left before a ban: {left}"
+ban:
+  screen: "<red><bold>Banned</bold>\n\n<gray>{reason}\n\n<white>Time: {time}"
+  forever: "permanent"
+  unbanned: "<green><white>{player}</white> is unbanned."
+  not-banned: "<gray><white>{player}</white> is not banned by ModCheck."
+
+alert:
+  mod: "<red>⚠ <white>{player}</white> <gray>has <white>{mods}</white> → {action}. <dark_gray>Click to check"
+  client: "<red>⚠ <white>{player}</white> <gray>uses the client <white>{mods}</white>, not on the allow list → {action}."
+discord:
+  line: "⚠ {player} has {mods} → {action}"
+
+check:
+  usage: "<gray>Usage: <white>/modcheck [player]</white>, <white>/modcheck unban <player></white>, <white>/modcheck reset <player></white>, <white>/modcheck reload</white>"
+  reset: "<gray>The warnings of <white>{player}</white> are cleared."
+  header: "<white>{player}</white><gray>: client <white>{client}</white>, warnings <white>{warnings}</white>"
+  mods: "<gray>Mods: <white>{mods}"
+
+block:
+  usage: "<gray>Usage: <white>/modblock <mod name></white>, e.g. <white>/modblock freecam</white>"
+  usage-unblock: "<gray>Usage: <white>/modunblock <mod name></white>"
+  did-you-mean: "<gray>No known mod called <white>{mod}</white>. Did you mean:"
+  suggestion: "<#4facfe>  ▶ {mod} <dark_gray>({id}) <gray>click to block"
+  as-typed: "<gray>  ▶ Block it as <white>{mod}</white> anyway <dark_gray>(click)"
+  done: "<green><white>{mod}</white> is blocked: <white>{action}</white>. Everybody online was checked."
+  done-unknown: "<green><white>{mod}</white> is blocked: <white>{action}</white>. <gray>Not a known mod: it is found if it registers a channel or answers the sign check under this name."
+  unblocked: "<gray><white>{mod}</white> is allowed again."
+  not-blocked: "<gray><white>{mod}</white> is not blocked."
+
+decide:
+  punished: "<red><white>{player}</white> was punished for <white>{mod}</white>: {action}."
+  passed: "<green><white>{player}</white> may keep <white>{mod}</white>."
+
+menu:
+  previous:
+    name: "<white>Previous page"
+    lore: []
+  next:
+    name: "<white>Next page"
+    lore: []
+  back:
+    name: "<gray>Back"
+    lore: []
+  main:
+    title: "<dark_gray>ModCheck"
+    players:
+      name: "<#4facfe><bold>Check players"
+      lore: ["<gray>{count} online. Click a player to", "<gray>see their client and mods.", "", "<#4facfe>Click to open"]
+    blocked:
+      name: "<#4facfe><bold>Blocked mods"
+      lore: ["<gray>{count} blocked. Click a mod to", "<gray>set what happens.", "", "<#4facfe>Click to open"]
+    add:
+      name: "<green><bold>Block a mod"
+      lore: ["<gray>Just type its name.", "<gray>Versions and .jar do not matter."]
+    suggestions:
+      name: "<#4facfe><bold>Suggestions"
+      lore: ["<gray>Known mods and cheat clients", "<gray>that are not blocked yet."]
+    settings:
+      name: "<#4facfe><bold>Settings"
+      lore: ["<gray>Default action, reason, ban length,", "<gray>warnings, allow list, Discord ..."]
+    bans:
+      name: "<#4facfe><bold>Banned players"
+      lore: ["<gray>{count} banned by ModCheck.", "", "<#4facfe>Click to open"]
+  players:
+    title: "<dark_gray>Players"
+    name: "<white><bold>{player}"
+    lore: ["<gray>Client: <white>{client}", "<gray>Mods found: <white>{mods}", "", "<#4facfe>Click to check"]
+    blocked: "<red>{count} blocked mod(s)!"
+  player:
+    title: "<dark_gray>Mods of {player}"
+    mod: "<white><bold>{mod}"
+    mod-blocked: "<red>Blocked"
+    mod-passed: "<green>Allowed for this player"
+    mod-free: "<gray>Not blocked"
+    mod-click: "<#4facfe>Click: punish or let pass"
+    info: ["<gray>Client: <white>{client}", "<gray>Mod channels: <white>{channels}", "<gray>Warnings: <white>{warnings}"]
+    recheck:
+      name: "<#4facfe>Check again"
+      lore: ["<gray>Client name, channels and the", "<gray>hidden sign once more."]
+    none:
+      name: "<green>No mods found"
+      lore: ["<gray>Either vanilla, or mods that", "<gray>do not give themselves away."]
+  decide:
+    title: "<dark_gray>{player}: {mod}"
+    blocked: ["<red>Blocked", "", "<gray>Punish does: <white>{action}", "<gray>Reason: <white>{reason}", "<gray>Ban length: <white>{duration}"]
+    not-blocked: ["<gray>Not blocked. Punish uses the defaults:", "<gray>Action: <white>{action}", "<gray>Reason: <white>{reason}", "<gray>Ban length: <white>{duration}"]
+    punish:
+      name: "<red><bold>Punish"
+      lore: ["<gray>Does what is set: <white>{action}", "<gray>Reason: <white>{reason}"]
+    pass:
+      name: "<green><bold>Let pass"
+      lore: ["<gray>This player may keep the mod.", "<gray>They are not checked for it any more."]
+    block:
+      name: "<#4facfe><bold>Block for everybody"
+      lore: ["<gray>Puts the mod on the block list."]
+    settings:
+      name: "<#4facfe><bold>Settings of this mod"
+      lore: ["<gray>Action, reason, ban length ..."]
+  blocked:
+    title: "<dark_gray>Blocked mods ({count})"
+    entry: ["<gray>Action: <white>{action}", "<gray>Reason: <white>{reason}", "", "<#4facfe>Click: settings"]
+  rule:
+    title: "<dark_gray>Settings: {mod}"
+    default: "default"
+    what: ["<gray>What happens when somebody", "<gray>joins with this mod, or a", "<gray>moderator presses Punish."]
+    action:
+      name: "<#4facfe><bold>Action"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    reason:
+      name: "<#4facfe><bold>Reason"
+      lore: ["<gray>Now: <white>{value}", "<gray>{mods} becomes the mod name.", "", "<#4facfe>Click: type a new one", "<red>Shift-click: back to the default"]
+    duration:
+      name: "<#4facfe><bold>Ban length"
+      lore: ["<gray>Now: <white>{value}", "<gray>For ban, and warn after the warnings.", "", "<#4facfe>Click to change"]
+    warnings:
+      name: "<#4facfe><bold>Warnings before a ban"
+      lore: ["<gray>Now: <white>{value}", "<gray>How often warn only kicks.", "", "<#4facfe>Click to change"]
+    command:
+      name: "<#4facfe><bold>Own command"
+      lore: ["<gray>Now: <white>{value}", "<gray>e.g. tempban {player} 3d {reason}", "", "<#4facfe>Click: type it (sets the action)", "<red>Shift-click: remove"]
+    notify:
+      name: "<#4facfe><bold>Tell the team"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to switch"]
+    discord:
+      name: "<#4facfe><bold>Discord"
+      lore: ["<gray>Now: <white>{value}", "<gray>Needs a webhook in the settings.", "", "<#4facfe>Click to switch"]
+    preview:
+      name: "<white>What the player reads"
+      lore: ["<gray>{reason}"]
+    unblock:
+      name: "<red><bold>Allow again"
+      lore: ["<red>Shift-click to remove the block"]
+  suggestions:
+    title: "<dark_gray>Known mods"
+    client: ["<red>Cheat client", "", "<#4facfe>Click to block"]
+    mod: ["<gray>Mod", "", "<#4facfe>Click to block"]
+  settings:
+    title: "<dark_gray>Settings"
+    own-ban: "ModCheck's own ban"
+    action:
+      name: "<#4facfe><bold>Default action"
+      lore: ["<gray>Now: <white>{value}", "<gray>For mods without their own.", "", "<#4facfe>Click to change"]
+    reason:
+      name: "<#4facfe><bold>Default reason"
+      lore: ["<gray>Now: <white>{value}", "<gray>{mods} becomes the mod names.", "", "<#4facfe>Click: type a new one"]
+    duration:
+      name: "<#4facfe><bold>Default ban length"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    warnings:
+      name: "<#4facfe><bold>Warnings before a ban"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    ban-command:
+      name: "<#4facfe><bold>Ban with"
+      lore: ["<gray>Now: <white>{value}", "<gray>Your ban plugin's command, or", "<gray>ModCheck's own ban.", "", "<#4facfe>Click: type a command", "<red>Shift-click: own ban"]
+    notify:
+      name: "<#4facfe><bold>Tell the team"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to switch"]
+    discord:
+      name: "<#4facfe><bold>Discord webhook"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click: paste a link", "<red>Shift-click: off"]
+    mode:
+      name: "<#4facfe><bold>Mode"
+      lore: ["<gray>Now: <white>{value}", "<gray>Allowed clients: <white>{clients}", "", "<#4facfe>Click to switch"]
+    not-allowed:
+      name: "<#4facfe><bold>Client not allowed"
+      lore: ["<gray>Now: <white>{value}", "<gray>Only in allow-list mode.", "", "<#4facfe>Click to change"]
+    sign:
+      name: "<#4facfe><bold>Hidden sign check"
+      lore: ["<gray>Now: <white>{value}", "<gray>Asks the client for mod texts;", "<gray>a sign editor shows for a blink.", "", "<#4facfe>Click to switch"]
+    language:
+      name: "<#4facfe><bold>Language"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to switch"]
+  bans:
+    title: "<dark_gray>Banned players ({count})"
+    entry: ["<gray>Reason: <white>{reason}", "<gray>Time: <white>{time}", "", "<red>Shift-click to unban"]

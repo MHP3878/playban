@@ -49,7 +49,7 @@ allowed-clients: [vanilla, fabric, forge, neoforge, quilt, lunarclient, feather,
 # what happens to a client not on the allow list: KICK or BAN
 not-allowed-action: KICK
 
-# The hidden sign check (a sign editor shows for a blink on join).
+# The hidden sign check on join (opened and closed in the same moment: the player does not see it).
 sign-check: true
 # A client that blocks the sign check (it changes texts on its own: often a mod that hides mods, but
 # also some privacy mods): ALERT (only tell the team), KICK, WARN or BAN

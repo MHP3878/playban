@@ -49,7 +49,7 @@ check:
   header: "<white>{player}</white><gray>: client <white>{client}</white>, warnings <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
   channels: "<gray>Mod channels: <white>{channels}"
-  running: "<gray>Checking <white>{player}</white> ... <dark_gray>(a sign may blink for a moment)"
+  running: "<gray>Checking <white>{player}</white> ..."
   result: "<white><bold>{player}</bold></white><gray>: client <white>{client}</white>, <white>{count}</white> mod(s): <white>{mods}"
   result-works: "<green>✔ Check worked. What the client has is listed."
   result-blocked: "<red>✘ This client blocks the check (a mod that hides mods). Nothing it says counts; the team was told."
@@ -213,7 +213,7 @@ menu:
       lore: ["<gray>Now: <white>{value}", "<gray>Only in allow-list mode.", "", "<#4facfe>Click to change"]
     sign:
       name: "<#4facfe><bold>Hidden sign check"
-      lore: ["<gray>Now: <white>{value}", "<gray>Asks the client for mod texts;", "<gray>a sign editor shows for a blink.", "", "<#4facfe>Click to switch"]
+      lore: ["<gray>Now: <white>{value}", "<gray>Asks the client for mod texts;", "<gray>invisible to the player.", "", "<#4facfe>Click to switch"]
     hidden:
       name: "<#4facfe><bold>Check blocked"
       lore: ["<gray>Now: <white>{value}", "<gray>When a client blocks the sign", "<gray>check (a mod that hides mods).", "<gray>Harmless privacy mods can do", "<gray>it too: alert is the safest.", "", "<#4facfe>Click to change"]

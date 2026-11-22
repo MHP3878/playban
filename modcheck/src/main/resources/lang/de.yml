@@ -49,7 +49,7 @@ check:
   header: "<white>{player}</white><gray>: Client <white>{client}</white>, Verwarnungen <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
   channels: "<gray>Mod-Kanäle: <white>{channels}"
-  running: "<gray>Prüfe <white>{player}</white> ... <dark_gray>(kurz kann ein Schild aufblinken)"
+  running: "<gray>Prüfe <white>{player}</white> ..."
   result: "<white><bold>{player}</bold></white><gray>: Client <white>{client}</white>, <white>{count}</white> Mod(s): <white>{mods}"
   result-works: "<green>✔ Prüfung hat geklappt. Was der Client hat, steht da."
   result-blocked: "<red>✘ Dieser Client blockt die Prüfung (Schutz-Mod). Was er sagt, zählt nicht; das Team wurde informiert."
@@ -213,7 +213,7 @@ menu:
       lore: ["<gray>Jetzt: <white>{value}", "<gray>Nur im Erlaubt-Liste-Modus.", "", "<#4facfe>Klick zum Ändern"]
     sign:
       name: "<#4facfe><bold>Verstecktes Schild"
-      lore: ["<gray>Jetzt: <white>{value}", "<gray>Fragt den Client nach Mod-Texten;", "<gray>ein Schild-Editor blitzt kurz auf.", "", "<#4facfe>Klick zum Umschalten"]
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Fragt den Client nach Mod-Texten;", "<gray>unsichtbar für den Spieler.", "", "<#4facfe>Klick zum Umschalten"]
     hidden:
       name: "<#4facfe><bold>Prüfung blockiert"
       lore: ["<gray>Jetzt: <white>{value}", "<gray>Wenn ein Client die Schild-Prüfung", "<gray>blockt (Schutz-Mod gegen Erkennung).", "<gray>Auch harmlose Privatsphäre-Mods", "<gray>können das: Melden ist am sichersten.", "", "<#4facfe>Klick zum Ändern"]

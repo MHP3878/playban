@@ -716,9 +716,10 @@ public final class Guard implements Listener {
             finish(p);
             return;
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (p.isOnline() && asked.get(id) == mine) p.closeInventory();
-        }, 2L);
+        // closed in the same moment it opens: both arrive together and the client handles them before it
+        // draws the next picture, so the sign is never seen. Its texts are filled in when it opens, and
+        // closing sends them back.
+        p.closeInventory();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (asked.get(id) != mine) return;
             asked.remove(id);

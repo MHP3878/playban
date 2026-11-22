@@ -114,6 +114,10 @@ public final class Commands implements TabExecutor {
                 return;
             }
             case "reset" -> {
+                if (!sender.hasPermission("modcheck.unban")) {
+                    lang().send(sender, "no-permission");
+                    return;
+                }
                 OfflinePlayer op = args.length > 1 ? known(args[1]) : null;
                 if (op == null) lang().send(sender, "not-found", "player", args.length > 1 ? args[1] : "?");
                 else {

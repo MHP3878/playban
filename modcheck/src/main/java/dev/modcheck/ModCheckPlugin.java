@@ -66,6 +66,12 @@ public class ModCheckPlugin extends JavaPlugin {
         getConfig().setDefaults(new org.bukkit.configuration.MemoryConfiguration());
     }
 
+    @Override
+    public void onDisable() {
+        // signs of the check on older servers: every block back before the server goes down
+        if (guard != null) guard.putEverythingBack();
+    }
+
     public void reload() {
         reloadConfig();
         noBuiltInDefaults();

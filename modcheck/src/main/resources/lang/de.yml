@@ -2,6 +2,7 @@ prefix: "<gradient:#4facfe:#00f2fe><bold>ModCheck</bold></gradient> <dark_gray>�
 word-on: "an"
 word-off: "aus"
 no-permission: "<red>Das darfst du nicht."
+no-permission-commands: "<red>Konsolen-Befehle darf nur ein Admin setzen (Recht <white>modcheck.commands</white>)."
 reloaded: "<green>ModCheck neu geladen."
 not-found: "<red><white>{player}</white> ist nicht online oder unbekannt."
 
@@ -22,6 +23,7 @@ input:
   mod: "<#4facfe>Schreib den Namen der Mod, z. B. <white>freecam</white> oder <white>beelocator-21.11.jar</white>."
   ban-command: "<#4facfe>Schreib den Befehl deines Bann-Plugins ohne /, z. B. <white>tempban {player} {duration} {reason}</white>"
   webhook: "<#4facfe>Füge den Discord-Webhook-Link ein (https://discord.com/api/webhooks/...)."
+  webhook-wrong: "<red>Das ist kein Discord-Webhook-Link. Er muss mit <white>https://discord.com/api/webhooks/</white> anfangen."
 
 kick:
   screen: "<red><bold>Gekickt</bold>\n\n<gray>{reason}"
@@ -35,7 +37,9 @@ ban:
 alert:
   mod: "<red>⚠ <white>{player}</white> <gray>hat <white>{mods}</white> → {action}. <dark_gray>Klick zum Prüfen"
   client: "<red>⚠ <white>{player}</white> <gray>nutzt den Client <white>{mods}</white>, nicht erlaubt → {action}."
-  hiding: "<gold>⚠ <white>{player}</white> <gray>blockt die Mod-Prüfung (vermutlich eine Schutz-Mod gegen Mod-Erkennung). <dark_gray>Klick zum Prüfen"
+suspicious:
+  blocked: "Schutz gegen die Mod-Prüfung"
+  no-answer: "keine Antwort auf die Mod-Prüfung"
 discord:
   line: "⚠ {player} hat {mods} → {action}"
 
@@ -48,8 +52,8 @@ check:
   running: "<gray>Prüfe <white>{player}</white> ... <dark_gray>(kurz kann ein Schild aufblinken)"
   result: "<white><bold>{player}</bold></white><gray>: Client <white>{client}</white>, <white>{count}</white> Mod(s): <white>{mods}"
   result-works: "<green>✔ Prüfung hat geklappt. Was der Client hat, steht da."
-  result-blocked: "<red>✘ Dieser Client versteckt seine Mods. Nur der Client-Name ist bekannt."
-  result-no-answer: "<gold>? Keine Antwort vom Client. Auf festem Boden nochmal versuchen."
+  result-blocked: "<red>✘ Dieser Client blockt die Prüfung (Schutz-Mod). Was er sagt, zählt nicht; das Team wurde informiert."
+  result-no-answer: "<gold>? Der Client hat zweimal nicht geantwortet (Lag oder ein Client, der die Prüfung ignoriert)."
   result-impossible: "<gold>? Hier keine Prüfung möglich. Auf festen Boden stellen und nochmal."
   result-unknown: "<gray>? Noch nicht geprüft. Ist der Spieler gerade tot, wird nach dem Respawn geprüft."
 
@@ -210,6 +214,12 @@ menu:
     sign:
       name: "<#4facfe><bold>Verstecktes Schild"
       lore: ["<gray>Jetzt: <white>{value}", "<gray>Fragt den Client nach Mod-Texten;", "<gray>ein Schild-Editor blitzt kurz auf.", "", "<#4facfe>Klick zum Umschalten"]
+    hidden:
+      name: "<#4facfe><bold>Prüfung blockiert"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Wenn ein Client die Schild-Prüfung", "<gray>blockt (Schutz-Mod gegen Erkennung).", "<gray>Auch harmlose Privatsphäre-Mods", "<gray>können das: Melden ist am sichersten.", "", "<#4facfe>Klick zum Ändern"]
+    no-answer:
+      name: "<#4facfe><bold>Keine Antwort"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Wenn ein Client zweimal gar nicht", "<gray>auf das Schild antwortet", "<gray>(Cheat-Client oder starker Lag).", "", "<#4facfe>Klick zum Ändern"]
     repeat-window:
       name: "<#4facfe><bold>Wiederkommen: innerhalb von"
       lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Ändern"]

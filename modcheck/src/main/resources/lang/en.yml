@@ -2,6 +2,7 @@ prefix: "<gradient:#4facfe:#00f2fe><bold>ModCheck</bold></gradient> <dark_gray>�
 word-on: "on"
 word-off: "off"
 no-permission: "<red>You may not do that."
+no-permission-commands: "<red>Only an admin may set console commands (permission <white>modcheck.commands</white>)."
 reloaded: "<green>ModCheck reloaded."
 not-found: "<red><white>{player}</white> is not online or unknown."
 
@@ -22,6 +23,7 @@ input:
   mod: "<#4facfe>Type the mod's name, e.g. <white>freecam</white> or <white>beelocator-21.11.jar</white>."
   ban-command: "<#4facfe>Type your ban plugin's command, without /, e.g. <white>tempban {player} {duration} {reason}</white>"
   webhook: "<#4facfe>Paste the Discord webhook link (https://discord.com/api/webhooks/...)."
+  webhook-wrong: "<red>That is not a Discord webhook link. It must start with <white>https://discord.com/api/webhooks/</white>."
 
 kick:
   screen: "<red><bold>Kicked</bold>\n\n<gray>{reason}"
@@ -35,7 +37,9 @@ ban:
 alert:
   mod: "<red>⚠ <white>{player}</white> <gray>has <white>{mods}</white> → {action}. <dark_gray>Click to check"
   client: "<red>⚠ <white>{player}</white> <gray>uses the client <white>{mods}</white>, not on the allow list → {action}."
-  hiding: "<gold>⚠ <white>{player}</white> <gray>blocks the mod check (probably a mod that hides mods). <dark_gray>Click to check"
+suspicious:
+  blocked: "protection against the mod check"
+  no-answer: "no answer to the mod check"
 discord:
   line: "⚠ {player} has {mods} → {action}"
 
@@ -48,8 +52,8 @@ check:
   running: "<gray>Checking <white>{player}</white> ... <dark_gray>(a sign may blink for a moment)"
   result: "<white><bold>{player}</bold></white><gray>: client <white>{client}</white>, <white>{count}</white> mod(s): <white>{mods}"
   result-works: "<green>✔ Check worked. What the client has is listed."
-  result-blocked: "<red>✘ This client hides its mods. Only the client name is known."
-  result-no-answer: "<gold>? The client did not answer. Try again on solid ground."
+  result-blocked: "<red>✘ This client blocks the check (a mod that hides mods). Nothing it says counts; the team was told."
+  result-no-answer: "<gold>? The client did not answer twice (lag, or a client that ignores the check)."
   result-impossible: "<gold>? No check possible here. Stand on solid ground and try again."
   result-unknown: "<gray>? Not checked yet. If the player is dead, the check runs after the respawn."
 
@@ -210,6 +214,12 @@ menu:
     sign:
       name: "<#4facfe><bold>Hidden sign check"
       lore: ["<gray>Now: <white>{value}", "<gray>Asks the client for mod texts;", "<gray>a sign editor shows for a blink.", "", "<#4facfe>Click to switch"]
+    hidden:
+      name: "<#4facfe><bold>Check blocked"
+      lore: ["<gray>Now: <white>{value}", "<gray>When a client blocks the sign", "<gray>check (a mod that hides mods).", "<gray>Harmless privacy mods can do", "<gray>it too: alert is the safest.", "", "<#4facfe>Click to change"]
+    no-answer:
+      name: "<#4facfe><bold>No answer"
+      lore: ["<gray>Now: <white>{value}", "<gray>When a client twice does not", "<gray>answer the sign at all", "<gray>(cheat client or heavy lag).", "", "<#4facfe>Click to change"]
     repeat-window:
       name: "<#4facfe><bold>Coming back: within"
       lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]

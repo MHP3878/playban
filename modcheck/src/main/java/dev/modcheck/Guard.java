@@ -57,7 +57,11 @@ public final class Guard implements Listener {
         public final Set<String> found = new LinkedHashSet<>();
         /** How the hidden sign check went: unknown, works, blocked, no-answer, impossible */
         public String sign = "unknown";
-        public boolean hidingTold;
+        /** rules and findings already dealt with in this session: no second alert for the same thing */
+        public final Set<String> handled = new HashSet<>();
+        boolean joinChecked;
+        boolean retried;
+        int waitedForInventory;
     }
 
     /** A blocked mod and what to do about it, all from the settings. */
@@ -71,8 +75,10 @@ public final class Guard implements Listener {
     private final Map<UUID, List<List<Ask>>> asked = new HashMap<>();
     private final Map<UUID, List<Ask>> waiting = new HashMap<>();
     private final Map<UUID, Boolean> afterRespawn = new HashMap<>();
+    private final Map<UUID, Boolean> queued = new HashMap<>();
     private final Map<UUID, Runnable> restore = new HashMap<>();
-    private final Set<Location> realSigns = new HashSet<>();
+    /** Real signs of ours (older Paper) and the block that was there before. */
+    private final Map<Location, org.bukkit.block.data.BlockData> originals = new HashMap<>();
     private YamlConfiguration data = new YamlConfiguration();
 
     public Guard(ModCheckPlugin plugin) {
@@ -102,9 +108,22 @@ public final class Guard implements Listener {
         strikes.clear();
         passes.clear();
         ConfigurationSection s = data.getConfigurationSection("warnings");
-        if (s != null) for (String k : s.getKeys(false)) strikes.put(UUID.fromString(k), s.getInt(k));
+        if (s != null) for (String k : s.getKeys(false)) {
+            try {
+                strikes.put(UUID.fromString(k), s.getInt(k));
+            } catch (IllegalArgumentException broken) {
+                plugin.getLogger().warning("data.yml: skipped warnings for '" + k + "' (not a UUID)");
+            }
+        }
         ConfigurationSection p = data.getConfigurationSection("passes");
-        if (p != null) for (String k : p.getKeys(false)) passes.put(UUID.fromString(k), new HashSet<>(p.getStringList(k)));
+        if (p != null) for (String k : p.getKeys(false)) {
+            try {
+                passes.put(UUID.fromString(k), new HashSet<>(p.getStringList(k)));
+            } catch (IllegalArgumentException broken) {
+                plugin.getLogger().warning("data.yml: skipped passes for '" + k + "' (not a UUID)");
+            }
+        }
+        refreshBans();
     }
 
     private void save() {
@@ -112,6 +131,7 @@ public final class Guard implements Listener {
         for (Map.Entry<UUID, Integer> e : strikes.entrySet()) data.set("warnings." + e.getKey(), e.getValue());
         data.set("passes", null);
         for (Map.Entry<UUID, Set<String>> e : passes.entrySet()) data.set("passes." + e.getKey(), new ArrayList<>(e.getValue()));
+        refreshBans();
         try {
             data.save(dataFile());
         } catch (IOException e) {
@@ -153,13 +173,7 @@ public final class Guard implements Listener {
 
     public List<Ban> bans() {
         List<Ban> out = new ArrayList<>();
-        ConfigurationSection s = data.getConfigurationSection("bans");
-        if (s == null) return out;
-        for (String k : s.getKeys(false)) {
-            Ban b = new Ban(UUID.fromString(k), s.getString(k + ".name", "?"), s.getLong(k + ".until"), s.getString(k + ".reason", ""),
-                    s.getString(k + ".by", "ModCheck"));
-            if (b.active()) out.add(b);
-        }
+        for (Ban b : banView.values()) if (b.active()) out.add(b);
         return out;
     }
 
@@ -177,9 +191,27 @@ public final class Guard implements Listener {
         return true;
     }
 
+    /** The bans as the login thread sees them: logins are checked off the main thread. */
+    private volatile Map<UUID, Ban> banView = Map.of();
+
+    private void refreshBans() {
+        Map<UUID, Ban> m = new HashMap<>();
+        ConfigurationSection s = data.getConfigurationSection("bans");
+        if (s != null) for (String k : s.getKeys(false)) {
+            try {
+                m.put(UUID.fromString(k), new Ban(UUID.fromString(k), s.getString(k + ".name", "?"), s.getLong(k + ".until"),
+                        s.getString(k + ".reason", ""), s.getString(k + ".by", "ModCheck")));
+            } catch (IllegalArgumentException broken) {
+                // a hand-edited line that is not a UUID
+            }
+        }
+        banView = Map.copyOf(m);
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onPreLogin(AsyncPlayerPreLoginEvent e) {
-        Ban b = ban(e.getUniqueId());
+        Ban b = banView.get(e.getUniqueId());
+        if (b != null && !b.active()) b = null;
         if (b == null) return;
         e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, lang().msg("ban.screen", "reason", b.reason(),
                 "time", b.until() == 0 ? lang().raw("ban.forever") : Time.format(b.until() - System.currentTimeMillis())));
@@ -239,11 +271,24 @@ public final class Guard implements Listener {
         for (Rule r : rules()) {
             if (passed(id, r.id())) continue;
             boolean hit = info.found.contains(r.id());
-            for (String b : r.brand()) if (!b.isEmpty() && brand.contains(b)) hit = true;
-            for (String c : r.channel()) for (String ch : info.channels) if (!c.isEmpty() && ch.toLowerCase(Locale.ROOT).contains(c)) hit = true;
+            for (String b : r.brand()) if (b.length() >= 3 && brand.contains(b)) hit = true;
+            for (String c : r.channel()) for (String ch : info.channels) if (channelMatches(ch, c)) hit = true;
             if (hit) out.add(r);
         }
         return out;
+    }
+
+    /**
+     * A channel belongs to a mod when its name space is the mod's name ("xaerominimap:main"), or, for
+     * names of five letters and more, contains it. Short names only count exactly: a rule "map" must not
+     * hit every channel with "map" somewhere in it.
+     */
+    static boolean channelMatches(String channel, String mod) {
+        if (mod == null || mod.length() < 3) return false;
+        String ch = channel.toLowerCase(Locale.ROOT);
+        String ns = ch.contains(":") ? ch.substring(0, ch.indexOf(':')) : ch;
+        if (ns.equals(mod) || ch.equals(mod)) return true;
+        return mod.length() >= 5 && ns.contains(mod);
     }
 
     /** Everything that looks like a mod on this client: rules hit, sign answers, channel name spaces. */
@@ -278,7 +323,8 @@ public final class Guard implements Listener {
     public String block(String typed, String by) {
         KnownMods.Mod known = KnownMods.find(typed);
         String id = known != null ? known.id() : KnownMods.normalize(typed);
-        if (id.isEmpty()) return null;
+        // a name this short would hit far too much
+        if (id.length() < 3) return null;
         String p = "rules." + id + ".";
         if (cfg().getConfigurationSection("rules." + id) == null) {
             List<String> keys = new ArrayList<>(known != null ? known.keys() : List.of());
@@ -323,7 +369,8 @@ public final class Guard implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChannel(PlayerRegisterChannelEvent e) {
-        info(e.getPlayer().getUniqueId()).channels.add(e.getChannel());
+        Info info = info(e.getPlayer().getUniqueId());
+        if (info.channels.size() < 256) info.channels.add(clean(e.getChannel(), 80));
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -334,11 +381,11 @@ public final class Guard implements Listener {
             if (!p.isOnline()) return;
             Info info = info(p.getUniqueId());
             try {
-                info.brand = p.getClientBrandName();
+                info.brand = clean(p.getClientBrandName(), 48);
             } catch (RuntimeException | NoSuchMethodError ignored) {
                 // older API
             }
-            info.channels.addAll(p.getListeningPluginChannels());
+            for (String ch : p.getListeningPluginChannels()) if (info.channels.size() < 256) info.channels.add(clean(ch, 80));
             judge(p);
         }, 60L);
     }
@@ -347,18 +394,22 @@ public final class Guard implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onLoaded(io.papermc.paper.event.player.PlayerClientLoadedWorldEvent e) {
         Player p = e.getPlayer();
+        // the event comes again after every respawn and world change: the join check runs once
+        Info info = info(p.getUniqueId());
+        if (info.joinChecked) return;
+        info.joinChecked = true;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (p.isOnline() && cfg().getBoolean("sign-check", true) && !probing(p.getUniqueId())) probe(p);
+            if (p.isOnline() && cfg().getBoolean("sign-check", true)) probe(p);
         }, 10L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(org.bukkit.event.player.PlayerRespawnEvent e) {
         Player p = e.getPlayer();
-        Boolean discover = afterRespawn.remove(p.getUniqueId());
-        if (discover == null) return;
+        if (!afterRespawn.containsKey(p.getUniqueId())) return;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (p.isOnline() && !p.isDead() && !probing(p.getUniqueId())) probe(p, discover);
+            Boolean discover = afterRespawn.remove(p.getUniqueId());
+            if (discover != null && p.isOnline()) probe(p, discover);
         }, 20L);
     }
 
@@ -366,6 +417,7 @@ public final class Guard implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         UUID id = e.getPlayer().getUniqueId();
         afterRespawn.remove(id);
+        queued.remove(id);
         infos.remove(id);
         asked.remove(id);
         waiting.remove(id);
@@ -393,13 +445,17 @@ public final class Guard implements Listener {
         if (p.hasPermission("modcheck.bypass")) return;
         Info info = info(p.getUniqueId());
         if (!allowedClient(info)) {
+            if (!info.handled.add("__client")) return;
             String client = info.brand == null ? "?" : info.brand;
             String a = cfg().getString("not-allowed-action", "KICK").toUpperCase(Locale.ROOT);
             enforce(p, null, a, client, true);
             return;
         }
-        List<Rule> hits = hits(p.getUniqueId());
+        // only what is new in this session: an "alert only" mod is not reported again and again
+        List<Rule> hits = new ArrayList<>();
+        for (Rule r : hits(p.getUniqueId())) if (!info.handled.contains(r.id())) hits.add(r);
         if (hits.isEmpty()) return;
+        for (Rule r : hits) info.handled.add(r.id());
         Rule worst = hits.get(0);
         for (Rule r : hits) if (weight(action(r)) > weight(action(worst))) worst = r;
         List<String> names = new ArrayList<>();
@@ -497,8 +553,9 @@ public final class Guard implements Listener {
     private void banFor(Player p, String reason, String dur) {
         String external = cfg().getString("ban-command", "");
         if (!external.isBlank()) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), external.replace("{player}", p.getName()).replace("{duration}", dur)
-                    .replace("{reason}", reason).replace("{mod}", reason).replace("{mods}", reason));
+            String safe = forCommand(reason);
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), external.replace("{player}", p.getName()).replace("{duration}", forCommand(dur))
+                    .replace("{reason}", safe).replace("{mod}", safe).replace("{mods}", safe));
             if (p.isOnline()) p.kick(lang().msg("kick.screen", "reason", reason));
             return;
         }
@@ -521,22 +578,12 @@ public final class Guard implements Listener {
         }
         for (String one : cmd.split("\\s*;\\s*")) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), one.replaceFirst("^/", "").replace("{player}", p.getName())
-                    .replace("{reason}", reason).replace("{duration}", duration(rule)).replace("{mods}", mods).replace("{mod}", mods));
+                    .replace("{reason}", forCommand(reason)).replace("{duration}", forCommand(duration(rule)))
+                    .replace("{mods}", forCommand(mods)).replace("{mod}", forCommand(mods)));
         }
     }
 
     // ---------------------------------------------------------------- the hidden sign
-
-    /**
-     * A sign editor for a blink with translation keys of the blocked mods. A client without the mod sends
-     * the keys back as they are; with the mod, its own text comes back. Four keys per sign. On Paper 1.21.9+
-     * the sign only exists for the player; on older servers a real sign stands for two ticks two blocks
-     * under the player and the block is put back.
-     */
-    /** The sign check with the blocked mods only (on join). */
-    public void probe(Player p) {
-        probe(p, false);
-    }
 
     /**
      * One question on the hidden sign: the text sent, what a client WITHOUT the mod sends back, and the
@@ -556,9 +603,13 @@ public final class Guard implements Listener {
     }
 
     private static final String CONTROL = "__control";
-
     private static final String DUMMY = "__dummy";
     private static final String NONE = "modcheck.probe.none";
+    private static final String SEP = "|";
+    /** Paper cuts sign lines after 80 characters: three answers fit in one line. */
+    private static final int PER_LINE = 3;
+    /** How long to wait for a player to close a chest, shop or menu before the sign comes anyway. */
+    private static final int MAX_WAIT_FOR_INVENTORY = 15;
 
     /** "key.jump" with an empty fallback: every client fills it in, unless texts are blocked. */
     public static Ask control() {
@@ -573,20 +624,27 @@ public final class Guard implements Listener {
         return List.of(new Ask(Component.translatable().key(NONE).fallback("").build(), "", DUMMY),
                 new Ask(Component.keybind(NONE), NONE, DUMMY));
     }
-    private static final String SEP = "|";
-    /** Paper cuts sign lines after 80 characters: three answers fit in one line. */
-    private static final int PER_LINE = 3;
+
+    /** The sign check with the blocked mods only (on join). */
+    public void probe(Player p) {
+        probe(p, false);
+    }
 
     /**
-     * The sign check. The first question is always the control "key.jump": every client knows it, so
-     * the answer tells whether this trick works at all. With discover, the texts of well-known mods are
-     * asked as well, to see more than the blocked ones.
+     * The sign check. First come the controls: "key.jump" every client knows, and a made-up key no client
+     * knows; their answers tell whether the client can be trusted. With discover, the texts of well-known
+     * mods are asked as well, to see more than the blocked ones. Only one check runs per player: another
+     * one asked for meanwhile waits for it.
      */
     public void probe(Player p, boolean discover) {
+        UUID id = p.getUniqueId();
+        if (waiting.containsKey(id) || asked.containsKey(id)) {
+            queued.merge(id, discover, Boolean::logicalOr);
+            return;
+        }
         if (p.isDead()) {
             // a dead player looks at the respawn screen and cannot answer a sign: ask after the respawn
-            afterRespawn.put(p.getUniqueId(), discover || afterRespawn.getOrDefault(p.getUniqueId(), false));
-            info(p.getUniqueId()).sign = "unknown";
+            afterRespawn.merge(id, discover, Boolean::logicalOr);
             return;
         }
         List<Ask> all = new ArrayList<>();
@@ -600,21 +658,49 @@ public final class Guard implements Listener {
             if (known != null) for (String k : known.keys()) if (seen.add(k)) all.add(ask(k, r.id()));
         }
         if (discover) for (KnownMods.Mod m : KnownMods.ALL) for (String k : m.keys()) if (seen.add(k)) all.add(ask(k, m.id()));
-        info(p.getUniqueId()).sign = "unknown";
-        asked.remove(p.getUniqueId());
-        waiting.put(p.getUniqueId(), all);
+        Info info = info(id);
+        info.sign = "unknown";
+        info.retried = false;
+        info.waitedForInventory = 0;
+        waiting.put(id, all);
         nextSign(p);
     }
 
-    /** True while the sign check for this player still runs. */
+    /** True while the sign check for this player still runs or waits to run. */
     public boolean probing(UUID id) {
-        return waiting.containsKey(id) || asked.containsKey(id) || afterRespawn.containsKey(id);
+        return waiting.containsKey(id) || asked.containsKey(id) || afterRespawn.containsKey(id) || queued.containsKey(id);
+    }
+
+    /** The check is over (answered, blocked, no answer or impossible): a check asked for meanwhile runs now. */
+    private void finish(Player p) {
+        UUID id = p.getUniqueId();
+        waiting.remove(id);
+        asked.remove(id);
+        Boolean next = queued.remove(id);
+        if (next != null && p.isOnline()) Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline()) probe(p, next);
+        }, 10L);
+    }
+
+    private static boolean ownInventory(Player p) {
+        var type = p.getOpenInventory().getType();
+        return type == org.bukkit.event.inventory.InventoryType.CRAFTING || type == org.bukkit.event.inventory.InventoryType.CREATIVE;
     }
 
     private void nextSign(Player p) {
-        List<Ask> left = waiting.get(p.getUniqueId());
+        UUID id = p.getUniqueId();
+        List<Ask> left = waiting.get(id);
         if (left == null || left.isEmpty() || !p.isOnline()) {
-            waiting.remove(p.getUniqueId());
+            finish(p);
+            return;
+        }
+        Info info = info(id);
+        // a chest, a shop or a menu is open: the sign would close it, so wait a moment (but not forever)
+        if (!ownInventory(p) && info.waitedForInventory < MAX_WAIT_FOR_INVENTORY) {
+            info.waitedForInventory++;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline() && waiting.get(id) == left && !asked.containsKey(id)) nextSign(p);
+            }, 20L);
             return;
         }
         List<Ask> batch = new ArrayList<>(left.subList(0, Math.min(4 * PER_LINE, left.size())));
@@ -622,30 +708,42 @@ public final class Guard implements Listener {
         List<List<Ask>> rows = new ArrayList<>();
         for (int i = 0; i < batch.size(); i += PER_LINE) rows.add(new ArrayList<>(batch.subList(i, Math.min(i + PER_LINE, batch.size()))));
         expectRows(p, rows);
-        List<List<Ask>> mine = asked.get(p.getUniqueId());
+        List<List<Ask>> mine = asked.get(id);
         List<Component> lines = new ArrayList<>();
         for (int i = 0; i < 4; i++) lines.add(i < rows.size() ? line(rows.get(i)) : Component.empty());
         if (!virtualSign(p, lines) && !realSign(p, lines)) {
-            asked.remove(p.getUniqueId());
-            waiting.remove(p.getUniqueId());
-            info(p.getUniqueId()).sign = "impossible";
+            info.sign = "impossible";
+            finish(p);
             return;
         }
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (p.isOnline()) p.closeInventory();
+            if (p.isOnline() && asked.get(id) == mine) p.closeInventory();
         }, 2L);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (asked.get(p.getUniqueId()) == mine) {
-                asked.remove(p.getUniqueId());
-                cleanup(p);
-                if (info(p.getUniqueId()).sign.equals("unknown")) {
-                    // no answer at all: the client did not send the sign back
-                    info(p.getUniqueId()).sign = "no-answer";
-                    waiting.remove(p.getUniqueId());
-                    return;
-                }
-                nextSign(p);
+            if (asked.get(id) != mine) return;
+            asked.remove(id);
+            cleanup(p);
+            if (!p.isOnline()) {
+                finish(p);
+                return;
             }
+            if (!info.retried) {
+                // no answer: lag, a screen in the way ... once more with the same questions
+                info.retried = true;
+                left.addAll(0, batch);
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (p.isOnline() && waiting.get(id) == left) nextSign(p);
+                }, 20L);
+                return;
+            }
+            if (info.sign.equals("unknown")) {
+                // twice no answer at all: the client does not send the sign back
+                info.sign = "no-answer";
+                finish(p);
+                suspicious(p, "no-answer");
+                return;
+            }
+            nextSign(p);
         }, 30L);
     }
 
@@ -661,8 +759,7 @@ public final class Guard implements Listener {
     /** Waits for an answer: one question per sign line (key, mod id), for tests and simple use. */
     public void expect(Player p, List<String[]> keysAndMods) {
         List<List<Ask>> rows = new ArrayList<>();
-        for (String[] km : keysAndMods) rows.add(List.of(km[1].equals(CONTROL)
-                ? control() : ask(km[0], km[1])));
+        for (String[] km : keysAndMods) rows.add(List.of(km[1].equals(CONTROL) ? control() : ask(km[0], km[1])));
         expectRows(p, rows);
     }
 
@@ -671,48 +768,68 @@ public final class Guard implements Listener {
         asked.put(p.getUniqueId(), new ArrayList<>(rows.subList(0, Math.min(4, rows.size()))));
     }
 
+    /** Paper 1.21.9+: a sign that only exists for this player, the world is not touched. */
     private boolean virtualSign(Player p, List<Component> lines) {
         try {
             Class<?> position = Class.forName("io.papermc.paper.math.Position");
             Location at = p.getLocation().clone();
             at.setY(Math.max(p.getWorld().getMinHeight(), at.getBlockY() - 6));
             Object pos = position.getMethod("block", int.class, int.class, int.class).invoke(null, at.getBlockX(), at.getBlockY(), at.getBlockZ());
+            var open = p.getClass().getMethod("openVirtualSign", position, org.bukkit.block.sign.Side.class);
             p.sendBlockChange(at, Material.OAK_SIGN.createBlockData());
             p.sendSignChange(at, lines);
-            p.getClass().getMethod("openVirtualSign", position, org.bukkit.block.sign.Side.class).invoke(p, pos, org.bukkit.block.sign.Side.FRONT);
+            open.invoke(p, pos, org.bukkit.block.sign.Side.FRONT);
             Location back = at.clone();
-            restore.put(p.getUniqueId(), () -> p.sendBlockChange(back, back.getBlock().getBlockData()));
+            restore.put(p.getUniqueId(), () -> {
+                if (p.isOnline()) p.sendBlockChange(back, back.getBlock().getBlockData());
+            });
             return true;
         } catch (ReflectiveOperationException | RuntimeException | LinkageError unsupported) {
             return false;
         }
     }
 
+    /** Blocks that must never be swapped, not even for a moment. */
+    private static boolean unsafe(Block b) {
+        Material m = b.getType();
+        if (!m.isSolid() || !m.isOccluding() || m.getHardness() < 0 || m.getHardness() > 40) return true;
+        if (b.getState() instanceof org.bukkit.block.TileState) return true;
+        String n = m.name();
+        return n.contains("BEDROCK") || n.contains("BARRIER") || n.contains("PORTAL") || n.contains("COMMAND") || n.contains("STRUCTURE")
+                || n.contains("JIGSAW") || n.contains("SPAWNER") || n.contains("REINFORCED") || n.contains("LIGHT");
+    }
+
+    /**
+     * Older Paper: a real sign deep under the player for a moment. The block that was there is kept in
+     * one place for the whole server, so a second check on the same spot can never mistake our own sign
+     * for the original block. While it stands it cannot be broken, blown up or pushed, and on shutdown
+     * every block is put back.
+     */
     private boolean realSign(Player p, List<Component> lines) {
         try {
-            Block spot = p.getLocation().getBlock().getRelative(0, -2, 0);
-            if (!spot.getType().isSolid() || spot.getState() instanceof org.bukkit.block.TileState || spot.getY() <= p.getWorld().getMinHeight()) return false;
-            org.bukkit.block.data.BlockData before = spot.getBlockData();
+            Block feet = p.getLocation().getBlock();
+            Block spot = null;
+            for (int down = 2; down <= 4 && spot == null; down++) {
+                Block b = feet.getRelative(0, -down, 0);
+                if (b.getY() <= p.getWorld().getMinHeight()) break;
+                Location l = b.getLocation();
+                if (originals.containsKey(l)) continue; // another check uses this spot right now
+                if (!unsafe(b)) spot = b;
+            }
+            if (spot == null) return false;
+            Location loc = spot.getLocation();
+            originals.put(loc, spot.getBlockData());
             spot.setType(Material.OAK_SIGN, false);
             if (!(spot.getState() instanceof org.bukkit.block.Sign sign)) {
-                spot.setBlockData(before, false);
+                putBack(loc);
                 return false;
             }
             var side = sign.getSide(org.bukkit.block.sign.Side.FRONT);
             for (int i = 0; i < 4; i++) side.line(i, lines.get(i));
             sign.update(true, false);
-            Location loc = spot.getLocation();
-            realSigns.add(loc);
-            restore.put(p.getUniqueId(), () -> {
-                realSigns.remove(loc);
-                spot.setBlockData(before, false);
-            });
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (spot.getType() == Material.OAK_SIGN) {
-                    realSigns.remove(loc);
-                    spot.setBlockData(before, false);
-                }
-            }, 40L);
+            restore.put(p.getUniqueId(), () -> putBack(loc));
+            // safety net: back after two seconds whatever happens
+            Bukkit.getScheduler().runTaskLater(plugin, () -> putBack(loc), 40L);
             // the block and its text must be at the client BEFORE the editor opens: the world sends its
             // own updates only at the end of the tick, and an editor on an empty sign answers nothing
             p.sendBlockChange(loc, spot.getBlockData());
@@ -729,16 +846,59 @@ public final class Guard implements Listener {
         }
     }
 
+    /** Puts the original block back where a sign of ours stands. */
+    private void putBack(Location loc) {
+        org.bukkit.block.data.BlockData before = originals.remove(loc);
+        if (before == null) return;
+        Block b = loc.getBlock();
+        if (b.getType() == Material.OAK_SIGN) b.setBlockData(before, false);
+    }
+
+    /** On shutdown or reload: every block back. */
+    public void putEverythingBack() {
+        for (Location l : new ArrayList<>(originals.keySet())) putBack(l);
+        restore.clear();
+    }
+
     private void cleanup(Player p) {
         Runnable r = restore.remove(p.getUniqueId());
         if (r != null) r.run();
     }
 
+    private boolean ours(Block b) {
+        return originals.containsKey(b.getLocation());
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onSign(SignChangeEvent e) {
-        if (!realSigns.contains(e.getBlock().getLocation())) return;
+        if (!ours(e.getBlock())) return;
         e.setCancelled(true);
         answer(e.getPlayer(), e.lines());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onBreak(org.bukkit.event.block.BlockBreakEvent e) {
+        if (ours(e.getBlock())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onBlockExplode(org.bukkit.event.block.BlockExplodeEvent e) {
+        e.blockList().removeIf(this::ours);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onEntityExplode(org.bukkit.event.entity.EntityExplodeEvent e) {
+        e.blockList().removeIf(this::ours);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPistonPush(org.bukkit.event.block.BlockPistonExtendEvent e) {
+        for (Block b : e.getBlocks()) if (ours(b)) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPistonPull(org.bukkit.event.block.BlockPistonRetractEvent e) {
+        for (Block b : e.getBlocks()) if (ours(b)) e.setCancelled(true);
     }
 
     public void registerVirtualSignListener() {
@@ -787,6 +947,7 @@ public final class Guard implements Listener {
         for (Map.Entry<Ask, String> e : answers.entrySet()) {
             if (e.getKey().mod().equals(DUMMY) && !e.getValue().equals(e.getKey().expect())) info.sign = "blocked";
         }
+        if (info.sign.equals("unknown")) info.sign = "works"; // a later sign of a check that already passed its controls
         if (!info.sign.equals("blocked")) {
             for (Map.Entry<Ask, String> e : answers.entrySet()) {
                 Ask a = e.getKey();
@@ -795,19 +956,78 @@ public final class Guard implements Listener {
             }
         }
         if (info.sign.equals("blocked")) {
-            // the trick does not work with this client: no need to ask further, but the team may want to know
-            waiting.remove(p.getUniqueId());
-            if (!info.hidingTold && cfg().getBoolean("notify-team", true)) {
-                info.hidingTold = true;
-                Component line = lang().prefixed("alert.hiding", "player", p.getName())
-                        .clickEvent(ClickEvent.runCommand("/modcheck " + p.getName()));
-                for (Player staff : Bukkit.getOnlinePlayers()) if (staff.hasPermission("modcheck.notify")) staff.sendMessage(line);
-                Bukkit.getConsoleSender().sendMessage(line);
-            }
+            // the trick does not work with this client: no need to ask further, the settings say what happens
+            finish(p);
+            suspicious(p, "blocked");
             return;
         }
         if (found) judge(p);
         if (p.isOnline()) Bukkit.getScheduler().runTaskLater(plugin, () -> nextSign(p), 2L);
+        else finish(p);
+    }
+
+    /**
+     * A client that blocks the check or never answers it. Plenty of players use privacy mods, so the
+     * default is only a note to the team; the owner can make it a kick or a ban.
+     */
+    private void suspicious(Player p, String what) {
+        if (!p.isOnline() || p.hasPermission("modcheck.bypass")) return;
+        Info info = info(p.getUniqueId());
+        if (!info.handled.add("__" + what)) return;
+        String action = cfg().getString(what.equals("blocked") ? "hidden-action" : "no-answer-action", "ALERT").toUpperCase(Locale.ROOT);
+        if (!List.of("ALERT", "KICK", "WARN", "BAN").contains(action)) action = "ALERT";
+        enforce(p, null, action, lang().raw("suspicious." + what), false);
+    }
+
+    // ---------------------------------------------------------------- text from outside
+
+    /**
+     * Text a client sends (its name, its channels) is not to be trusted: no control characters, no
+     * colour codes, not endless.
+     */
+    public static String clean(String text, int max) {
+        if (text == null) return null;
+        // colour codes go with the letter after them
+        String t = text.replaceAll("\u00a7.?", "");
+        StringBuilder b = new StringBuilder();
+        t.codePoints().filter(c -> c >= 0x20 && !Character.isISOControl(c)).limit(max).forEach(b::appendCodePoint);
+        return b.toString().trim();
+    }
+
+    /** What goes into a console command: plain words only, so it cannot become a second command or a flag. */
+    static String forCommand(String text) {
+        String t = clean(text == null ? "" : text, 120).replace(";", ",").replace("\\", "/");
+        while (t.startsWith("-") || t.startsWith("/")) t = t.substring(1);
+        return t.trim();
+    }
+
+    /** Only real Discord webhooks, nothing else on the internet. */
+    public static boolean isDiscordWebhook(String url) {
+        try {
+            java.net.URI u = java.net.URI.create(url.trim());
+            String host = u.getHost() == null ? "" : u.getHost().toLowerCase(Locale.ROOT);
+            return "https".equals(u.getScheme()) && u.getUserInfo() == null && u.getPort() == -1
+                    && Set.of("discord.com", "discordapp.com", "canary.discord.com", "ptb.discord.com").contains(host)
+                    && u.getPath() != null && u.getPath().startsWith("/api/webhooks/");
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    static String json(String text) {
+        StringBuilder b = new StringBuilder();
+        for (char c : text.toCharArray()) {
+            switch (c) {
+                case '"' -> b.append("\\\"");
+                case '\\' -> b.append("\\\\");
+                case '\n' -> b.append("\\n");
+                default -> {
+                    if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
+                    else b.append(c);
+                }
+            }
+        }
+        return b.toString();
     }
 
     // ---------------------------------------------------------------- log and Discord
@@ -821,17 +1041,24 @@ public final class Guard implements Listener {
         }
     }
 
+    private final java.util.ArrayDeque<Long> discordSent = new java.util.ArrayDeque<>();
+
     private void discord(String player, String mods, String action) {
         String url = cfg().getString("discord-webhook", "");
-        if (url.isBlank() || !url.startsWith("https://")) return;
-        String text = lang().raw("discord.line").replace("{player}", player).replace("{mods}", mods)
+        if (url.isBlank() || !isDiscordWebhook(url)) return;
+        // at most 20 messages a minute: a wave of joins must not get the webhook blocked
+        long now = System.currentTimeMillis();
+        while (!discordSent.isEmpty() && now - discordSent.peekFirst() > 60_000) discordSent.pollFirst();
+        if (discordSent.size() >= 20) return;
+        discordSent.addLast(now);
+        String text = lang().raw("discord.line").replace("{player}", player).replace("{mods}", clean(mods, 200))
                 .replace("{action}", lang().raw("action." + action.toLowerCase(Locale.ROOT)));
-        String json = "{\"content\":\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("@", "@​")
-                + "\",\"allowed_mentions\":{\"parse\":[]}}";
+        String body = "{\"content\":\"" + json(text.replace("@", "@\u200b")) + "\",\"allowed_mentions\":{\"parse\":[]}}";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
-                java.net.http.HttpClient.newHttpClient().send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(url))
-                        .header("Content-Type", "application/json").POST(java.net.http.HttpRequest.BodyPublishers.ofString(json)).build(),
+                java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(5)).build()
+                        .send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).timeout(java.time.Duration.ofSeconds(10))
+                                .header("Content-Type", "application/json").POST(java.net.http.HttpRequest.BodyPublishers.ofString(body)).build(),
                         java.net.http.HttpResponse.BodyHandlers.discarding());
             } catch (IOException | InterruptedException | IllegalArgumentException ignored) {
                 // Discord is optional

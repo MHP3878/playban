@@ -69,8 +69,8 @@ public final class Menus {
             m.set(12, item(Material.BARRIER, "menu.main.blocked", "count", guard().rules().size()), e -> blocked(p, 0));
             m.set(13, item(Material.NETHER_STAR, "menu.main.add"), e -> addMod(p));
             m.set(14, item(Material.KNOWLEDGE_BOOK, "menu.main.suggestions"), e -> suggestions(p, 0));
-            m.set(16, item(Material.COMPARATOR, "menu.main.settings"), e -> settings(p));
         }
+        if (p.hasPermission("modcheck.settings")) m.set(16, item(Material.COMPARATOR, "menu.main.settings"), e -> settings(p));
         if (p.hasPermission("modcheck.unban")) m.set(22, item(Material.IRON_BARS, "menu.main.bans", "count", guard().bans().size()), e -> bans(p, 0));
         m.fill().open(p);
     }
@@ -133,7 +133,7 @@ public final class Menus {
                 task.cancel();
                 return;
             }
-            if (guard().probing(t.getUniqueId()) && waited[0] < 400) return;
+            if (guard().probing(t.getUniqueId()) && waited[0] < 600) return;
             task.cancel();
             Guard.Info info = guard().info(t.getUniqueId());
             List<String> mods = guard().mods(t.getUniqueId());
@@ -239,6 +239,10 @@ public final class Menus {
             rule(p, id);
         });
         m.set(23, item(Material.COMMAND_BLOCK, "menu.rule.command", "value", r.command().isBlank() ? "-" : r.command()), e -> {
+            if (!p.hasPermission("modcheck.commands")) {
+                lang().send(p, "no-permission-commands");
+                return;
+            }
             if (e.isShiftClick()) {
                 set(id, "command", "");
                 rule(p, id);
@@ -299,6 +303,11 @@ public final class Menus {
     }
 
     public void settings(Player p) {
+        if (!p.hasPermission("modcheck.settings")) {
+            p.closeInventory();
+            lang().send(p, "no-permission");
+            return;
+        }
         var c = plugin.getConfig();
         Menu m = new Menu(6, lang().msg("menu.settings.title"));
         String action = c.getString("default-action", "WARN").toUpperCase(Locale.ROOT);
@@ -323,6 +332,11 @@ public final class Menus {
         });
         String banCmd = c.getString("ban-command", "");
         m.set(14, item(Material.COMMAND_BLOCK, "menu.settings.ban-command", "value", banCmd.isBlank() ? lang().raw("menu.settings.own-ban") : banCmd), e -> {
+            // a console command can do anything on the server: only for those allowed to set commands
+            if (!p.hasPermission("modcheck.commands")) {
+                lang().send(p, "no-permission-commands");
+                return;
+            }
             if (e.isShiftClick()) {
                 setGlobal("ban-command", "");
                 settings(p);
@@ -346,7 +360,8 @@ public final class Menus {
                 return;
             }
             plugin.input().ask(p, "input.webhook", text -> {
-                if (text.startsWith("https://")) setGlobal("discord-webhook", text);
+                if (Guard.isDiscordWebhook(text)) setGlobal("discord-webhook", text);
+                else lang().send(p, "input.webhook-wrong");
                 settings(p);
             }, () -> settings(p));
         });
@@ -364,6 +379,17 @@ public final class Menus {
         boolean sign = c.getBoolean("sign-check", true);
         m.set(30, item(sign ? Material.OAK_SIGN : Material.GRAY_DYE, "menu.settings.sign", "value", lang().raw(sign ? "word-on" : "word-off")), e -> {
             setGlobal("sign-check", !sign);
+            settings(p);
+        });
+        List<String> suspiciousActions = List.of("ALERT", "KICK", "WARN", "BAN");
+        String hidden = c.getString("hidden-action", "ALERT").toUpperCase(Locale.ROOT);
+        m.set(31, item(Material.SPYGLASS, "menu.settings.hidden", "value", actionName(hidden)), e -> {
+            setGlobal("hidden-action", next(suspiciousActions, suspiciousActions.contains(hidden) ? hidden : "ALERT"));
+            settings(p);
+        });
+        String noAnswer = c.getString("no-answer-action", "ALERT").toUpperCase(Locale.ROOT);
+        m.set(33, item(Material.CLOCK, "menu.settings.no-answer", "value", actionName(noAnswer)), e -> {
+            setGlobal("no-answer-action", next(suspiciousActions, suspiciousActions.contains(noAnswer) ? noAnswer : "ALERT"));
             settings(p);
         });
         String language = c.getString("language", "en");

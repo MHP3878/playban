@@ -51,6 +51,11 @@ not-allowed-action: KICK
 
 # The hidden sign check (a sign editor shows for a blink on join).
 sign-check: true
+# A client that blocks the sign check (it changes texts on its own: often a mod that hides mods, but
+# also some privacy mods): ALERT (only tell the team), KICK, WARN or BAN
+hidden-action: ALERT
+# A client that twice does not answer the sign at all (could be a cheat client, could be lag): same choices
+no-answer-action: ALERT
 
 # Discord webhook for alerts (optional). Empty = off.
 discord-webhook: ""

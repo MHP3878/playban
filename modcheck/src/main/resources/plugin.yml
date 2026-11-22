@@ -28,6 +28,8 @@ permissions:
       modcheck.notify: true
       modcheck.unban: true
       modcheck.reload: true
+      modcheck.settings: true
+      modcheck.commands: true
   modcheck.check:
     description: "/modcheck - see a player's client and mods"
     default: op
@@ -38,10 +40,16 @@ permissions:
     description: Is told when somebody joins with a blocked mod
     default: op
   modcheck.unban:
-    description: "/modcheck unban <player>"
+    description: "/modcheck unban <player> and /modcheck reset <player>"
     default: op
   modcheck.reload:
     description: "/modcheck reload"
+    default: op
+  modcheck.settings:
+    description: General settings (default punishment, mode, Discord ...)
+    default: op
+  modcheck.commands:
+    description: Set console commands (ban command, command per mod); this is server-wide power
     default: op
   modcheck.bypass:
     description: Never checked

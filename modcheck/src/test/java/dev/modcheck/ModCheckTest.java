@@ -76,6 +76,11 @@ class ModCheckTest {
         assertEquals("Mod: Freecam", Guard.fill("Mod: [mod]", "Freecam"));
     }
 
+    /** What the server does when a player leaves (MockBukkit's kick does not). */
+    private void leave(PlayerMock p) {
+        plugin.guard().onQuit(new org.bukkit.event.player.PlayerQuitEvent(p, Component.empty(), org.bukkit.event.player.PlayerQuitEvent.QuitReason.KICKED));
+    }
+
     @Test
     void warnKicksFirstThenBans() {
         plugin.guard().info(steve.getUniqueId()).channels.add("freecam:main");
@@ -85,6 +90,10 @@ class ModCheckTest {
         PlayerMock again = server.addPlayer("Steve2");
         plugin.guard().info(again.getUniqueId()).channels.add("freecam:main");
         plugin.guard().judge(again);
+        plugin.guard().judge(again);
+        assertNull(plugin.guard().ban(again.getUniqueId()), "the same session is not judged twice for the same mod");
+        leave(again);
+        plugin.guard().info(again.getUniqueId()).channels.add("freecam:main");
         plugin.guard().judge(again);
         assertNotNull(plugin.guard().ban(again.getUniqueId()), "next time: banned");
         assertTrue(plugin.guard().ban(again.getUniqueId()).reason().contains("Freecam"), "the reason names the mod");
@@ -227,6 +236,7 @@ class ModCheckTest {
         assertNull(plugin.guard().ban(steve.getUniqueId()));
         assertEquals(1, plugin.guard().recentOffenses(steve.getUniqueId()));
         // back again the same day: the same account
+        leave(steve);
         PlayerMock back = new PlayerMock(server, "Steve", steve.getUniqueId());
         server.addPlayer(back);
         plugin.guard().info(back.getUniqueId()).channels.add("freecam:main");
@@ -328,5 +338,106 @@ class ModCheckTest {
                 Component.empty(), Component.empty()));
         assertEquals("works", g.info(sixth.getUniqueId()).sign);
         assertTrue(g.info(sixth.getUniqueId()).found.contains("meteor"));
+    }
+
+    @Test
+    void textFromClientsIsCleanedAndCannotBreakOutOfCommands() {
+        assertEquals("evilclient", Guard.clean("evil\n\u00a7cclient\u0000", 48), "no line breaks, colour codes or zero bytes");
+        assertEquals(10, Guard.clean("x".repeat(500), 10).length());
+        assertFalse(Guard.clean("a\nb\rc\u0007", 48).chars().anyMatch(c -> c < 0x20));
+        String cmd = Guard.forCommand("-s Forbidden mod; op Evil\n/stop");
+        assertFalse(cmd.contains(";"));
+        assertFalse(cmd.startsWith("-"));
+        assertFalse(cmd.contains("\n"));
+        assertEquals("{\\\"a\\\\b\\n\\u0001", Guard.json("{\"a\\b\n\u0001"));
+    }
+
+    @Test
+    void onlyRealDiscordWebhooks() {
+        assertTrue(Guard.isDiscordWebhook("https://discord.com/api/webhooks/123/abc"));
+        assertTrue(Guard.isDiscordWebhook("https://ptb.discord.com/api/webhooks/123/abc"));
+        assertFalse(Guard.isDiscordWebhook("http://discord.com/api/webhooks/123/abc"), "no plain http");
+        assertFalse(Guard.isDiscordWebhook("https://discord.com.evil.net/api/webhooks/1/a"));
+        assertFalse(Guard.isDiscordWebhook("https://evil.net/api/webhooks/1/a"));
+        assertFalse(Guard.isDiscordWebhook("https://user@discord.com/api/webhooks/1/a"));
+        assertFalse(Guard.isDiscordWebhook("https://discord.com/channels/1/2"));
+        assertFalse(Guard.isDiscordWebhook("not a link"));
+    }
+
+    @Test
+    void shortNamesDoNotHitEveryChannel() {
+        assertTrue(Guard.channelMatches("xaerominimap:main", "xaerominimap"));
+        assertTrue(Guard.channelMatches("freecam:main", "freecam"));
+        assertFalse(Guard.channelMatches("xaerominimap:main", "map"), "a short name only counts exactly");
+        assertFalse(Guard.channelMatches("fabric:anything", "ab"));
+        assertTrue(Guard.channelMatches("advanced-xray:sync", "advanced-xray"));
+        assertNull(plugin.guard().block("ab", "test"), "two letters are too short to block");
+        plugin.guard().block("map", "test");
+        plugin.guard().info(steve.getUniqueId()).channels.add("xaerominimap:main");
+        plugin.guard().judge(steve);
+        assertTrue(steve.isOnline(), "blocking 'map' does not kick a minimap player by accident");
+    }
+
+    @Test
+    void moderatorsCannotSetConsoleCommandsOrSettings() {
+        PlayerMock mod = server.addPlayer("Mod");
+        mod.addAttachment(plugin, "modcheck.block", true);
+        mod.addAttachment(plugin, "modcheck.check", true);
+        plugin.menus().settings(mod);
+        assertNotEquals(net.kyori.adventure.text.Component.text("x"), mod.getOpenInventory().title());
+        assertFalse(plain(mod.getOpenInventory().title()).contains("Settings") || plain(mod.getOpenInventory().title()).contains("Einstellungen"),
+                "the general settings are for admins");
+        plugin.menus().rule(mod, "meteor");
+        mod.simulateInventoryClick(23);
+        assertFalse(plugin.input().waitingFor(mod.getUniqueId()), "no console command from a moderator");
+        // the admin may
+        plugin.menus().rule(admin, "meteor");
+        admin.simulateInventoryClick(23);
+        assertTrue(plugin.input().waitingFor(admin.getUniqueId()));
+    }
+
+    @Test
+    void oneCheckAtATimeAndAlertsOnlyOnce() {
+        var g = plugin.guard();
+        // a check is running (questions on the sign): a second one waits for it
+        g.expectRows(steve, List.of(List.of(Guard.control())));
+        g.probe(steve, true);
+        assertTrue(g.probing(steve.getUniqueId()));
+        g.answer(steve, List.of(Component.text("Jump"), Component.empty(), Component.empty(), Component.empty()));
+        server.getScheduler().performTicks(40);
+        assertFalse(g.probing(steve.getUniqueId()), "the waiting check ran afterwards");
+        // an alert-only mod is reported once per session, not on every check
+        plugin.getConfig().set("rules.freecam.action", "ALERT");
+        plugin.getConfig().set("repeat.window", "1d");
+        plugin.getConfig().set("repeat.count-alerts", true);
+        plugin.getConfig().set("repeat.times", 5);
+        g.info(steve.getUniqueId()).channels.add("freecam:main");
+        g.judge(steve);
+        g.judge(steve);
+        g.judge(steve);
+        assertEquals(1, g.recentOffenses(steve.getUniqueId()));
+        assertTrue(steve.isOnline());
+    }
+
+    @Test
+    void aClientThatBlocksTheCheckIsHandledAsSet() {
+        var g = plugin.guard();
+        List<Guard.Ask> first = new ArrayList<>();
+        first.add(Guard.control());
+        first.addAll(Guard.dummies());
+        g.expectRows(steve, List.of(first));
+        g.answer(steve, List.of(Component.text("key.jump|modcheck.probe.none|modcheck.probe.none"), Component.empty(), Component.empty(), Component.empty()));
+        assertEquals("blocked", g.info(steve.getUniqueId()).sign);
+        assertTrue(steve.isOnline(), "by default only the team is told");
+        PlayerMock other = server.addPlayer("Other");
+        plugin.getConfig().set("hidden-action", "KICK");
+        g.expectRows(other, List.of(first));
+        g.answer(other, List.of(Component.text("Jump|modcheck.probe.none|modcheck.probe.none"), Component.empty(), Component.empty(), Component.empty()));
+        assertFalse(other.isOnline(), "set to kick: kicked");
+        PlayerMock staff = server.addPlayer("Staff");
+        staff.addAttachment(plugin, "modcheck.bypass", true);
+        g.expectRows(staff, List.of(first));
+        g.answer(staff, List.of(Component.text("key.jump||"), Component.empty(), Component.empty(), Component.empty()));
+        assertTrue(staff.isOnline(), "bypass is never punished");
     }
 }

@@ -101,7 +101,7 @@ menu:
     mod-passed: "<green>Für diesen Spieler erlaubt"
     mod-free: "<gray>Nicht gesperrt"
     mod-click: "<#4facfe>Klick: bestrafen oder durchlassen"
-    info: ["<gray>Client: <white>{client}", "<gray>Mod-Kanäle: <white>{channels}", "<gray>Verwarnungen: <white>{warnings}"]
+    info: ["<gray>Client: <white>{client}", "<gray>Mod-Kanäle: <white>{channels}", "<gray>Verwarnungen: <white>{warnings}", "<gray>Zuletzt mit gesperrter Mod gekommen: <white>{recent}"]
     recheck:
       name: "<#4facfe>Nochmal prüfen"
       lore: ["<gray>Client-Name, Kanäle und das", "<gray>versteckte Schild nochmal."]
@@ -195,9 +195,34 @@ menu:
     sign:
       name: "<#4facfe><bold>Verstecktes Schild"
       lore: ["<gray>Jetzt: <white>{value}", "<gray>Fragt den Client nach Mod-Texten;", "<gray>ein Schild-Editor blitzt kurz auf.", "", "<#4facfe>Klick zum Umschalten"]
+    repeat-window:
+      name: "<#4facfe><bold>Wiederkommen: innerhalb von"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Ändern"]
+    repeat-times:
+      name: "<#4facfe><bold>Wiederkommen: wie oft"
+      lore: ["<gray>Jetzt: <white>{value}-mal", "", "<#4facfe>Klick zum Ändern"]
+    repeat-action:
+      name: "<#4facfe><bold>Wiederkommen: dann"
+      lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Ändern"]
+    repeat-rule:
+      name: "<white><bold>Regel fürs Wiederkommen"
+      "on": ["<gray>Wer innerhalb von <white>{window}</white>", "<white>{times}-mal</white> <gray>mit einer verbotenen Mod joint,", "<gray>bekommt: <red>{punish}"]
+      "off": ["<gray>Aus. Links eine Zeit einstellen,", "<gray>um sie einzuschalten."]
     language:
       name: "<#4facfe><bold>Sprache"
       lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Umschalten"]
   bans:
     title: "<dark_gray>Gebannte Spieler ({count})"
     entry: ["<gray>Grund: <white>{reason}", "<gray>Dauer: <white>{time}", "", "<red>Shift-Klick: entbannen"]
+
+repeat:
+  suffix: "(erneut in kurzer Zeit)"
+  alert-action: "ist damit wiedergekommen → {action}"
+  ban: "Bann {time}"
+  window:
+    "off": "aus"
+    10m: "10 Minuten"
+    1h: "1 Stunde"
+    1d: "1 Tag"
+    7d: "7 Tage"
+    30d: "30 Tage"

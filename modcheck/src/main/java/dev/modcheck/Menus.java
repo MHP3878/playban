@@ -105,7 +105,7 @@ public final class Menus {
             return Menu.item(isBlocked ? Material.RED_CONCRETE : passed ? Material.LIME_CONCRETE : Material.BOOK, lang().msg("menu.player.mod", "mod", guard().display(mod)), lore);
         }, (mod, e) -> modAction(p, t, mod), n -> {}, () -> players(p, 0));
         List<Component> head = new ArrayList<>(lang().lore("menu.player.info", "client", info.brand == null ? "?" : info.brand,
-                "channels", info.channels.size(), "warnings", guard().warnings(t.getUniqueId())));
+                "channels", info.channels.size(), "warnings", guard().warnings(t.getUniqueId()), "recent", guard().recentOffenses(t.getUniqueId())));
         m.set(47, Menu.head(t, lang().msg("menu.players.name", "player", t.getName()), head), null);
         m.set(51, item(Material.OAK_SIGN, "menu.player.recheck"), e -> {
             guard().judge(t);
@@ -271,7 +271,7 @@ public final class Menus {
 
     public void settings(Player p) {
         var c = plugin.getConfig();
-        Menu m = new Menu(5, lang().msg("menu.settings.title"));
+        Menu m = new Menu(6, lang().msg("menu.settings.title"));
         String action = c.getString("default-action", "WARN").toUpperCase(Locale.ROOT);
         m.set(10, item(Material.ANVIL, "menu.settings.action", "value", actionName(action)), e -> {
             setGlobal("default-action", next(Guard.ACTIONS, action));
@@ -344,8 +344,39 @@ public final class Menus {
             lang().load(nextLang);
             settings(p);
         });
-        m.set(40, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
+        // one rule for coming back again and again, as one sentence with three parts to click
+        String window = c.getString("repeat.window", "off");
+        if (!Guard.REPEAT_WINDOWS.contains(window)) window = "off";
+        final String windowNow = window;
+        int times = c.getInt("repeat.times", 2);
+        String punish = c.getString("repeat.action", "BAN 7d");
+        boolean repeatOn = !window.equals("off");
+        String windowText = lang().raw("repeat.window." + window.toLowerCase(Locale.ROOT));
+        String punishText = repeatPunish(punish);
+        m.set(37, item(Material.CLOCK, "menu.settings.repeat-window", "value", windowText), e -> {
+            setGlobal("repeat.window", next(Guard.REPEAT_WINDOWS, windowNow));
+            settings(p);
+        });
+        m.set(38, item(Material.REPEATER, "menu.settings.repeat-times", "value", times), e -> {
+            setGlobal("repeat.times", times >= 5 ? 2 : times + 1);
+            settings(p);
+        });
+        m.set(39, item(Material.IRON_BARS, "menu.settings.repeat-action", "value", punishText), e -> {
+            setGlobal("repeat.action", next(Guard.REPEAT_ACTIONS, punish));
+            settings(p);
+        });
+        m.set(41, Menu.item(repeatOn ? Material.WRITTEN_BOOK : Material.BOOK, lang().msg("menu.settings.repeat-rule.name"),
+                lang().lore(repeatOn ? "menu.settings.repeat-rule.on" : "menu.settings.repeat-rule.off", "window", windowText, "times", times,
+                        "punish", punishText)), null);
+        m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
         m.fill().open(p);
+    }
+
+    private String repeatPunish(String action) {
+        String[] parts = action.trim().split("\\s+", 2);
+        if (!parts[0].equalsIgnoreCase("BAN")) return lang().raw("action.kick");
+        String d = parts.length > 1 ? parts[1] : "perm";
+        return lang().raw("repeat.ban").replace("{time}", d.equals("perm") ? lang().raw("ban.forever") : d);
     }
 
     // ---------------------------------------------------------------- bans

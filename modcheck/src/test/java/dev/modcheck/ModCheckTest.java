@@ -210,4 +210,51 @@ class ModCheckTest {
         assertTrue(admin.performCommand("modunblock meteor"));
         assertNull(plugin.getConfig().getConfigurationSection("rules.meteor"));
     }
+
+    @Test
+    void comingBackTooOftenGetsTheRepeatPunishment() {
+        plugin.getConfig().set("repeat.window", "1d");
+        plugin.getConfig().set("repeat.times", 2);
+        plugin.getConfig().set("repeat.action", "BAN 30d");
+        plugin.getConfig().set("rules.freecam.action", "KICK");
+        plugin.guard().info(steve.getUniqueId()).channels.add("freecam:main");
+        plugin.guard().judge(steve);
+        assertFalse(steve.isOnline(), "first time: the normal action, a kick");
+        assertNull(plugin.guard().ban(steve.getUniqueId()));
+        assertEquals(1, plugin.guard().recentOffenses(steve.getUniqueId()));
+        // back again the same day: the same account
+        PlayerMock back = new PlayerMock(server, "Steve", steve.getUniqueId());
+        server.addPlayer(back);
+        plugin.guard().info(back.getUniqueId()).channels.add("freecam:main");
+        plugin.guard().judge(back);
+        var ban = plugin.guard().ban(back.getUniqueId());
+        assertNotNull(ban, "second time within a day: banned");
+        long days = (ban.until() - System.currentTimeMillis()) / 86_400_000L;
+        assertTrue(days >= 29 && days <= 30, "for 30 days");
+        assertTrue(ban.reason().contains("Freecam"));
+    }
+
+    @Test
+    void repeatRuleIsOneSentenceWithThreeClicks() {
+        plugin.getConfig().set("repeat.window", "off");
+        plugin.menus().settings(admin);
+        admin.simulateInventoryClick(37);
+        assertEquals("10m", plugin.getConfig().getString("repeat.window"), "off -> 10 minutes");
+        admin.simulateInventoryClick(38);
+        assertEquals(3, plugin.getConfig().getInt("repeat.times"));
+        admin.simulateInventoryClick(39);
+        assertEquals("BAN 30d", plugin.getConfig().getString("repeat.action"), "BAN 7d -> BAN 30d");
+        var rule = admin.getOpenInventory().getTopInventory().getItem(41);
+        String text = String.join(" ", rule.getItemMeta().lore().stream().map(ModCheckTest::plain).toList());
+        assertTrue(text.contains("3 times") && text.contains("10 minutes") && text.contains("30d"), text);
+        // off again: nothing counts
+        plugin.getConfig().set("repeat.window", "off");
+        plugin.getConfig().set("rules.freecam.action", "KICK");
+        for (int i = 0; i < 3; i++) {
+            PlayerMock p = server.addPlayer("Again" + i);
+            plugin.guard().info(p.getUniqueId()).channels.add("freecam:main");
+            plugin.guard().judge(p);
+            assertNull(plugin.guard().ban(p.getUniqueId()));
+        }
+    }
 }

@@ -30,6 +30,16 @@ ban-duration: 7d
 # {player} {duration} {reason} {mods} are filled in. Example: "tempban {player} {duration} {reason}"
 ban-command: ""
 
+# Coming back again and again: whoever joins with a blocked mod <times> times within <window>
+# gets <action> instead of the normal action. window: off, 10m, 1h, 1d, 7d, 30d.
+# action: KICK, BAN 1d, BAN 7d, BAN 30d, BAN perm
+repeat:
+  window: 1d
+  times: 2
+  action: BAN 7d
+  # also count mods that are set to only tell the team
+  count-alerts: false
+
 # Tell the team (permission modcheck.notify) when somebody joins with a blocked mod
 notify-team: true
 

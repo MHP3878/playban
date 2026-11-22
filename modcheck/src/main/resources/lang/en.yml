@@ -101,7 +101,7 @@ menu:
     mod-passed: "<green>Allowed for this player"
     mod-free: "<gray>Not blocked"
     mod-click: "<#4facfe>Click: punish or let pass"
-    info: ["<gray>Client: <white>{client}", "<gray>Mod channels: <white>{channels}", "<gray>Warnings: <white>{warnings}"]
+    info: ["<gray>Client: <white>{client}", "<gray>Mod channels: <white>{channels}", "<gray>Warnings: <white>{warnings}", "<gray>Came with a blocked mod recently: <white>{recent}"]
     recheck:
       name: "<#4facfe>Check again"
       lore: ["<gray>Client name, channels and the", "<gray>hidden sign once more."]
@@ -195,9 +195,34 @@ menu:
     sign:
       name: "<#4facfe><bold>Hidden sign check"
       lore: ["<gray>Now: <white>{value}", "<gray>Asks the client for mod texts;", "<gray>a sign editor shows for a blink.", "", "<#4facfe>Click to switch"]
+    repeat-window:
+      name: "<#4facfe><bold>Coming back: within"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    repeat-times:
+      name: "<#4facfe><bold>Coming back: how often"
+      lore: ["<gray>Now: <white>{value} times", "", "<#4facfe>Click to change"]
+    repeat-action:
+      name: "<#4facfe><bold>Coming back: then"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    repeat-rule:
+      name: "<white><bold>Rule for coming back"
+      "on": ["<gray>Whoever joins <white>{times} times</white> within", "<white>{window}</white> <gray>with a blocked mod", "<gray>gets: <red>{punish}"]
+      "off": ["<gray>Off. Set a time on the left", "<gray>to switch it on."]
     language:
       name: "<#4facfe><bold>Language"
       lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to switch"]
   bans:
     title: "<dark_gray>Banned players ({count})"
     entry: ["<gray>Reason: <white>{reason}", "<gray>Time: <white>{time}", "", "<red>Shift-click to unban"]
+
+repeat:
+  suffix: "(again within a short time)"
+  alert-action: "came back again with it → {action}"
+  ban: "ban {time}"
+  window:
+    "off": "off"
+    10m: "10 minutes"
+    1h: "1 hour"
+    1d: "1 day"
+    7d: "7 days"
+    30d: "30 days"

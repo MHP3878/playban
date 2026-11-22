@@ -29,6 +29,8 @@ The server owner sets in the menu what happens for each mod; moderators only pre
 
 Everything a mod does not set itself comes from the general settings: default action, reason, ban length, warnings, ban with ModCheck's own ban or your ban plugin's command, team alerts, Discord webhook, block list or allow list (only listed clients may join), the hidden sign check and the language (English, German).
 
+**Coming back again and again** is one rule, written as one sentence in the settings with three parts to click: "Whoever joins **2** times within **1 day** with a blocked mod gets **a 7-day ban**." Time (off, 10 minutes to 30 days), how often (2 to 5) and the punishment (kick, ban 1 day, 7 days, 30 days, permanent). Every join with any blocked mod counts; when the limit is reached, this punishment comes instead of the normal one.
+
 **Let pass** allows that one mod for that one player for good.
 
 ## How mods are found, honestly

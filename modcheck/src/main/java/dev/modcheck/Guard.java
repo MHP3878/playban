@@ -394,15 +394,51 @@ public final class Guard implements Listener {
         enforce(p, r, action(r), display(mod), false);
     }
 
+    public static final List<String> REPEAT_WINDOWS = List.of("off", "10m", "1h", "1d", "7d", "30d");
+    public static final List<String> REPEAT_ACTIONS = List.of("KICK", "BAN 1d", "BAN 7d", "BAN 30d", "BAN perm");
+
+    /** How often this player came with a blocked mod within the repeat window (this time included). */
+    public int recentOffenses(UUID id) {
+        long window = Time.parse(cfg().getString("repeat.window", "off"));
+        if (window <= 0) return 0;
+        long now = System.currentTimeMillis();
+        int n = 0;
+        for (long t : data.getLongList("offenses." + id)) if (now - t <= window) n++;
+        return n;
+    }
+
+    /** Notes this offense; returns the repeat punishment when the limit is reached, else null. */
+    private String repeat(UUID id) {
+        long window = Time.parse(cfg().getString("repeat.window", "off"));
+        if (window <= 0) return null;
+        long now = System.currentTimeMillis();
+        List<Long> times = new ArrayList<>();
+        for (long t : data.getLongList("offenses." + id)) if (now - t <= window) times.add(t);
+        times.add(now);
+        data.set("offenses." + id, times);
+        save();
+        return times.size() >= cfg().getInt("repeat.times", 2) ? cfg().getString("repeat.action", "BAN 7d") : null;
+    }
+
     private void enforce(Player p, Rule rule, String action, String mods, boolean client) {
         String reason = fill(reason(rule), mods);
-        boolean notify = rule == null || rule.tellTeam();
-        if (notify && cfg().getBoolean("notify-team", true)) {
-            Component line = lang().prefixed(client ? "alert.client" : "alert.mod", "player", p.getName(), "mods", mods,
-                    "action", lang().raw("action." + action.toLowerCase(Locale.ROOT))).clickEvent(ClickEvent.runCommand("/modcheck " + p.getName()));
-            for (Player staff : Bukkit.getOnlinePlayers()) if (staff.hasPermission("modcheck.notify")) staff.sendMessage(line);
-            Bukkit.getConsoleSender().sendMessage(line);
+        // came back with a blocked mod too often in a short time: the repeat punishment instead
+        String again = action.equals("ALERT") && !cfg().getBoolean("repeat.count-alerts", false) ? null : repeat(p.getUniqueId());
+        if (again != null) {
+            reason = reason + " " + lang().raw("repeat.suffix");
+            String[] parts = again.trim().split("\\s+", 2);
+            if (parts[0].equalsIgnoreCase("BAN")) {
+                log("ModCheck", "repeat ban", p.getName(), mods);
+                alertTeam(p, mods, lang().raw("repeat.alert-action").replace("{action}", again), client, rule);
+                banFor(p, reason, parts.length > 1 ? parts[1] : "perm");
+            } else {
+                log("ModCheck", "repeat kick", p.getName(), mods);
+                alertTeam(p, mods, lang().raw("repeat.alert-action").replace("{action}", again), client, rule);
+                p.kick(lang().msg("kick.screen", "reason", reason));
+            }
+            return;
         }
+        alertTeam(p, mods, lang().raw("action." + action.toLowerCase(Locale.ROOT)), client, rule);
         if (rule == null || rule.discord()) discord(p.getName(), mods, action);
         log("ModCheck", action.toLowerCase(Locale.ROOT), p.getName(), mods);
         switch (action) {
@@ -422,8 +458,20 @@ public final class Guard implements Listener {
         }
     }
 
+    private void alertTeam(Player p, String mods, String what, boolean client, Rule rule) {
+        boolean notify = rule == null || rule.tellTeam();
+        if (!notify || !cfg().getBoolean("notify-team", true)) return;
+        Component line = lang().prefixed(client ? "alert.client" : "alert.mod", "player", p.getName(), "mods", mods, "action", what)
+                .clickEvent(ClickEvent.runCommand("/modcheck " + p.getName()));
+        for (Player staff : Bukkit.getOnlinePlayers()) if (staff.hasPermission("modcheck.notify")) staff.sendMessage(line);
+        Bukkit.getConsoleSender().sendMessage(line);
+    }
+
     private void banNow(Player p, Rule rule, String reason) {
-        String dur = duration(rule);
+        banFor(p, reason, duration(rule));
+    }
+
+    private void banFor(Player p, String reason, String dur) {
         String external = cfg().getString("ban-command", "");
         if (!external.isBlank()) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), external.replace("{player}", p.getName()).replace("{duration}", dur)

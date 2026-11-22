@@ -132,7 +132,7 @@ public final class Commands implements TabExecutor {
             return;
         }
         if (sender instanceof Player p) {
-            plugin.menus().player(p, t);
+            plugin.menus().check(p, t);
             return;
         }
         Guard.Info info = guard().info(t.getUniqueId());

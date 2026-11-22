@@ -44,6 +44,13 @@ check:
   header: "<white>{player}</white><gray>: client <white>{client}</white>, warnings <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
   channels: "<gray>Mod channels: <white>{channels}"
+  running: "<gray>Checking <white>{player}</white> ... <dark_gray>(a sign may blink for a moment)"
+  result: "<white><bold>{player}</bold></white><gray>: client <white>{client}</white>, <white>{count}</white> mod(s): <white>{mods}"
+  result-works: "<green>✔ Check worked. What the client has is listed."
+  result-blocked: "<red>✘ This client hides its mods. Only the client name is known."
+  result-no-answer: "<gold>? The client did not answer. Try again on solid ground."
+  result-impossible: "<gold>? No check possible here. Stand on solid ground and try again."
+  result-unknown: "<gray>? Not checked yet."
 
 block:
   usage: "<gray>Usage: <white>/modblock <mod name></white>, e.g. <white>/modblock freecam</white>"
@@ -113,8 +120,8 @@ menu:
       name: "<#4facfe>Check again"
       lore: ["<gray>Client name, channels and the", "<gray>hidden sign, also for well-known", "<gray>everyday mods (Sodium, Iris ...).", "<gray>The result shows after a few seconds."]
     none:
-      name: "<green>No mods found"
-      lore: ["<gray>Either vanilla, or mods that", "<gray>do not give themselves away."]
+      clean: "<green>No mods found"
+      hidden: "<gray>Mods unknown"
   decide:
     title: "<dark_gray>{player}: {mod}"
     blocked: ["<red>Blocked", "", "<gray>Punish does: <white>{action}", "<gray>Reason: <white>{reason}", "<gray>Ban length: <white>{duration}"]

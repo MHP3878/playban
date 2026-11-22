@@ -535,6 +535,11 @@ public final class Guard implements Listener {
 
     private static final String CONTROL = "__control";
 
+    /** True while the sign check for this player still runs. */
+    public boolean probing(UUID id) {
+        return waiting.containsKey(id) || asked.containsKey(id);
+    }
+
     private void nextSign(Player p) {
         List<String[]> left = waiting.get(p.getUniqueId());
         if (left == null || left.isEmpty() || !p.isOnline()) {

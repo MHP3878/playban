@@ -135,6 +135,8 @@ class ModCheckTest {
         assertTrue(plugin.guard().mods(steve.getUniqueId()).contains("xaerominimap"), "a mod that is not blocked still shows");
         assertTrue(plugin.guard().hits(steve.getUniqueId()).isEmpty());
         admin.performCommand("modcheck Steve");
+        // the check runs first (sign may not answer in tests), then the page opens on its own
+        server.getScheduler().performTicks(420);
         assertTrue(plain(admin.getOpenInventory().title()).contains("Steve"));
         assertNoMissingTexts("player page");
         plugin.menus().modAction(admin, steve, "xaerominimap");

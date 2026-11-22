@@ -44,6 +44,13 @@ check:
   header: "<white>{player}</white><gray>: Client <white>{client}</white>, Verwarnungen <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
   channels: "<gray>Mod-Kanäle: <white>{channels}"
+  running: "<gray>Prüfe <white>{player}</white> ... <dark_gray>(kurz kann ein Schild aufblinken)"
+  result: "<white><bold>{player}</bold></white><gray>: Client <white>{client}</white>, <white>{count}</white> Mod(s): <white>{mods}"
+  result-works: "<green>✔ Prüfung hat geklappt. Was der Client hat, steht da."
+  result-blocked: "<red>✘ Dieser Client versteckt seine Mods. Nur der Client-Name ist bekannt."
+  result-no-answer: "<gold>? Keine Antwort vom Client. Auf festem Boden nochmal versuchen."
+  result-impossible: "<gold>? Hier keine Prüfung möglich. Auf festen Boden stellen und nochmal."
+  result-unknown: "<gray>? Noch nicht geprüft."
 
 block:
   usage: "<gray>Benutzung: <white>/modblock <mod-name></white>, z. B. <white>/modblock freecam</white>"
@@ -113,8 +120,8 @@ menu:
       name: "<#4facfe>Nochmal prüfen"
       lore: ["<gray>Client-Name, Kanäle und das versteckte", "<gray>Schild, auch für bekannte normale Mods", "<gray>(Sodium, Iris ...). Das Ergebnis kommt", "<gray>nach ein paar Sekunden."]
     none:
-      name: "<green>Keine Mods gefunden"
-      lore: ["<gray>Entweder Vanilla, oder Mods, die", "<gray>sich nicht verraten."]
+      clean: "<green>Keine Mods gefunden"
+      hidden: "<gray>Mods unbekannt"
   decide:
     title: "<dark_gray>{player}: {mod}"
     blocked: ["<red>Gesperrt", "", "<gray>Bestrafen macht: <white>{action}", "<gray>Grund: <white>{reason}", "<gray>Bann-Dauer: <white>{duration}"]

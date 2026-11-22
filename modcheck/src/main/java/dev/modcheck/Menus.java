@@ -108,15 +108,42 @@ public final class Menus {
                 "channels", info.channels.size(), "warnings", guard().warnings(t.getUniqueId()), "recent", guard().recentOffenses(t.getUniqueId())));
         head.add(lang().msg("menu.player.sign." + info.sign));
         m.set(47, Menu.head(t, lang().msg("menu.players.name", "player", t.getName()), head), null);
-        m.set(51, item(Material.OAK_SIGN, "menu.player.recheck"), e -> {
-            guard().judge(t);
-            if (t.isOnline()) guard().probe(t, true);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (p.isOnline() && t.isOnline()) player(p, t);
-            }, 120L);
-        });
-        if (mods.isEmpty()) m.set(22, item(Material.LIME_DYE, "menu.player.none"), null);
+        m.set(51, item(Material.OAK_SIGN, "menu.player.recheck"), e -> check(p, t));
+        if (mods.isEmpty()) {
+            boolean seen = info.sign.equals("works");
+            m.set(22, Menu.item(seen ? Material.LIME_DYE : Material.GRAY_DYE, lang().msg("menu.player.none." + (seen ? "clean" : "hidden")),
+                    List.of(lang().msg("menu.player.sign." + info.sign))), null);
+        }
         m.open(p);
+    }
+
+    /**
+     * The whole check in one go: client name, channels and the hidden sign. Says in chat that it runs,
+     * writes the result in chat when done and then opens the player's page.
+     */
+    public void check(Player p, Player t) {
+        p.closeInventory();
+        lang().send(p, "check.running", "player", t.getName());
+        guard().judge(t);
+        guard().probe(t, true);
+        int[] waited = {0};
+        Bukkit.getScheduler().runTaskTimer(plugin, task -> {
+            waited[0] += 10;
+            if (!p.isOnline() || !t.isOnline()) {
+                task.cancel();
+                return;
+            }
+            if (guard().probing(t.getUniqueId()) && waited[0] < 400) return;
+            task.cancel();
+            Guard.Info info = guard().info(t.getUniqueId());
+            List<String> mods = guard().mods(t.getUniqueId());
+            List<String> names = new ArrayList<>();
+            for (String mod : mods) names.add(guard().display(mod));
+            lang().send(p, "check.result", "player", t.getName(), "client", info.brand == null ? "?" : info.brand,
+                    "count", mods.size(), "mods", names.isEmpty() ? "-" : String.join(", ", names));
+            lang().send(p, "check.result-" + info.sign);
+            player(p, t);
+        }, 10L, 10L);
     }
 
     /** Punish (what the settings say) or let pass, for one mod of one player. */

@@ -412,6 +412,7 @@ public final class AdminMenus {
             new GuideEntry("unprison", "/unprison <player>", Material.TRIPWIRE_HOOK, "staffcore.prison"),
             new GuideEntry("troll", "/troll <player> [joke]", Material.EGG, "staffcore.troll"),
             new GuideEntry("admin", "/admin", Material.NETHERITE_CHESTPLATE, "staffcore.panel"),
+            new GuideEntry("modblock", "/modblock <mod> [kick|ban|warn|alert]", Material.BARRIER, "staffcore.modblock"),
             new GuideEntry("check", "/check <player>", Material.SPYGLASS, "staffcore.check"),
             new GuideEntry("status", "/status <player>, /release <player>", Material.MILK_BUCKET, "staffcore.staff"),
             new GuideEntry("lag", "/lag, /cleanup [all]", Material.REDSTONE, "staffcore.lag"),

@@ -89,6 +89,7 @@ inventory-mode:
   CLEAR: "delete for good"
 
 guide:
+  modblock: ["<gray>Forbid a mod just by its name:", "<gray>/modblock freecam, /modblock meteor ban.", "<gray>Tab suggests known mods; without a", "<gray>name a menu opens. /modunblock allows."]
   status: ["<gray>What lies on a player: frozen,", "<gray>handcuffs, prison, PlayBan, mute, ban,", "<gray>watched. A click lifts it.", "<gray>/release lifts everything at once."]
   mods: ["<gray>Which client and which mods a player", "<gray>has, as far as the client tells.", "<gray>/mods reset <player> clears warnings."]
   check: ["<gray>Everything about a player on one", "<gray>live page: ping, client, clicks,", "<gray>anti-cheat points and findings,", "<gray>last commands, and buttons for", "<gray>inventory, freeze, watch, punish."]
@@ -1810,6 +1811,12 @@ module-setting:
       name: "<white>What a hit does"
       lore: ["<gray>KICK, PlayBan, ban or a category."]
   mod-guard:
+    default-action:
+      name: "<white>Default action"
+      lore: ["<gray>What /modblock does when no", "<gray>action is typed."]
+    ban:
+      name: "<white>Ban length"
+      lore: ["<gray>For mods set to ban."]
     mode:
       name: "<white>Mode"
       lore: ["<gray>BLOCKLIST: all but the rules.", "<gray>ALLOWLIST: only allowed clients."]
@@ -2263,3 +2270,35 @@ rights:
   op: "<gold>⚠ <white>{player}</white> <gray>was made <white>OP</white> by <white>{by}</white>."
   reverted: "<gray><white>{player}</white> was set back to survival (creative-guard)."
   unknown: "unknown (a plugin or a command block)"
+
+modblock:
+  title: "<dark_gray>Blocked mods ({count})"
+  prompt: "<#ffc371>Type the mod's name, e.g. <white>freecam</white> or <white>beelocator-21.11.jar</white>. Optionally an action after it: kick, ban, warn, alert."
+  did-you-mean: "<gray>No known mod called <white>{mod}</white>. Did you mean:"
+  suggestion: "<#ffc371>  ▶ {mod} <dark_gray>({id}) <gray>click to block"
+  as-typed: "<gray>  ▶ Block it as <white>{mod}</white> anyway <dark_gray>(click)"
+  empty: "<red>Type a name, e.g. <white>/modblock freecam</white>."
+  blocked-known: "<green><white>{mod}</white> is blocked: <white>{action}</white>. Everybody online was checked."
+  blocked-unknown: "<green><white>{mod}</white> is blocked: <white>{action}</white>. <gray>It is not on the list of known mods, so it is found only if it registers a channel or answers the hidden sign check under that name."
+  unblocked: "<gray><white>{mod}</white> is allowed again."
+  not-blocked: "<gray><white>{mod}</white> is not blocked."
+  list-header: "<gradient:#ff5f6d:#ffc371>Blocked mods</gradient> <gray>({count})"
+  list-line: "<gray>- <white>{mod}</white> <dark_gray>({id})</dark_gray> → {action}"
+  entry: "<white><bold>{mod}"
+  entry-action: "<gray>On join: <white>{action}"
+  entry-channels: "<dark_gray>Channels: {channels}"
+  entry-clicks: ["<#ffc371>Click: change the action", "<red>Shift-click: allow again"]
+  add: "<green><bold>Block a mod"
+  add-lore: ["<gray>Just type the name.", "<gray>Versions and .jar do not matter."]
+  suggestions: "<#ffc371><bold>Suggestions"
+  suggestions-lore: ["<gray>Known mods and cheat clients", "<gray>that are not blocked yet."]
+  suggestions-title: "<dark_gray>Known mods"
+  suggestion-clicks: ["<#ffc371>Click: block (default action)", "<#ffc371>Right-click: kick", "<red>Shift-click: ban"]
+  kind-client: "<red>Cheat client"
+  kind-mod: "<gray>Mod"
+  action:
+    warn: "kick with a warning, punish next time"
+    kick: "kick"
+    ban: "ban"
+    punish: "punish (cheating category)"
+    alert: "only tell the team"

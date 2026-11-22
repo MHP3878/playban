@@ -175,7 +175,11 @@ The mod guard looks at three things: the client name the game sends (`fabric`, `
 - `WARN`: the first time(s) a kick with "please remove it, next time you will be punished" (`warnings`), then the punishment (`punishment`, default the cheating category) with the catch animation.
 - `PUNISH`: at once.
 
-With `mode: ALLOWLIST` only the clients in `allowed-clients` may join. `/mods <player>` shows client, channels and rules hit; `/mods reset <player>` clears the warnings; `staffcore.modguard.bypass` skips the check.
+**Block a mod by its name.** `/modblock <name> [kick|ban|warn|alert]` (also `/modsperre`): just type the name, the way it comes. `beelocator`, `Bee Locator` and `beelocator-21.11.jar` all mean the same mod; versions, `.jar` and loader names are left out. Tab suggests about 30 known mods and cheat clients; a typo gets "did you mean" with clickable answers. Without a name a menu opens: the blocked mods (click changes the action, shift-click allows again), "Block a mod" and a page of suggestions (click blocks, right-click kicks, shift-click bans). `/modunblock <name>` allows a mod again; whoever is online is checked again at once. A mod not on the known list is looked for by its name as mod channel and with the usual translation keys of its key bindings.
+
+The hidden sign check works on every supported version: on Paper 1.21.9+ with a sign only the player's client knows, on older servers with a real sign two blocks under the player for two ticks, after which the block is put back.
+
+With `mode: ALLOWLIST` only the clients in `allowed-clients` may join. `/mods <player>` (also `/modscheck`) shows client, channels and rules hit; `/mods reset <player>` clears the warnings; `staffcore.modguard.bypass` skips the check.
 
 Honest limit: many cheat clients (Meteor too) pretend to be plain Fabric and register nothing of their own. They are only found this way when they give themselves away; what they do is still judged by the anti-cheat, and the tests below find them.
 

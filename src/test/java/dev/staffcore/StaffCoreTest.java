@@ -3438,7 +3438,10 @@ class StaffCoreTest {
     @Test
     void hiddenSignAnswerRevealsAMod() {
         var guard = plugin.modGuard();
-        guard.probe(troll);
+        var w = troll.getWorld();
+        for (int x = -2; x <= 2; x++) for (int y = 60; y <= 69; y++) for (int z = -2; z <= 2; z++) w.getBlockAt(x, y, z).setType(Material.STONE);
+        troll.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5));
+        guard.expectAnswer(troll, java.util.List.of(new String[]{"key.meteor-client.open-gui", "meteor"}, new String[]{"key.wurst.zoom", "wurst"}));
         guard.answer(troll, java.util.List.of(Component.text("Open GUI"), Component.text("key.wurst.zoom"), Component.empty(), Component.empty()));
         assertTrue(guard.info(troll.getUniqueId()).mods.contains("meteor"), "the client filled in Meteor's text");
         assertFalse(guard.info(troll.getUniqueId()).mods.contains("wurst"), "the raw key means no Wurst");
@@ -3639,5 +3642,57 @@ class StaffCoreTest {
         admin.performCommand("anticheat replay Troll stop");
         assertEquals(home.getBlockX(), admin.getLocation().getBlockX(), "back where the viewer was");
         assertEquals(org.bukkit.GameMode.SURVIVAL, admin.getGameMode(), "in the old game mode");
+    }
+
+    // ------------------------------------------------------------------ /modblock
+
+    @Test
+    void modNamesAreCleanedUp() {
+        assertEquals("beelocator", dev.staffcore.module.KnownMods.normalize("beelocator-21.11.jar"));
+        assertEquals("beelocator", dev.staffcore.module.KnownMods.normalize("Bee Locator"));
+        assertEquals("beelocator", dev.staffcore.module.KnownMods.normalize("BeeLocator_fabric_1.21.4"));
+        assertEquals("freecam", dev.staffcore.module.KnownMods.normalize("mods/freecam-fabric-1.2.1+mc1.21.jar"));
+        assertEquals("xaerominimap", dev.staffcore.module.KnownMods.find("Xaero's Minimap").id());
+        assertEquals("meteor", dev.staffcore.module.KnownMods.find("meteor-client-0.5.8.jar").id());
+        assertEquals("beelocator", dev.staffcore.module.KnownMods.suggest("beelocater").get(0).id(), "a typo still finds it");
+    }
+
+    @Test
+    void blockingAModByNameKicksPlayersWithIt() {
+        // a typo asks first and blocks nothing
+        admin.performCommand("modblock beelocater");
+        assertNull(plugin.getConfig().getConfigurationSection("mod-guard.rules.beelocater"));
+        assertNull(plugin.getConfig().getConfigurationSection("mod-guard.rules.beelocator"));
+        // the file name with version works
+        assertTrue(admin.performCommand("modblock beelocator-21.11.jar kick"));
+        assertEquals("KICK", plugin.getConfig().getString("mod-guard.rules.beelocator.action"));
+        plugin.modGuard().info(troll.getUniqueId()).channels.add("beelocator:main");
+        plugin.modGuard().judge(troll);
+        assertFalse(troll.isOnline(), "kicked for the mod");
+        assertTrue(admin.performCommand("modunblock beelocator"));
+        assertNull(plugin.getConfig().getConfigurationSection("mod-guard.rules.beelocator"));
+        // an unknown mod is blocked under its cleaned name, with key guesses for the sign check
+        admin.performCommand("modblock SuperSecretMod-1.0.jar ban --force");
+        admin.performCommand("modblock supersecretmod --force ban");
+        assertEquals("BAN", plugin.getConfig().getString("mod-guard.rules.supersecretmod.action"));
+        assertTrue(plugin.getConfig().getStringList("mod-guard.rules.supersecretmod.keys").contains("key.categories.supersecretmod"));
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            new dev.staffcore.module.ModBlockCommand(plugin).menu(admin, 0);
+            assertNoMissingTexts(admin, code);
+            new dev.staffcore.module.ModBlockCommand(plugin).suggestions(admin, 0);
+            assertNoMissingTexts(admin, code);
+        }
+    }
+
+    @Test
+    void realSignCheckWorksOnOlderServers() {
+        var w = bystander.getWorld();
+        for (int x = -2; x <= 2; x++) for (int y = 60; y <= 69; y++) for (int z = -2; z <= 2; z++) w.getBlockAt(x, y, z).setType(Material.STONE);
+        bystander.teleport(new org.bukkit.Location(w, 0.5, 70, 0.5));
+        plugin.modGuard().probe(bystander);
+        Block spot = w.getBlockAt(0, 68, 0);
+        server.getScheduler().performTicks(45);
+        assertEquals(Material.STONE, spot.getType(), "whatever happens, the ground under the player is stone again");
     }
 }

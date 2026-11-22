@@ -60,6 +60,9 @@ public class StaffCorePlugin extends JavaPlugin {
     public void onEnable() {
         moveOldDataFolder();
         saveDefaultConfig();
+        // settings added by newer versions are written into an older config, the server's own values stay
+        getConfig().options().copyDefaults(true);
+        saveConfig();
         lang = new Lang(this);
         lang.load(getConfig().getString("language", "en"));
         tasks = new TaskRegistry(this);
@@ -289,9 +292,17 @@ public class StaffCorePlugin extends JavaPlugin {
                 .setting("anticheat.max-ping", CYCLE, org.bukkit.Material.CLOCK, 300, 200, 300, 500)
                 .setting("anticheat.max-cps", CYCLE, org.bukkit.Material.STONE_BUTTON, 22, 18, 22, 26);
         modules.add("adminmode", org.bukkit.Material.NETHERITE_CHESTPLATE, "admin-mode.required", true);
+        dev.staffcore.module.ModBlockCommand modBlock = new dev.staffcore.module.ModBlockCommand(this);
         modules.add("modguard", org.bukkit.Material.NAME_TAG, "mod-guard.enabled", true)
-                .command(new dev.staffcore.module.ModuleManager.Cmd("mods", "Which client and mods a player has", "staffcore.check", modGuard))
+                .command(new dev.staffcore.module.ModuleManager.Cmd("mods", "Which client and mods a player has", "staffcore.check", modGuard,
+                        java.util.List.of("modscheck", "modcheck")))
+                .command(new dev.staffcore.module.ModuleManager.Cmd("modblock", "Forbid a mod by its name: kick, ban or warn on join", "staffcore.modblock",
+                        modBlock, java.util.List.of("modsperre", "blockmod")))
+                .command(new dev.staffcore.module.ModuleManager.Cmd("modunblock", "Allow a mod again", "staffcore.modblock", modBlock,
+                        java.util.List.of("modentsperren", "unblockmod")))
                 .setting("mod-guard.mode", CYCLE, org.bukkit.Material.COMPARATOR, "BLOCKLIST", "BLOCKLIST", "ALLOWLIST")
+                .setting("mod-guard.default-action", CYCLE, org.bukkit.Material.BARRIER, "WARN", "WARN", "KICK", "BAN", "ALERT")
+                .setting("mod-guard.ban", CYCLE, org.bukkit.Material.IRON_BARS, "BAN 7d", "BAN 1d", "BAN 7d", "BAN 30d", "BAN perm")
                 .setting("mod-guard.warnings", CYCLE, org.bukkit.Material.PAPER, 1, 0, 1, 2, 3)
                 .setting("mod-guard.punishment", CYCLE, org.bukkit.Material.ANVIL, "CATEGORY cheating", "CATEGORY cheating", "PLAYBAN 1h", "PLAYBAN 1d", "BAN 7d", "BAN perm")
                 .setting("mod-guard.probe", BOOL, org.bukkit.Material.OAK_SIGN, true);

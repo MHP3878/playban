@@ -374,6 +374,10 @@ mod-guard:
   mode: BLOCKLIST
   allowed-clients: [vanilla, fabric, forge, neoforge, quilt, lunarclient, feather, badlion, labymod]
   not-allowed-action: KICK
+  # what /modblock uses when no action is typed: WARN, KICK, BAN, ALERT
+  default-action: WARN
+  # the ban for BAN rules
+  ban: BAN 7d
   # how often WARN only kicks before it punishes
   warnings: 1
   # PLAYBAN <time>, BAN <time|perm>, KICK, CATEGORY <id>

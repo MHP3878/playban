@@ -163,6 +163,7 @@ public final class ModGuard implements Listener, TabExecutor {
             }
             info.channels.addAll(p.getListeningPluginChannels());
             judge(p);
+            if (!p.isOnline()) return;
             if (plugin.getConfig().getBoolean("mod-guard.probe", true)) probe(p);
         }, 60L);
     }
@@ -171,6 +172,8 @@ public final class ModGuard implements Listener, TabExecutor {
     public void onQuit(PlayerQuitEvent e) {
         infos.remove(e.getPlayer().getUniqueId());
         probes.remove(e.getPlayer().getUniqueId());
+        waiting.remove(e.getPlayer().getUniqueId());
+        cleanup(e.getPlayer());
     }
 
     /** Decides by the rules what happens to this player. */
@@ -192,7 +195,7 @@ public final class ModGuard implements Listener, TabExecutor {
 
     private static int weight(String action) {
         return switch (action) {
-            case "PUNISH" -> 4;
+            case "PUNISH", "BAN" -> 4;
             case "WARN" -> 3;
             case "KICK" -> 2;
             case "ALERT" -> 1;
@@ -201,7 +204,7 @@ public final class ModGuard implements Listener, TabExecutor {
     }
 
     private void act(Player p, Rule rule) {
-        String mod = rule.name();
+        String mod = display(rule);
         plugin.punishments().notifyStaff(lang().prefixed("modguard.found", "player", p.getName(), "mod", mod, "action", rule.action())
                 .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/check " + p.getName())));
         plugin.staffLog("ModGuard", "mod " + rule.action().toLowerCase(Locale.ROOT), p.getName(), mod);
@@ -211,6 +214,8 @@ public final class ModGuard implements Listener, TabExecutor {
             }
             case "KICK" -> p.kick(lang().msg("modguard.kick", "mod", mod));
             case "PUNISH" -> punish(p, mod);
+            case "BAN" -> plugin.antiCheat().catchWith(p, plugin.getConfig().getString("mod-guard.ban", "BAN 7d"),
+                    lang().raw("modguard.reason").replace("{mod}", mod));
             default -> {
                 int n = strikes.merge(p.getUniqueId(), 1, Integer::sum);
                 save();
@@ -227,44 +232,140 @@ public final class ModGuard implements Listener, TabExecutor {
 
     // ---------------------------------------------------------------- the hidden sign
 
+    /** What is being asked right now: line -> "key|mod", plus the keys still waiting. */
+    private final Map<UUID, List<String[]>> waiting = new HashMap<>();
+    private final Map<UUID, Runnable> restore = new HashMap<>();
+
     /**
-     * Shows a sign editor for a moment with the translation keys of the mods in the rules. A client
-     * without the mod sends the keys back as they are; with the mod, its own text comes back. Only on
-     * servers that offer virtual signs (Paper 1.21.9 and newer); elsewhere this does nothing.
+     * Shows a sign editor for a blink with translation keys of the blocked mods. A client without the
+     * mod sends the keys back as they are; with the mod, its own text comes back. Four keys per sign,
+     * one sign after the other. On Paper 1.21.9+ the sign only exists for the player (virtual sign);
+     * on older servers a real sign stands for two ticks deep under the player and the block is put back.
      */
     public void probe(Player p) {
-        Map<String, String> keyToMod = new LinkedHashMap<>();
-        for (Rule r : rules()) for (String k : r.keys()) keyToMod.put(k, r.name());
-        if (keyToMod.isEmpty()) return;
+        List<String[]> all = new ArrayList<>();
+        for (Rule r : rules()) for (String k : r.keys()) all.add(new String[]{k, r.name()});
+        if (all.isEmpty()) return;
+        waiting.put(p.getUniqueId(), all);
+        info(p.getUniqueId()).probed = true;
+        nextSign(p);
+    }
+
+    private void nextSign(Player p) {
+        List<String[]> left = waiting.get(p.getUniqueId());
+        if (left == null || left.isEmpty() || !p.isOnline()) {
+            waiting.remove(p.getUniqueId());
+            return;
+        }
+        List<String[]> batch = new ArrayList<>(left.subList(0, Math.min(4, left.size())));
+        left.subList(0, batch.size()).clear();
+        Map<String, String> asked = new LinkedHashMap<>();
+        List<Component> lines = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            if (i < batch.size()) {
+                asked.put(String.valueOf(i), batch.get(i)[0] + "|" + batch.get(i)[1]);
+                lines.add(Component.translatable(batch.get(i)[0]));
+            } else lines.add(Component.empty());
+        }
+        probes.put(p.getUniqueId(), asked);
+        if (!virtualSign(p, lines) && !realSign(p, lines)) {
+            probes.remove(p.getUniqueId());
+            waiting.remove(p.getUniqueId());
+            return;
+        }
+        // closing it right away makes the client send back what the sign says
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (p.isOnline()) p.closeInventory();
+        }, 2L);
+        // no answer within a second: go on with the next sign anyway
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (probes.get(p.getUniqueId()) == asked) {
+                probes.remove(p.getUniqueId());
+                cleanup(p);
+                nextSign(p);
+            }
+        }, 20L);
+    }
+
+    /** Waits for an answer to these keys without showing a sign (for tests and other ways of asking). */
+    public void expectAnswer(Player p, List<String[]> keysAndMods) {
+        Map<String, String> asked = new LinkedHashMap<>();
+        for (int i = 0; i < Math.min(4, keysAndMods.size()); i++) asked.put(String.valueOf(i), keysAndMods.get(i)[0] + "|" + keysAndMods.get(i)[1]);
+        probes.put(p.getUniqueId(), asked);
+    }
+
+    private boolean virtualSign(Player p, List<Component> lines) {
         try {
             Class<?> position = Class.forName("io.papermc.paper.math.Position");
-            Object pos = position.getMethod("block", int.class, int.class, int.class).invoke(null,
-                    p.getLocation().getBlockX(), Math.max(p.getWorld().getMinHeight(), p.getLocation().getBlockY() - 6), p.getLocation().getBlockZ());
-            Location at = new Location(p.getWorld(), p.getLocation().getBlockX(), Math.max(p.getWorld().getMinHeight(), p.getLocation().getBlockY() - 6),
-                    p.getLocation().getBlockZ());
-            List<String> keys = new ArrayList<>(keyToMod.keySet());
-            // four lines per sign; the first four keys
-            List<Component> lines = new ArrayList<>();
-            for (int i = 0; i < 4; i++) lines.add(i < keys.size() ? Component.translatable(keys.get(i)) : Component.empty());
-            Map<String, String> asked = new LinkedHashMap<>();
-            for (int i = 0; i < Math.min(4, keys.size()); i++) asked.put(String.valueOf(i), keys.get(i) + "|" + keyToMod.get(keys.get(i)));
-            probes.put(p.getUniqueId(), asked);
+            Location at = p.getLocation().clone();
+            at.setY(Math.max(p.getWorld().getMinHeight(), at.getBlockY() - 6));
+            Object pos = position.getMethod("block", int.class, int.class, int.class).invoke(null, at.getBlockX(), at.getBlockY(), at.getBlockZ());
             p.sendBlockChange(at, Material.OAK_SIGN.createBlockData());
             p.sendSignChange(at, lines);
             p.getClass().getMethod("openVirtualSign", position, org.bukkit.block.sign.Side.class).invoke(p, pos, org.bukkit.block.sign.Side.FRONT);
-            // closing it right away makes the client send what the sign says
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!p.isOnline()) return;
-                p.closeInventory();
-                p.sendBlockChange(at, at.getBlock().getBlockData());
-            }, 2L);
-            info(p.getUniqueId()).probed = true;
+            Location back = at.clone();
+            restore.put(p.getUniqueId(), () -> p.sendBlockChange(back, back.getBlock().getBlockData()));
+            return true;
         } catch (ReflectiveOperationException | RuntimeException | LinkageError unsupported) {
-            // this server has no virtual signs
+            return false;
         }
     }
 
-    /** Hooked in by reflection on servers that have UncheckedSignChangeEvent. */
+    /** Older servers: a real sign for two ticks in solid ground two blocks under the player, then the block comes back. */
+    private boolean realSign(Player p, List<Component> lines) {
+        try {
+            org.bukkit.block.Block spot = p.getLocation().getBlock().getRelative(0, -2, 0);
+            Material was = spot.getType();
+            if (!was.isSolid() || spot.getState() instanceof org.bukkit.block.TileState || spot.getY() <= p.getWorld().getMinHeight()) return false;
+            org.bukkit.block.data.BlockData before = spot.getBlockData();
+            spot.setType(Material.OAK_SIGN, false);
+            if (!(spot.getState() instanceof org.bukkit.block.Sign sign)) {
+                spot.setBlockData(before, false);
+                return false;
+            }
+            var side = sign.getSide(org.bukkit.block.sign.Side.FRONT);
+            for (int i = 0; i < 4; i++) side.line(i, lines.get(i));
+            sign.update(true, false);
+            realSigns.add(spot.getLocation());
+            restore.put(p.getUniqueId(), () -> {
+                realSigns.remove(spot.getLocation());
+                spot.setBlockData(before, false);
+            });
+            // safety: the block is back in any case
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (spot.getType() == Material.OAK_SIGN) {
+                    realSigns.remove(spot.getLocation());
+                    spot.setBlockData(before, false);
+                }
+            }, 40L);
+            try {
+                p.openSign(sign, org.bukkit.block.sign.Side.FRONT);
+            } catch (RuntimeException failed) {
+                cleanup(p);
+                return false;
+            }
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private final java.util.Set<Location> realSigns = new java.util.HashSet<>();
+
+    private void cleanup(Player p) {
+        Runnable r = restore.remove(p.getUniqueId());
+        if (r != null) r.run();
+    }
+
+    /** The answer from a real sign (older servers): read it, change nothing in the world. */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onSign(org.bukkit.event.block.SignChangeEvent e) {
+        if (!realSigns.contains(e.getBlock().getLocation())) return;
+        e.setCancelled(true);
+        answer(e.getPlayer(), e.lines());
+    }
+
+    /** Hooked in by reflection on servers that have UncheckedSignChangeEvent (virtual signs). */
     public void registerProbeListener() {
         try {
             @SuppressWarnings("unchecked")
@@ -281,7 +382,7 @@ public final class ModGuard implements Listener, TabExecutor {
                 }
             }, plugin);
         } catch (ClassNotFoundException ignored) {
-            // older server
+            // older server: real signs and SignChangeEvent instead
         }
     }
 
@@ -289,6 +390,7 @@ public final class ModGuard implements Listener, TabExecutor {
     public void answer(Player p, List<Component> lines) {
         Map<String, String> asked = probes.remove(p.getUniqueId());
         if (asked == null) return;
+        cleanup(p);
         Info info = info(p.getUniqueId());
         boolean found = false;
         for (Map.Entry<String, String> e : asked.entrySet()) {
@@ -302,6 +404,53 @@ public final class ModGuard implements Listener, TabExecutor {
             }
         }
         if (found) judge(p);
+        else Bukkit.getScheduler().runTaskLater(plugin, () -> nextSign(p), 2L);
+    }
+
+    // ---------------------------------------------------------------- blocking mods by name
+
+    /** Puts a rule for a mod into the config. Returns the rule's name. */
+    public String block(String typed, String action, String by) {
+        KnownMods.Mod known = KnownMods.find(typed);
+        String id = known != null ? known.id() : KnownMods.normalize(typed);
+        if (id.isEmpty()) return null;
+        String path = "mod-guard.rules." + id + ".";
+        List<String> keys = new ArrayList<>(known != null ? known.keys() : List.of());
+        for (String k : KnownMods.guessKeys(id)) if (!keys.contains(k)) keys.add(k);
+        List<String> channels = new ArrayList<>(known != null ? known.channels() : List.of(id));
+        plugin.getConfig().set(path + "display", known != null ? known.name() : typed.trim());
+        plugin.getConfig().set(path + "brand", known != null && known.client() ? List.of(id) : List.of());
+        plugin.getConfig().set(path + "channel", channels);
+        plugin.getConfig().set(path + "keys", keys);
+        plugin.getConfig().set(path + "action", action.toUpperCase(Locale.ROOT));
+        plugin.saveConfig();
+        plugin.staffLog(by, "mod block", null, id + " " + action);
+        // whoever is online right now is checked again
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            judge(p);
+            if (p.isOnline() && plugin.getConfig().getBoolean("mod-guard.probe", true)) probe(p);
+        }
+        return id;
+    }
+
+    public boolean unblock(String typed, String by) {
+        String id = KnownMods.find(typed) != null ? KnownMods.find(typed).id() : KnownMods.normalize(typed);
+        if (plugin.getConfig().getConfigurationSection("mod-guard.rules." + id) == null) {
+            // perhaps typed exactly as the rule is called
+            id = typed.trim().toLowerCase(Locale.ROOT);
+            if (plugin.getConfig().getConfigurationSection("mod-guard.rules." + id) == null) return false;
+        }
+        plugin.getConfig().set("mod-guard.rules." + id, null);
+        plugin.saveConfig();
+        plugin.staffLog(by, "mod unblock", null, id);
+        return true;
+    }
+
+    public String display(Rule r) {
+        String d = plugin.getConfig().getString("mod-guard.rules." + r.name() + ".display");
+        if (d != null) return d;
+        KnownMods.Mod m = KnownMods.find(r.name());
+        return m != null ? m.name() : r.name();
     }
 
     // ---------------------------------------------------------------- /mods

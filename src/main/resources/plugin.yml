@@ -35,6 +35,7 @@ permissions:
       staffcore.ipban: true
       staffcore.lockdown: true
       staffcore.troll: true
+      staffcore.modblock: true
       staffcore.announce: true
       staffcore.eco: true
       staffcore.homes.unlimited: true
@@ -212,6 +213,9 @@ permissions:
     default: op
   staffcore.announce:
     description: "/announce - a message with a title to everybody"
+    default: op
+  staffcore.modblock:
+    description: "/modblock and /modunblock - forbid mods by name"
     default: op
   staffcore.modguard.bypass:
     description: Not checked for forbidden clients and mods

@@ -89,6 +89,7 @@ inventory-mode:
   CLEAR: "für immer löschen"
 
 guide:
+  modblock: ["<gray>Eine Mod einfach per Name sperren:", "<gray>/modblock freecam, /modblock meteor ban.", "<gray>Tab schlägt bekannte Mods vor; ohne", "<gray>Namen öffnet ein Menü. /modunblock erlaubt."]
   status: ["<gray>Was auf einem Spieler liegt: eingefroren,", "<gray>Handschellen, Gefängnis, PlayBan, Mute,", "<gray>Bann, Beobachtung. Ein Klick hebt es auf.", "<gray>/release hebt alles auf einmal auf."]
   mods: ["<gray>Welchen Client und welche Mods ein", "<gray>Spieler hat, soweit der Client es sagt.", "<gray>/mods reset <spieler> löscht Verwarnungen."]
   check: ["<gray>Alles über einen Spieler auf einer", "<gray>Live-Seite: Ping, Client, Klicks,", "<gray>Anti-Cheat-Punkte und Funde, letzte", "<gray>Befehle, und Knöpfe für Inventar,", "<gray>Einfrieren, Beobachten, Bestrafen."]
@@ -1810,6 +1811,12 @@ module-setting:
       name: "<white>Was ein Schlag macht"
       lore: ["<gray>Kick, PlayBan, Bann oder eine Kategorie."]
   mod-guard:
+    default-action:
+      name: "<white>Standard-Aktion"
+      lore: ["<gray>Was /modblock macht, wenn keine", "<gray>Aktion dahinter steht."]
+    ban:
+      name: "<white>Bann-Dauer"
+      lore: ["<gray>Für Mods, die auf bannen stehen."]
     mode:
       name: "<white>Modus"
       lore: ["<gray>BLOCKLIST: alles außer den Regeln.", "<gray>ALLOWLIST: nur erlaubte Clients."]
@@ -2263,3 +2270,35 @@ rights:
   op: "<gold>⚠ <white>{player}</white> <gray>wurde von <white>{by}</white> zum <white>OP</white> gemacht."
   reverted: "<gray><white>{player}</white> wurde zurück in den Überlebensmodus gesetzt (creative-guard)."
   unknown: "unbekannt (ein Plugin oder Befehlsblock)"
+
+modblock:
+  title: "<dark_gray>Gesperrte Mods ({count})"
+  prompt: "<#ffc371>Schreib den Namen der Mod, z. B. <white>freecam</white> oder <white>beelocator-21.11.jar</white>. Optional dahinter eine Aktion: kick, ban, warn, alert."
+  did-you-mean: "<gray>Keine bekannte Mod namens <white>{mod}</white>. Meintest du:"
+  suggestion: "<#ffc371>  ▶ {mod} <dark_gray>({id}) <gray>Klick zum Sperren"
+  as-typed: "<gray>  ▶ Trotzdem als <white>{mod}</white> sperren <dark_gray>(Klick)"
+  empty: "<red>Schreib einen Namen, z. B. <white>/modblock freecam</white>."
+  blocked-known: "<green><white>{mod}</white> ist gesperrt: <white>{action}</white>. Alle, die online sind, wurden geprüft."
+  blocked-unknown: "<green><white>{mod}</white> ist gesperrt: <white>{action}</white>. <gray>Sie steht nicht in der Liste bekannter Mods. Sie wird nur gefunden, wenn sie unter diesem Namen einen Kanal anmeldet oder auf das versteckte Schild antwortet."
+  unblocked: "<gray><white>{mod}</white> ist wieder erlaubt."
+  not-blocked: "<gray><white>{mod}</white> ist nicht gesperrt."
+  list-header: "<gradient:#ff5f6d:#ffc371>Gesperrte Mods</gradient> <gray>({count})"
+  list-line: "<gray>- <white>{mod}</white> <dark_gray>({id})</dark_gray> → {action}"
+  entry: "<white><bold>{mod}"
+  entry-action: "<gray>Beim Join: <white>{action}"
+  entry-channels: "<dark_gray>Kanäle: {channels}"
+  entry-clicks: ["<#ffc371>Klick: Aktion ändern", "<red>Shift-Klick: wieder erlauben"]
+  add: "<green><bold>Mod sperren"
+  add-lore: ["<gray>Einfach den Namen schreiben.", "<gray>Version und .jar sind egal."]
+  suggestions: "<#ffc371><bold>Vorschläge"
+  suggestions-lore: ["<gray>Bekannte Mods und Cheat-Clients,", "<gray>die noch nicht gesperrt sind."]
+  suggestions-title: "<dark_gray>Bekannte Mods"
+  suggestion-clicks: ["<#ffc371>Klick: sperren (Standard-Aktion)", "<#ffc371>Rechtsklick: kicken", "<red>Shift-Klick: bannen"]
+  kind-client: "<red>Cheat-Client"
+  kind-mod: "<gray>Mod"
+  action:
+    warn: "kicken mit Warnung, beim nächsten Mal bestrafen"
+    kick: "kicken"
+    ban: "bannen"
+    punish: "bestrafen (Kategorie cheating)"
+    alert: "nur das Team informieren"

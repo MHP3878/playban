@@ -180,16 +180,6 @@ class ModCheckTest {
     }
 
     @Test
-    void hiddenSignAnswerFindsAMod() {
-        plugin.guard().expect(steve, List.of(new String[]{"key.freecam.toggle", "freecam"}, new String[]{"key.wurst.zoom", "wurst"}));
-        // the fallback is empty: a client without Wurst sends nothing back
-        plugin.guard().answer(steve, List.of(Component.text("Toggle Freecam"), Component.empty(), Component.empty(), Component.empty()));
-        assertTrue(plugin.guard().info(steve.getUniqueId()).found.contains("freecam"));
-        assertFalse(plugin.guard().info(steve.getUniqueId()).found.contains("wurst"));
-        assertFalse(steve.isOnline(), "and judged at once");
-    }
-
-    @Test
     void everyMenuHasItsTextsInBothLanguages() {
         for (String code : new String[]{"en", "de"}) {
             plugin.lang().load(code);
@@ -273,74 +263,6 @@ class ModCheckTest {
     }
 
     @Test
-    void controlKeyTellsWhetherTheSignCheckWorks() {
-        var g = plugin.guard();
-        g.expect(steve, List.of(new String[]{"key.jump", "__control"}, new String[]{"sodium.options.pages.general", "sodium"},
-                new String[]{"modmenu.title", "modmenu"}));
-        g.answer(steve, List.of(Component.text("Jump"), Component.text("General"), Component.empty(), Component.empty()));
-        assertEquals("works", g.info(steve.getUniqueId()).sign, "Jump came back filled in");
-        assertTrue(g.mods(steve.getUniqueId()).contains("sodium"), "an everyday mod is seen too");
-        assertFalse(g.mods(steve.getUniqueId()).contains("modmenu"), "the empty fallback means it is not there");
-        assertTrue(steve.isOnline(), "sodium is not blocked: nothing happens");
-        PlayerMock other = server.addPlayer("Other");
-        List<String[]> control = new ArrayList<>();
-        control.add(new String[]{"key.jump", "__control"});
-        g.expect(other, control);
-        g.answer(other, List.of(Component.text("key.jump"), Component.empty(), Component.empty(), Component.empty()));
-        assertEquals("blocked", g.info(other.getUniqueId()).sign, "the raw key back: this client does not fill in texts");
-        plugin.lang().load("de");
-        plugin.menus().player(admin, steve);
-        assertNoMissingTexts("player page with sign state");
-    }
-
-    @Test
-    void hiddenKeysAndPackedLinesAreSeen() {
-        var g = plugin.guard();
-        // old Meteor turns its own keys into their raw text: that is not what a clean client sends (nothing)
-        g.expect(steve, List.<String[]>of(new String[]{"key.meteor-client.open-gui", "meteor"}));
-        g.answer(steve, List.of(Component.text("key.meteor-client.open-gui"), Component.empty(), Component.empty(), Component.empty()));
-        assertTrue(g.info(steve.getUniqueId()).found.contains("meteor"), "the raw key gives old Meteor away");
-        // a key binding: a clean client gives its name back, a client with it the key it is bound to
-        PlayerMock other = server.addPlayer("Other");
-        g.expect(other, List.<String[]>of(new String[]{"bind:iris.keybind.reload", "iris"}, new String[]{"bind:key.freecam.toggle", "freecam"}));
-        g.answer(other, List.of(Component.text("R"), Component.text("key.freecam.toggle"), Component.empty(), Component.empty()));
-        assertTrue(g.mods(other.getUniqueId()).contains("iris"));
-        assertFalse(g.mods(other.getUniqueId()).contains("freecam"));
-        // a real probe packs three questions into a line, split by "|"
-        PlayerMock third = server.addPlayer("Third");
-        List<List<Guard.Ask>> rows = List.of(
-                List.of(Guard.control(), Guard.ask("key.meteor-client.open-gui", "meteor"), Guard.ask("sodium.options.pages.general", "sodium")),
-                List.of(Guard.ask("modmenu.title", "modmenu"), Guard.ask("bind:iris.keybind.reload", "iris"), Guard.ask("key.freecam.toggle", "freecam")));
-        g.expectRows(third, rows);
-        g.answer(third, List.of(Component.text("Jump|Open GUI|"), Component.text("Mods|iris.keybind.reload|"), Component.empty(), Component.empty()));
-        assertEquals("works", g.info(third.getUniqueId()).sign);
-        assertEquals(List.of("meteor", "modmenu"), new ArrayList<>(g.info(third.getUniqueId()).found), "only what differs from a clean client");
-        PlayerMock fourth = server.addPlayer("Fourth");
-        g.expectRows(fourth, rows);
-        g.answer(fourth, List.of(Component.text("||"), Component.text("|iris.keybind.reload|"), Component.empty(), Component.empty()));
-        assertEquals("blocked", g.info(fourth.getUniqueId()).sign, "nothing for key.jump: texts are not filled in");
-        assertTrue(g.info(fourth.getUniqueId()).found.isEmpty());
-        // a client that sends raw keys for everything must not look like it has every mod
-        PlayerMock fifth = server.addPlayer("Fifth");
-        List<Guard.Ask> first = new ArrayList<>();
-        first.add(Guard.control());
-        first.addAll(Guard.dummies());
-        g.expectRows(fifth, List.of(first, List.of(Guard.ask("key.meteor-client.open-gui", "meteor"))));
-        g.answer(fifth, List.of(Component.text("Jump|modcheck.probe.none|modcheck.probe.none"), Component.text("key.meteor-client.open-gui"),
-                Component.empty(), Component.empty()));
-        assertEquals("blocked", g.info(fifth.getUniqueId()).sign, "the made-up key came back: this client changes texts");
-        assertTrue(g.info(fifth.getUniqueId()).found.isEmpty(), "so nothing it says counts");
-        assertTrue(fifth.isOnline());
-        // a clean client with old Meteor: the made-up key is empty, Meteor's own key is raw
-        PlayerMock sixth = server.addPlayer("Sixth");
-        g.expectRows(sixth, List.of(first, List.of(Guard.ask("key.meteor-client.open-gui", "meteor"))));
-        g.answer(sixth, List.of(Component.text("Jump||modcheck.probe.none"), Component.text("key.meteor-client.open-gui"),
-                Component.empty(), Component.empty()));
-        assertEquals("works", g.info(sixth.getUniqueId()).sign);
-        assertTrue(g.info(sixth.getUniqueId()).found.contains("meteor"));
-    }
-
-    @Test
     void textFromClientsIsCleanedAndCannotBreakOutOfCommands() {
         assertEquals("evilclient", Guard.clean("evil\n\u00a7cclient\u0000", 48), "no line breaks, colour codes or zero bytes");
         assertEquals(10, Guard.clean("x".repeat(500), 10).length());
@@ -396,14 +318,204 @@ class ModCheckTest {
         assertTrue(plugin.input().waitingFor(admin.getUniqueId()));
     }
 
+    // ---------------------------------------------------------------- the hidden sign
+
+    /** Fixed controls for tests: a clean client answers "Jump" and "xyz-abc". */
+    private static final Probe.Ask POS = Probe.positive("key.jump", true, false);
+    private static final Probe.Ask NEG = Probe.negative("gui.qwerty.title", "abc", "xyz", "-", true);
+
+    private void reply(PlayerMock p, String... lines) {
+        List<Component> out = new ArrayList<>();
+        for (int i = 0; i < 4; i++) out.add(i < lines.length ? Component.text(lines[i]) : Component.empty());
+        plugin.guard().answer(p, out);
+    }
+
+    @Test
+    void aSignAnswerFindsAMod() {
+        plugin.guard().expectRows(steve, List.of(List.of(POS, Probe.mod("key.freecam.toggle", "freecam"), Probe.mod("key.wurst.zoom", "wurst")), List.of(NEG)));
+        // the fallback is empty: a client without Wurst sends nothing back
+        reply(steve, "Jump|Toggle Freecam|", "xyz-abc");
+        assertTrue(plugin.guard().info(steve.getUniqueId()).found.contains("freecam"));
+        assertFalse(plugin.guard().info(steve.getUniqueId()).found.contains("wurst"));
+        assertFalse(steve.isOnline(), "and judged at once");
+    }
+
+    @Test
+    void everydayModsAreSeenAndTheControlsDecide() {
+        var g = plugin.guard();
+        g.expectRows(steve, List.of(List.of(POS, Probe.mod("sodium.options.pages.general", "sodium"), Probe.mod("modmenu.title", "modmenu")), List.of(NEG)));
+        reply(steve, "Jump|General|", "xyz-abc");
+        assertEquals("works", g.info(steve.getUniqueId()).sign);
+        assertTrue(g.mods(steve.getUniqueId()).contains("sodium"), "an everyday mod is seen too");
+        assertFalse(g.mods(steve.getUniqueId()).contains("modmenu"), "the empty fallback means it is not there");
+        assertTrue(steve.isOnline(), "sodium is not blocked: nothing happens");
+        assertTrue(g.proof(steve.getUniqueId(), "sodium").get(0).contains("General"), "the proof names the answer");
+        plugin.lang().load("de");
+        plugin.menus().player(admin, steve);
+        assertNoMissingTexts("player page with proof");
+    }
+
+    @Test
+    void clientsThatChangeTextsAreNotBelieved() {
+        var g = plugin.guard();
+        List<List<Probe.Ask>> rows = List.of(List.of(POS, Probe.mod("key.meteor-client.open-gui", "meteor")), List.of(NEG));
+        // blank: a text every client knows comes back raw
+        g.expectRows(steve, rows);
+        reply(steve, "key.jump|Open GUI", "xyz-abc");
+        assertEquals("blocked", g.info(steve.getUniqueId()).sign);
+        assertEquals("blank", g.info(steve.getUniqueId()).problem);
+        assertTrue(g.info(steve.getUniqueId()).found.isEmpty(), "nothing it says counts");
+        assertTrue(steve.isOnline(), "by default only the team is told");
+        // altered: raw keys for everything that is not vanilla
+        PlayerMock tamper = server.addPlayer("Tamper");
+        g.expectRows(tamper, rows);
+        reply(tamper, "Jump|key.meteor-client.open-gui", "gui.qwerty.title");
+        assertEquals("altered", g.info(tamper.getUniqueId()).problem);
+        assertTrue(g.info(tamper.getUniqueId()).found.isEmpty(), "would otherwise look like Meteor");
+        // a broken copy of the text engine: the fallback comes back without its words filled in
+        PlayerMock broken = server.addPlayer("Broken");
+        g.expectRows(broken, rows);
+        reply(broken, "Jump|", "%2$s-%1$s");
+        assertEquals("altered", g.info(broken.getUniqueId()).problem);
+        // set to kick: kicked; bypass: never
+        plugin.getConfig().set("hidden-action", "KICK");
+        PlayerMock other = server.addPlayer("Other");
+        g.expectRows(other, rows);
+        reply(other, "|", "xyz-abc");
+        assertFalse(other.isOnline());
+        PlayerMock staff = server.addPlayer("Staff");
+        staff.addAttachment(plugin, "modcheck.bypass", true);
+        g.expectRows(staff, rows);
+        reply(staff, "|", "xyz-abc");
+        assertTrue(staff.isOnline(), "bypass is never punished");
+    }
+
+    @Test
+    void hiddenKeysKeyBindingsAndOldMeteorAreSeen() {
+        var g = plugin.guard();
+        // old Meteor turns its own keys into their raw text: not what a clean client sends (nothing)
+        g.expectRows(steve, List.of(List.of(POS, Probe.mod("key.meteor-client.open-gui", "meteor")), List.of(NEG)));
+        reply(steve, "Jump|key.meteor-client.open-gui", "xyz-abc");
+        assertTrue(g.info(steve.getUniqueId()).found.contains("meteor"), "the raw key gives old Meteor away");
+        // key bindings: a clean client gives the name back, a client with the binding its key
+        PlayerMock other = server.addPlayer("Other");
+        g.expectRows(other, List.of(List.of(POS, Probe.mod("bind:iris.keybind.reload", "iris"), Probe.mod("bind:key.freecam.toggle", "freecam")), List.of(NEG)));
+        reply(other, "Jump|R|key.freecam.toggle", "xyz-abc");
+        assertTrue(g.mods(other.getUniqueId()).contains("iris"));
+        assertFalse(g.mods(other.getUniqueId()).contains("freecam"));
+        assertTrue(g.proof(other.getUniqueId(), "iris").get(0).contains("R"));
+    }
+
+    @Test
+    void aLateAnswerToAnEarlierSignIsIgnored() {
+        var g = plugin.guard();
+        Probe.Ask oldNeg = Probe.negative("menu.oldone.label", "aaa", "bbb", "+", false);
+        g.expectRows(steve, List.of(List.of(POS), List.of(oldNeg)));
+        // the next sign is out, then the answer to the first one arrives late
+        g.expectRows(steve, List.of(List.of(POS, Probe.mod("key.meteor-client.open-gui", "meteor")), List.of(NEG)));
+        reply(steve, "Jump", "bbb+aaa");
+        assertTrue(g.probing(steve.getUniqueId()), "still waiting for the answer to the current sign");
+        assertNotEquals("blocked", g.info(steve.getUniqueId()).sign, "a late answer is no reason to distrust the client");
+        reply(steve, "Jump|", "xyz-abc");
+        assertEquals("works", g.info(steve.getUniqueId()).sign);
+    }
+
+    @Test
+    void layoutKeepsControlsSafe() {
+        var r = new java.util.Random(7);
+        List<Probe.Ask> controls = Probe.controls(r, true);
+        List<Probe.Ask> mods = new ArrayList<>();
+        for (int i = 0; i < Probe.roomFor(true); i++) mods.add(Probe.mod("key.some.mod" + i, "m" + i));
+        List<List<Probe.Ask>> rows = Probe.layout(controls, mods, r);
+        assertEquals(4, rows.size());
+        int total = 0;
+        for (List<Probe.Ask> row : rows) {
+            assertTrue(row.size() <= Probe.PER_LINE);
+            assertNotEquals(Probe.Kind.MOD, row.get(0).kind(), "every line starts with a control: a cut-off line never loses one");
+            for (int i = 1; i < row.size(); i++) assertEquals(Probe.Kind.MOD, row.get(i).kind());
+            total += row.size();
+        }
+        assertEquals(12, total);
+        // a mod text with the separator in it: only the control in front is read
+        Probe.Ask m = Probe.mod("key.a.b", "x");
+        Probe.Verdict v = Probe.judge(List.of(List.of(POS, m), List.of(NEG)), List.of("Jump|a|b", "xyz-abc"));
+        assertTrue(v.trusted());
+        assertFalse(v.answers().containsKey(m));
+        // the made-up keys look like real ones and differ every time
+        assertNotEquals(Probe.madeUpKey(r), Probe.madeUpKey(r));
+        assertTrue(Probe.madeUpKey(r).matches("[a-z]+\\.[a-z]+\\.[a-z]+"));
+    }
+
+    @Test
+    void theCrossCheckFindsAFilter() {
+        var g = plugin.guard();
+        // the channel proves Simple Voice Chat, but its text comes back empty: a filter hides mods
+        g.info(steve.getUniqueId()).channels.add("voicechat:state");
+        g.expectRows(steve, List.of(List.of(POS, Probe.mod("key.push_to_talk", "simplevoicechat")), List.of(NEG)));
+        reply(steve, "Jump|", "xyz-abc");
+        g.crossCheck(steve);
+        assertEquals("filtered", g.info(steve.getUniqueId()).sign);
+        assertTrue(g.info(steve.getUniqueId()).suspicion.get(0).contains("voicechat:state"));
+        assertTrue(steve.isOnline(), "by default only the team is told");
+        // an honest client with voice chat answers the text
+        PlayerMock honest = server.addPlayer("Honest");
+        g.info(honest.getUniqueId()).channels.add("voicechat:state");
+        g.expectRows(honest, List.of(List.of(POS, Probe.mod("key.push_to_talk", "simplevoicechat")), List.of(NEG)));
+        reply(honest, "Jump|Push to Talk", "xyz-abc");
+        g.crossCheck(honest);
+        assertEquals("works", g.info(honest.getUniqueId()).sign);
+        // without the channel there is nothing to prove
+        PlayerMock plain = server.addPlayer("Plain");
+        g.expectRows(plain, List.of(List.of(POS, Probe.mod("key.push_to_talk", "simplevoicechat")), List.of(NEG)));
+        reply(plain, "Jump|", "xyz-abc");
+        g.crossCheck(plain);
+        assertEquals("works", g.info(plain.getUniqueId()).sign);
+    }
+
+    @Test
+    void theLieDetector() {
+        var g = plugin.guard();
+        Guard.Info liar = new Guard.Info();
+        liar.brand = "vanilla";
+        liar.channels.add("fabric-screen-handler-api-v1:open_screen");
+        assertFalse(g.disguise(liar).isEmpty(), "vanilla does not register Fabric channels");
+        Guard.Info liar2 = new Guard.Info();
+        liar2.brand = "vanilla";
+        liar2.found.add("fabricapi");
+        assertFalse(g.disguise(liar2).isEmpty(), "vanilla does not know Fabric API texts");
+        Guard.Info fake = new Guard.Info();
+        fake.brand = "lunarclient:v2.21.33-2612";
+        fake.channels.add("lunar:apollo");
+        assertTrue(g.disguise(fake).stream().anyMatch(l -> l.contains("v2.21.33-2612")), "a client name only LiquidBounce sends");
+        Guard.Info lunar = new Guard.Info();
+        lunar.brand = "lunarclient:v2.23.10-2650";
+        assertTrue(g.disguise(lunar).isEmpty(), "Lunar without Lunar channels is no proof ...");
+        assertFalse(g.hints(lunar).isEmpty(), "... only a hint on the page");
+        lunar.channels.add("lunar:apollo");
+        assertTrue(g.hints(lunar).isEmpty(), "a real Lunar client");
+        Guard.Info honest = new Guard.Info();
+        honest.brand = "vanilla";
+        assertTrue(g.disguise(honest).isEmpty());
+        Guard.Info fabric = new Guard.Info();
+        fabric.brand = "fabric";
+        fabric.channels.add("fabric:registry/sync");
+        assertTrue(g.disguise(fabric).isEmpty());
+        // set to kick
+        plugin.getConfig().set("disguise-action", "KICK");
+        g.info(steve.getUniqueId()).brand = "vanilla";
+        g.info(steve.getUniqueId()).channels.add("c:register");
+        g.judge(steve);
+        assertFalse(steve.isOnline());
+    }
+
     @Test
     void oneCheckAtATimeAndAlertsOnlyOnce() {
         var g = plugin.guard();
         // a check is running (questions on the sign): a second one waits for it
-        g.expectRows(steve, List.of(List.of(Guard.control())));
+        g.expectRows(steve, List.of(List.of(POS), List.of(NEG)));
         g.probe(steve, true);
         assertTrue(g.probing(steve.getUniqueId()));
-        g.answer(steve, List.of(Component.text("Jump"), Component.empty(), Component.empty(), Component.empty()));
+        reply(steve, "Jump", "xyz-abc");
         server.getScheduler().performTicks(40);
         assertFalse(g.probing(steve.getUniqueId()), "the waiting check ran afterwards");
         // an alert-only mod is reported once per session, not on every check
@@ -417,27 +529,6 @@ class ModCheckTest {
         g.judge(steve);
         assertEquals(1, g.recentOffenses(steve.getUniqueId()));
         assertTrue(steve.isOnline());
-    }
-
-    @Test
-    void aClientThatBlocksTheCheckIsHandledAsSet() {
-        var g = plugin.guard();
-        List<Guard.Ask> first = new ArrayList<>();
-        first.add(Guard.control());
-        first.addAll(Guard.dummies());
-        g.expectRows(steve, List.of(first));
-        g.answer(steve, List.of(Component.text("key.jump|modcheck.probe.none|modcheck.probe.none"), Component.empty(), Component.empty(), Component.empty()));
-        assertEquals("blocked", g.info(steve.getUniqueId()).sign);
-        assertTrue(steve.isOnline(), "by default only the team is told");
-        PlayerMock other = server.addPlayer("Other");
-        plugin.getConfig().set("hidden-action", "KICK");
-        g.expectRows(other, List.of(first));
-        g.answer(other, List.of(Component.text("Jump|modcheck.probe.none|modcheck.probe.none"), Component.empty(), Component.empty(), Component.empty()));
-        assertFalse(other.isOnline(), "set to kick: kicked");
-        PlayerMock staff = server.addPlayer("Staff");
-        staff.addAttachment(plugin, "modcheck.bypass", true);
-        g.expectRows(staff, List.of(first));
-        g.answer(staff, List.of(Component.text("key.jump||"), Component.empty(), Component.empty(), Component.empty()));
-        assertTrue(staff.isOnline(), "bypass is never punished");
+        assertTrue(g.proof(steve.getUniqueId(), "freecam").get(0).contains("freecam:main"), "the channel is the proof");
     }
 }

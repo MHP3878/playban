@@ -37,17 +37,19 @@ Everything a mod does not set itself comes from the general settings: default ac
 
 ## How mods are found, honestly
 
-1. The **client name** the game sends: `vanilla`, `fabric`, `forge`, `lunarclient`, `feather` ... (the loader, not the single mods).
-2. The **mod channels** a client registers: minimaps, voice chat, schematic mods and every mod that talks to servers.
-3. A **hidden sign** once the player has loaded the world: the client gets a sign editor that is opened and closed in the same moment (it never shows on screen) with translation keys of the blocked mods (with an empty fallback) and key bindings. A client without the mod sends nothing back, a client with it its own text or bound key. Old Meteor versions that hide their keys send the raw key back, which gives them away too. On Paper 1.21.9+ the sign only exists for the player; on older servers a real sign stands two blocks under the player for a moment and the block is put back. A dead player is checked after the respawn.
-   - Controls guard against false alarms: `key.jump` must come back filled in, and a made-up key must come back empty. A client that fails either changes texts on its own (a mod that hides mods); then nothing it says counts and the team gets a note "blocks the mod check".
-   - `/modcheck <player>` also asks for well-known everyday mods (Sodium, Iris, Mod Menu, Cloth Config, EntityCulling ...). Their keys come from the mods' own language files.
-   - A client that blocks the check (`hidden-action`) or twice does not answer the sign (`no-answer-action`) is reported to the team; both can be set to kick, warn or ban in the settings.
-   - Only one check per player at a time, once per join (not again after every death or world change), and not while a chest or shop is open (it waits up to 15 seconds).
-   - On older Paper the real sign never replaces unbreakable or special blocks, cannot be broken, blown up or pushed while it stands, and every block is put back, also when the server stops.
-   - Cannot be seen this way: mods without texts (Lithium, FerriteCore, ImmediatelyFast, Baritone) and Wurst, which loads its texts outside the game's language.
+1. The **client name** the game sends: `vanilla`, `fabric`, `forge`, `lunarclient` ... (the loader, not the single mods).
+2. The **mod channels** a client registers: minimaps, voice chat, schematic mods and every mod that talks to servers. A rule hits a channel whose name space is the mod's name; short names only count exactly.
+3. The **hidden sign**, once the player has loaded the world. The sign editor is opened and closed in the same moment, so it never shows on screen; the client fills in the texts when it opens and sends them back when it closes.
+   - Every mod question is a translation key with an empty fallback, wrapped in a `%s` text: a client without the mod sends nothing back, a client with it its own text, old Meteor its raw key. A filter that only looks at the top level of a text never sees the key. Key bindings are asked too (`bind:`), so mods without a language file are seen by their binding.
+   - **Controls on every sign, at random places**: a text every client knows (picked at random) must come back filled in, and a made-up key that looks like a real one must come back exactly as the game builds its fallback (two random words, swapped). A sign whose controls fail says nothing about mods: the client changes texts on its own (`hidden-action`). The made-up words also tie each answer to its sign, so a late answer never gets mixed up.
+   - **Cross-check**: when a channel already proves a mod (Fabric API, Simple Voice Chat, NeoForge), its text must come back filled in. If it comes back empty, a filter such as ExploitPreventer hides mods (`hidden-action`).
+   - Keys come from the mods' own language files (Meteor, ThunderHack, Meteor+, Meteorist, Freecam, SeedcrackerX, Advanced XRay, X to Xray, Sodium, Iris, Mod Menu ...).
+4. The **lie detector**: a client that calls itself `vanilla` but registers mod channels or knows mod texts, or sends a client name only cheat clients send (`fake-brands`), is disguised (`disguise-action`). Lunar or Feather without their own channels is shown as a hint on the player's page, never punished.
+5. **Proof** for every finding: which channel, which client name, which text on the sign (e.g. »Open GUI« for `key.meteor-client.open-gui`). It shows on the player's page, in `/modcheck`, when the mouse is on a team alert, in Discord and in `history.log`.
 
-A full list of every mod is something no server is sent. Mods that never talk to the server and hide their names (many cheat clients pretend to be plain Fabric) are only found when they give themselves away. For a guarantee use the allow list, or a client mod every player must install.
+Everything suspicious about the client itself (blocks the check, a filter, no answer, disguise) is by default only told to the team; each can be set to kick, warn or ban in the settings.
+
+**What no server plugin can see**: Wurst and LiquidBounce keep their texts outside the game's language, many hack clients and addons ship no language file, and mods without texts (Lithium, FerriteCore, Baritone) leave nothing to ask for. A client that hides every mod text *and* every mod channel *and* calls itself vanilla (OpSec's vanilla mode) looks exactly like vanilla. For a guarantee use the allow list, or a client mod every player must install.
 
 ## Files
 

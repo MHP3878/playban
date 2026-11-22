@@ -37,9 +37,29 @@ ban:
 alert:
   mod: "<red>⚠ <white>{player}</white> <gray>hat <white>{mods}</white> → {action}. <dark_gray>Klick zum Prüfen"
   client: "<red>⚠ <white>{player}</white> <gray>nutzt den Client <white>{mods}</white>, nicht erlaubt → {action}."
+proof:
+  title: "<white><bold>Beweis</bold>"
+  click: "<dark_gray>Klick: Spieler prüfen"
+  brand: "Client-Name »{brand}«"
+  channel: "Mod-Kanal {channel}"
+  sign: "Schild: »{answer}« für {key}"
+  bind: "Schild: Taste »{answer}« für {key}"
+  sign-raw: "Schild: versteckt ihren Text, gibt aber den Namen {key} zurück"
+  canary: "Kanal {channel} zeigt {mod}, aber dessen Text {key} kam leer zurück: ein Filter versteckt Mods"
+  vanilla-channel: "Nennt sich »vanilla«, hat aber den Mod-Kanal {channel}"
+  vanilla-text: "Nennt sich »vanilla«, hat aber {mod} (Schild)"
+  fake-brand: "Gefälschte Client-Kennung »{brand}« (so tarnen sich Cheat-Clients)"
+  lunar: "Nennt sich Lunar Client, hat aber keine Lunar-Kanäle"
+  feather: "Nennt sich Feather, hat aber keine Feather-Kanäle"
+  blank: "Ein Text, den jeder Client kennt, kam leer zurück: Texte werden nicht ausgefüllt"
+  altered: "Ein ausgedachter Text kam verändert zurück: der Client verändert Texte selbst"
+  missing: "Die Kontrollen auf dem Schild kamen nicht vollständig zurück"
+  no-answer: "Hat zweimal nicht auf das Schild geantwortet"
 suspicious:
   blocked: "Schutz gegen die Mod-Prüfung"
   no-answer: "keine Antwort auf die Mod-Prüfung"
+  filtered: "Filter gegen die Mod-Prüfung"
+  disguise: "Tarnung (gibt sich als anderer Client aus)"
 discord:
   line: "⚠ {player} hat {mods} → {action}"
 
@@ -56,6 +76,9 @@ check:
   result-no-answer: "<gold>? Der Client hat zweimal nicht geantwortet (Lag oder ein Client, der die Prüfung ignoriert)."
   result-impossible: "<gold>? Hier keine Prüfung möglich. Auf festen Boden stellen und nochmal."
   result-unknown: "<gray>? Noch nicht geprüft. Ist der Spieler gerade tot, wird nach dem Respawn geprüft."
+  proof: "<dark_gray>  • <white>{mod}</white><gray>: {proof}"
+  suspicion: "<gold>  ⚠ <gray>{line}"
+  result-filtered: "<red>✘ Ein Filter versteckt Mods (z. B. ExploitPreventer). Gefunden über die Gegenprobe; das Team wurde informiert."
 
 block:
   usage: "<gray>Benutzung: <white>/modblock <mod-name></white>, z. B. <white>/modblock freecam</white>"
@@ -114,6 +137,9 @@ menu:
     mod-passed: "<green>Für diesen Spieler erlaubt"
     mod-free: "<gray>Nicht gesperrt"
     mod-click: "<#4facfe>Klick: bestrafen oder durchlassen"
+    proof: "<gray>Beweis:"
+    proof-line: "<dark_gray>- <white>{line}"
+    suspicion: "<gold>Auffällig:"
     info: ["<gray>Client: <white>{client}", "<gray>Mod-Kanäle: <white>{channels}", "<gray>Verwarnungen: <white>{warnings}", "<gray>Zuletzt mit gesperrter Mod gekommen: <white>{recent}"]
     sign:
       unknown: "<gray>Schild-Prüfung: <white>noch nicht gefragt"
@@ -121,6 +147,7 @@ menu:
       blocked: "<red>Schild-Prüfung: dieser Client füllt keine Texte aus"
       no-answer: "<gold>Schild-Prüfung: keine Antwort vom Client"
       impossible: "<gray>Schild-Prüfung: hier nicht möglich (kein fester Boden)"
+      filtered: "<red>Schild-Prüfung: ein Filter versteckt Mods"
     recheck:
       name: "<#4facfe>Nochmal prüfen"
       lore: ["<gray>Client-Name, Kanäle und das versteckte", "<gray>Schild, auch für bekannte normale Mods", "<gray>(Sodium, Iris ...). Das Ergebnis kommt", "<gray>nach ein paar Sekunden."]
@@ -220,6 +247,9 @@ menu:
     no-answer:
       name: "<#4facfe><bold>Keine Antwort"
       lore: ["<gray>Jetzt: <white>{value}", "<gray>Wenn ein Client zweimal gar nicht", "<gray>auf das Schild antwortet", "<gray>(Cheat-Client oder starker Lag).", "", "<#4facfe>Klick zum Ändern"]
+    disguise:
+      name: "<#4facfe><bold>Tarnung"
+      lore: ["<gray>Jetzt: <white>{value}", "<gray>Wenn ein Client lügt, was er ist:", "<gray>»vanilla«, aber Mod-Kanäle oder", "<gray>Mod-Texte; gefälschte Lunar-Kennung.", "", "<#4facfe>Klick zum Ändern"]
     repeat-window:
       name: "<#4facfe><bold>Wiederkommen: innerhalb von"
       lore: ["<gray>Jetzt: <white>{value}", "", "<#4facfe>Klick zum Ändern"]

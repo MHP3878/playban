@@ -55,8 +55,18 @@ public final class Guard implements Listener {
         public final Set<String> channels = new LinkedHashSet<>();
         /** mods that answered the hidden sign */
         public final Set<String> found = new LinkedHashSet<>();
-        /** How the hidden sign check went: unknown, works, blocked, no-answer, impossible */
+        /** How the hidden sign check went: unknown, works, blocked, filtered, no-answer, impossible */
         public String sign = "unknown";
+        /** why the sign could not be trusted (blank, altered, missing) */
+        public String problem;
+        /** what the sign showed for each mod: key and answer, the proof */
+        public final Map<String, List<String[]>> signProof = new LinkedHashMap<>();
+        /** every key asked on a trusted sign and its answer */
+        public final Map<String, String> answered = new HashMap<>();
+        /** why this client is suspicious (filter, disguise ...), for the team */
+        public final List<String> suspicion = new ArrayList<>();
+        final List<String> oldNonces = new ArrayList<>();
+        int signsDone;
         /** rules and findings already dealt with in this session: no second alert for the same thing */
         public final Set<String> handled = new HashSet<>();
         boolean joinChecked;
@@ -72,8 +82,8 @@ public final class Guard implements Listener {
     private final Map<UUID, Info> infos = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> strikes = new HashMap<>();
     private final Map<UUID, Set<String>> passes = new HashMap<>();
-    private final Map<UUID, List<List<Ask>>> asked = new HashMap<>();
-    private final Map<UUID, List<Ask>> waiting = new HashMap<>();
+    private final Map<UUID, List<List<Probe.Ask>>> asked = new HashMap<>();
+    private final Map<UUID, List<Probe.Ask>> waiting = new HashMap<>();
     private final Map<UUID, Boolean> afterRespawn = new HashMap<>();
     private final Map<UUID, Boolean> queued = new HashMap<>();
     private final Map<UUID, Runnable> restore = new HashMap<>();
@@ -448,19 +458,28 @@ public final class Guard implements Listener {
             if (!info.handled.add("__client")) return;
             String client = info.brand == null ? "?" : info.brand;
             String a = cfg().getString("not-allowed-action", "KICK").toUpperCase(Locale.ROOT);
-            enforce(p, null, a, client, true);
+            enforce(p, null, a, client, true, List.of(lang().raw("proof.brand").replace("{brand}", client)));
             return;
         }
         // only what is new in this session: an "alert only" mod is not reported again and again
         List<Rule> hits = new ArrayList<>();
         for (Rule r : hits(p.getUniqueId())) if (!info.handled.contains(r.id())) hits.add(r);
-        if (hits.isEmpty()) return;
-        for (Rule r : hits) info.handled.add(r.id());
-        Rule worst = hits.get(0);
-        for (Rule r : hits) if (weight(action(r)) > weight(action(worst))) worst = r;
-        List<String> names = new ArrayList<>();
-        for (Rule r : hits) names.add(r.display());
-        enforce(p, worst, action(worst), String.join(", ", names), false);
+        if (!hits.isEmpty()) {
+            for (Rule r : hits) info.handled.add(r.id());
+            Rule worst = hits.get(0);
+            for (Rule r : hits) if (weight(action(r)) > weight(action(worst))) worst = r;
+            List<String> names = new ArrayList<>();
+            List<String> proof = new ArrayList<>();
+            for (Rule r : hits) {
+                names.add(r.display());
+                for (String line : proof(p.getUniqueId(), r.id())) proof.add(r.display() + " - " + line);
+            }
+            enforce(p, worst, action(worst), String.join(", ", names), false, proof);
+            if (!p.isOnline()) return;
+        }
+        List<String> lie = disguise(info);
+        if (!lie.isEmpty()) suspicious(p, "disguise", lie);
+        for (String hint : hints(info)) if (!info.suspicion.contains(hint)) info.suspicion.add(hint);
     }
 
     /**
@@ -470,7 +489,7 @@ public final class Guard implements Listener {
     public void punish(Player p, String mod, String by) {
         Rule r = rule(mod);
         log(by, "punish", p.getName(), mod);
-        enforce(p, r, action(r), display(mod), false);
+        enforce(p, r, action(r), display(mod), false, proof(p.getUniqueId(), mod));
     }
 
     public static final List<String> REPEAT_WINDOWS = List.of("off", "10m", "1h", "1d", "7d", "30d");
@@ -499,7 +518,7 @@ public final class Guard implements Listener {
         return times.size() >= cfg().getInt("repeat.times", 2) ? cfg().getString("repeat.action", "BAN 7d") : null;
     }
 
-    private void enforce(Player p, Rule rule, String action, String mods, boolean client) {
+    private void enforce(Player p, Rule rule, String action, String mods, boolean client, List<String> proof) {
         String reason = fill(reason(rule), mods);
         // came back with a blocked mod too often in a short time: the repeat punishment instead
         String again = action.equals("ALERT") && !cfg().getBoolean("repeat.count-alerts", false) ? null : repeat(p.getUniqueId());
@@ -507,19 +526,19 @@ public final class Guard implements Listener {
             reason = reason + " " + lang().raw("repeat.suffix");
             String[] parts = again.trim().split("\\s+", 2);
             if (parts[0].equalsIgnoreCase("BAN")) {
-                log("ModCheck", "repeat ban", p.getName(), mods);
-                alertTeam(p, mods, lang().raw("repeat.alert-action").replace("{action}", again), client, rule);
+                log("ModCheck", "repeat ban", p.getName(), mods + proofForLog(proof));
+                alertTeam(p, mods, lang().raw("repeat.alert-action").replace("{action}", again), client, rule, proof);
                 banFor(p, reason, parts.length > 1 ? parts[1] : "perm");
             } else {
-                log("ModCheck", "repeat kick", p.getName(), mods);
-                alertTeam(p, mods, lang().raw("repeat.alert-action").replace("{action}", again), client, rule);
+                log("ModCheck", "repeat kick", p.getName(), mods + proofForLog(proof));
+                alertTeam(p, mods, lang().raw("repeat.alert-action").replace("{action}", again), client, rule, proof);
                 p.kick(lang().msg("kick.screen", "reason", reason));
             }
             return;
         }
-        alertTeam(p, mods, lang().raw("action." + action.toLowerCase(Locale.ROOT)), client, rule);
-        if (rule == null || rule.discord()) discord(p.getName(), mods, action);
-        log("ModCheck", action.toLowerCase(Locale.ROOT), p.getName(), mods);
+        alertTeam(p, mods, lang().raw("action." + action.toLowerCase(Locale.ROOT)), client, rule, proof);
+        if (rule == null || rule.discord()) discord(p.getName(), mods, action, proof);
+        log("ModCheck", action.toLowerCase(Locale.ROOT), p.getName(), mods + proofForLog(proof));
         switch (action) {
             case "ALERT" -> {
                 // the team knows, nothing else
@@ -537,11 +556,20 @@ public final class Guard implements Listener {
         }
     }
 
-    private void alertTeam(Player p, String mods, String what, boolean client, Rule rule) {
+    private static String proofForLog(List<String> proof) {
+        return proof == null || proof.isEmpty() ? "" : " | proof: " + String.join(" / ", proof);
+    }
+
+    private void alertTeam(Player p, String mods, String what, boolean client, Rule rule, List<String> proof) {
         boolean notify = rule == null || rule.tellTeam();
         if (!notify || !cfg().getBoolean("notify-team", true)) return;
+        // the proof shows when the mouse is on the message
+        var hover = Component.text().append(lang().msg("proof.title"));
+        for (String line : proof == null ? List.<String>of() : proof) hover.append(Component.newline()).append(Component.text("- " + line, net.kyori.adventure.text.format.NamedTextColor.GRAY));
+        hover.append(Component.newline()).append(lang().msg("proof.click"));
         Component line = lang().prefixed(client ? "alert.client" : "alert.mod", "player", p.getName(), "mods", mods, "action", what)
-                .clickEvent(ClickEvent.runCommand("/modcheck " + p.getName()));
+                .clickEvent(ClickEvent.runCommand("/modcheck " + p.getName()))
+                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(hover.build()));
         for (Player staff : Bukkit.getOnlinePlayers()) if (staff.hasPermission("modcheck.notify")) staff.sendMessage(line);
         Bukkit.getConsoleSender().sendMessage(line);
     }
@@ -585,56 +613,39 @@ public final class Guard implements Listener {
 
     // ---------------------------------------------------------------- the hidden sign
 
-    /**
-     * One question on the hidden sign: the text sent, what a client WITHOUT the mod sends back, and the
-     * mod it is about. A translation key goes with an empty fallback: a client without the mod gives the
-     * fallback (nothing) back, a client with the mod its own text, and a client that hides the key (old
-     * Meteor) the raw key. Anything but nothing means the mod is there. "bind:" asks for a key binding:
-     * a client without it gives the name back as it is.
-     */
-    public record Ask(Component text, String expect, String mod) {}
-
-    public static Ask ask(String key, String mod) {
-        if (key.startsWith("bind:")) {
-            String id = key.substring(5);
-            return new Ask(Component.keybind(id), id, mod);
-        }
-        return new Ask(Component.translatable().key(key).fallback("").build(), "", mod);
-    }
-
-    private static final String CONTROL = "__control";
-    private static final String DUMMY = "__dummy";
-    private static final String NONE = "modcheck.probe.none";
-    private static final String SEP = "|";
-    /** Paper cuts sign lines after 80 characters: three answers fit in one line. */
-    private static final int PER_LINE = 3;
+    private final java.util.Random random = new java.security.SecureRandom();
     /** How long to wait for a player to close a chest, shop or menu before the sign comes anyway. */
     private static final int MAX_WAIT_FOR_INVENTORY = 15;
-
-    /** "key.jump" with an empty fallback: every client fills it in, unless texts are blocked. */
-    public static Ask control() {
-        return new Ask(Component.translatable().key("key.jump").fallback("").build(), "", CONTROL);
-    }
+    /** Where the sign of each player's current question stands: an answer for another spot is not ours. */
+    private final Map<UUID, Location> signAt = new HashMap<>();
 
     /**
-     * A key and a key binding no mod has: a clean client answers nothing and the name as it is. A client
-     * that answers anything else changes texts on its own, and then nothing it says can be trusted.
+     * Mods whose presence a channel already proves. Their text must then come back filled in; if it comes
+     * back empty, a filter (ExploitPreventer, OpSec ...) hides mods from the check.
      */
-    public static List<Ask> dummies() {
-        return List.of(new Ask(Component.translatable().key(NONE).fallback("").build(), "", DUMMY),
-                new Ask(Component.keybind(NONE), NONE, DUMMY));
-    }
+    record Canary(String mod, List<String> channelStarts, String key) {}
+
+    static final List<Canary> CANARIES = List.of(
+            new Canary("fabricapi", List.of("fabric:", "fabric-"), "pack.source.fabricmod"),
+            new Canary("simplevoicechat", List.of("voicechat:"), "key.push_to_talk"),
+            new Canary("neoforgeloader", List.of("neoforge:"), "fml.menu.mods"));
 
     /** The sign check with the blocked mods only (on join). */
     public void probe(Player p) {
         probe(p, false);
     }
 
+    /** "key.xyz" also as a key binding: a mod without a language file still has its binding. */
+    static List<String> withBindings(List<String> keys) {
+        List<String> out = new ArrayList<>(keys);
+        for (String k : keys) if (k.startsWith("key.") && !k.startsWith("key.categor")) out.add("bind:" + k);
+        return out;
+    }
+
     /**
-     * The sign check. First come the controls: "key.jump" every client knows, and a made-up key no client
-     * knows; their answers tell whether the client can be trusted. With discover, the texts of well-known
-     * mods are asked as well, to see more than the blocked ones. Only one check runs per player: another
-     * one asked for meanwhile waits for it.
+     * The sign check: the blocked mods first (they decide on join), then the canaries and loaders for
+     * the cross-check and the lie detector, with discover also every well-known mod. Only one check runs
+     * per player: another one asked for meanwhile waits for it.
      */
     public void probe(Player p, boolean discover) {
         UUID id = p.getUniqueId();
@@ -647,21 +658,23 @@ public final class Guard implements Listener {
             afterRespawn.merge(id, discover, Boolean::logicalOr);
             return;
         }
-        List<Ask> all = new ArrayList<>();
-        all.add(control());
-        all.addAll(dummies());
+        List<Probe.Ask> all = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (Rule r : rules()) {
-            for (String k : r.keys()) if (seen.add(k)) all.add(ask(k, r.id()));
+            List<String> keys = new ArrayList<>(r.keys());
             // a known mod also brings its own up-to-date texts, so older settings files keep working
             KnownMods.Mod known = KnownMods.find(r.id());
-            if (known != null) for (String k : known.keys()) if (seen.add(k)) all.add(ask(k, r.id()));
+            if (known != null) keys.addAll(known.keys());
+            for (String k : withBindings(keys)) if (seen.add(k)) all.add(Probe.mod(k, r.id()));
         }
-        if (discover) for (KnownMods.Mod m : KnownMods.ALL) for (String k : m.keys()) if (seen.add(k)) all.add(ask(k, m.id()));
+        for (Canary c : CANARIES) if (seen.add(c.key())) all.add(Probe.mod(c.key(), c.mod()));
+        if (discover) for (KnownMods.Mod m : KnownMods.ALL) for (String k : withBindings(m.keys())) if (seen.add(k)) all.add(Probe.mod(k, m.id()));
         Info info = info(id);
         info.sign = "unknown";
+        info.problem = null;
         info.retried = false;
         info.waitedForInventory = 0;
+        info.signsDone = 0;
         waiting.put(id, all);
         nextSign(p);
     }
@@ -676,6 +689,7 @@ public final class Guard implements Listener {
         UUID id = p.getUniqueId();
         waiting.remove(id);
         asked.remove(id);
+        signAt.remove(id);
         Boolean next = queued.remove(id);
         if (next != null && p.isOnline()) Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (p.isOnline()) probe(p, next);
@@ -689,12 +703,19 @@ public final class Guard implements Listener {
 
     private void nextSign(Player p) {
         UUID id = p.getUniqueId();
-        List<Ask> left = waiting.get(id);
-        if (left == null || left.isEmpty() || !p.isOnline()) {
+        List<Probe.Ask> left = waiting.get(id);
+        if (left == null || !p.isOnline()) {
             finish(p);
             return;
         }
         Info info = info(id);
+        if (left.isEmpty()) {
+            // every sign answered: now the cross-check and the lie detector, which need all answers
+            finish(p);
+            crossCheck(p);
+            if (p.isOnline()) judge(p);
+            return;
+        }
         // a chest, a shop or a menu is open: the sign would close it, so wait a moment (but not forever)
         if (!ownInventory(p) && info.waitedForInventory < MAX_WAIT_FOR_INVENTORY) {
             info.waitedForInventory++;
@@ -703,14 +724,14 @@ public final class Guard implements Listener {
             }, 20L);
             return;
         }
-        List<Ask> batch = new ArrayList<>(left.subList(0, Math.min(4 * PER_LINE, left.size())));
+        boolean first = info.signsDone == 0;
+        List<Probe.Ask> batch = new ArrayList<>(left.subList(0, Math.min(Probe.roomFor(first), left.size())));
         left.subList(0, batch.size()).clear();
-        List<List<Ask>> rows = new ArrayList<>();
-        for (int i = 0; i < batch.size(); i += PER_LINE) rows.add(new ArrayList<>(batch.subList(i, Math.min(i + PER_LINE, batch.size()))));
+        List<List<Probe.Ask>> rows = Probe.layout(Probe.controls(random, first), batch, random);
         expectRows(p, rows);
-        List<List<Ask>> mine = asked.get(id);
+        List<List<Probe.Ask>> mine = asked.get(id);
         List<Component> lines = new ArrayList<>();
-        for (int i = 0; i < 4; i++) lines.add(i < rows.size() ? line(rows.get(i)) : Component.empty());
+        for (int i = 0; i < Probe.LINES; i++) lines.add(i < rows.size() ? Probe.line(rows.get(i)) : Component.empty());
         if (!virtualSign(p, lines) && !realSign(p, lines)) {
             info.sign = "impossible";
             finish(p);
@@ -737,36 +758,25 @@ public final class Guard implements Listener {
                 }, 20L);
                 return;
             }
-            if (info.sign.equals("unknown")) {
+            if (info.signsDone == 0) {
                 // twice no answer at all: the client does not send the sign back
                 info.sign = "no-answer";
                 finish(p);
-                suspicious(p, "no-answer");
+                suspicious(p, "no-answer", List.of(lang().raw("proof.no-answer")));
                 return;
             }
             nextSign(p);
         }, 30L);
     }
 
-    private static Component line(List<Ask> row) {
-        var b = Component.text();
-        for (int i = 0; i < row.size(); i++) {
-            if (i > 0) b.append(Component.text(SEP));
-            b.append(row.get(i).text());
+    /** Waits for an answer to these sign lines (each up to three questions). */
+    public void expectRows(Player p, List<List<Probe.Ask>> rows) {
+        Info info = info(p.getUniqueId());
+        for (String n : Probe.nonces(rows)) {
+            info.oldNonces.add(n);
+            if (info.oldNonces.size() > 16) info.oldNonces.remove(0);
         }
-        return b.build();
-    }
-
-    /** Waits for an answer: one question per sign line (key, mod id), for tests and simple use. */
-    public void expect(Player p, List<String[]> keysAndMods) {
-        List<List<Ask>> rows = new ArrayList<>();
-        for (String[] km : keysAndMods) rows.add(List.of(km[1].equals(CONTROL) ? control() : ask(km[0], km[1])));
-        expectRows(p, rows);
-    }
-
-    /** Waits for an answer to these sign lines, each with up to three questions. */
-    public void expectRows(Player p, List<List<Ask>> rows) {
-        asked.put(p.getUniqueId(), new ArrayList<>(rows.subList(0, Math.min(4, rows.size()))));
+        asked.put(p.getUniqueId(), new ArrayList<>(rows.subList(0, Math.min(Probe.LINES, rows.size()))));
     }
 
     /** Paper 1.21.9+: a sign that only exists for this player, the world is not touched. */
@@ -774,12 +784,14 @@ public final class Guard implements Listener {
         try {
             Class<?> position = Class.forName("io.papermc.paper.math.Position");
             Location at = p.getLocation().clone();
-            at.setY(Math.max(p.getWorld().getMinHeight(), at.getBlockY() - 6));
+            // a random depth under the player, never the same spot twice in a row
+            at.setY(Math.max(p.getWorld().getMinHeight(), at.getBlockY() - 5 - random.nextInt(3)));
             Object pos = position.getMethod("block", int.class, int.class, int.class).invoke(null, at.getBlockX(), at.getBlockY(), at.getBlockZ());
             var open = p.getClass().getMethod("openVirtualSign", position, org.bukkit.block.sign.Side.class);
             p.sendBlockChange(at, Material.OAK_SIGN.createBlockData());
             p.sendSignChange(at, lines);
             open.invoke(p, pos, org.bukkit.block.sign.Side.FRONT);
+            signAt.put(p.getUniqueId(), at.getBlock().getLocation());
             Location back = at.clone();
             restore.put(p.getUniqueId(), () -> {
                 if (p.isOnline()) p.sendBlockChange(back, back.getBlock().getBlockData());
@@ -829,6 +841,7 @@ public final class Guard implements Listener {
             for (int i = 0; i < 4; i++) side.line(i, lines.get(i));
             sign.update(true, false);
             restore.put(p.getUniqueId(), () -> putBack(loc));
+            signAt.put(p.getUniqueId(), loc);
             // safety net: back after two seconds whatever happens
             Bukkit.getScheduler().runTaskLater(plugin, () -> putBack(loc), 40L);
             // the block and its text must be at the client BEFORE the editor opens: the world sends its
@@ -902,19 +915,34 @@ public final class Guard implements Listener {
         for (Block b : e.getBlocks()) if (ours(b)) e.setCancelled(true);
     }
 
+    private boolean layoutWarned;
+
     public void registerVirtualSignListener() {
         try {
             @SuppressWarnings("unchecked")
             Class<? extends Event> type = (Class<? extends Event>) Class.forName("io.papermc.paper.event.packet.UncheckedSignChangeEvent");
+            Class<?> position = Class.forName("io.papermc.paper.math.Position");
             Bukkit.getPluginManager().registerEvent(type, this, EventPriority.MONITOR, (listener, event) -> {
                 if (!type.isInstance(event)) return;
                 try {
                     Player p = (Player) event.getClass().getMethod("getPlayer").invoke(event);
+                    // only an answer for the spot of our own sign counts
+                    Location at = signAt.get(p.getUniqueId());
+                    Object pos = event.getClass().getMethod("getEditedBlockPosition").invoke(event);
+                    // through the public interface: the class behind it is not public
+                    int x = (int) position.getMethod("blockX").invoke(pos);
+                    int y = (int) position.getMethod("blockY").invoke(pos);
+                    int z = (int) position.getMethod("blockZ").invoke(pos);
+                    if (at == null || at.getBlockX() != x || at.getBlockY() != y || at.getBlockZ() != z) return;
                     @SuppressWarnings("unchecked")
                     List<Component> lines = (List<Component>) event.getClass().getMethod("lines").invoke(event);
                     answer(p, lines);
-                } catch (ReflectiveOperationException ignored) {
-                    // a different event layout
+                } catch (ReflectiveOperationException | RuntimeException failed) {
+                    // a different event layout: say it once, so it does not fail in silence
+                    if (!layoutWarned) {
+                        layoutWarned = true;
+                        plugin.getLogger().warning("Could not read a sign answer (" + failed + "); the sign check may not work on this server version.");
+                    }
                 }
             }, plugin);
         } catch (ClassNotFoundException ignored) {
@@ -924,43 +952,39 @@ public final class Guard implements Listener {
 
     /** Every answer that is not what a client without the mod says means the mod is there. */
     public void answer(Player p, List<Component> lines) {
-        List<List<Ask>> mine = asked.remove(p.getUniqueId());
+        UUID id = p.getUniqueId();
+        List<List<Probe.Ask>> mine = asked.get(id);
         if (mine == null) return;
+        Info info = info(id);
+        List<String> text = new ArrayList<>();
+        for (Component c : lines) text.add(PlainTextComponentSerializer.plainText().serialize(c));
+        String all = String.join("\n", text);
+        // a late answer to an earlier sign (lag): it carries that sign's own words, not ours
+        List<String> nonces = Probe.nonces(mine);
+        boolean ours = nonces.isEmpty() || nonces.stream().anyMatch(all::contains);
+        if (!ours && info.oldNonces.stream().filter(n -> !nonces.contains(n)).anyMatch(all::contains)) return;
+        asked.remove(id);
         cleanup(p);
-        Info info = info(p.getUniqueId());
-        boolean found = false;
-        // first the controls, then the mods: a client that changes texts on its own gives nothing away
-        Map<Ask, String> answers = new LinkedHashMap<>();
-        for (int i = 0; i < mine.size() && i < lines.size(); i++) {
-            List<Ask> row = mine.get(i);
-            String text = PlainTextComponentSerializer.plainText().serialize(lines.get(i));
-            String[] parts = text.split(Pattern.quote(SEP), -1);
-            // more parts than questions: a text had the separator in it, so it is unclear which is which
-            if (parts.length > row.size()) continue;
-            for (int j = 0; j < parts.length; j++) answers.put(row.get(j), parts[j].trim());
-        }
-        for (Map.Entry<Ask, String> e : answers.entrySet()) {
-            Ask a = e.getKey();
-            String got = e.getValue();
-            // "Jump" (in any language) back: the client fills in texts; nothing or the raw key: it does not
-            if (a.mod().equals(CONTROL)) info.sign = !got.isEmpty() && !got.equals("key.jump") ? "works" : "blocked";
-        }
-        for (Map.Entry<Ask, String> e : answers.entrySet()) {
-            if (e.getKey().mod().equals(DUMMY) && !e.getValue().equals(e.getKey().expect())) info.sign = "blocked";
-        }
-        if (info.sign.equals("unknown")) info.sign = "works"; // a later sign of a check that already passed its controls
-        if (!info.sign.equals("blocked")) {
-            for (Map.Entry<Ask, String> e : answers.entrySet()) {
-                Ask a = e.getKey();
-                if (a.mod().equals(CONTROL) || a.mod().equals(DUMMY)) continue;
-                if (!e.getValue().equals(a.expect()) && info.found.add(a.mod())) found = true;
-            }
-        }
-        if (info.sign.equals("blocked")) {
-            // the trick does not work with this client: no need to ask further, the settings say what happens
+        Probe.Verdict v = Probe.judge(mine, text);
+        if (!v.trusted()) {
+            // the client changes texts on its own: nothing it says counts, the settings say what happens
+            info.sign = "blocked";
+            info.problem = v.problem();
             finish(p);
-            suspicious(p, "blocked");
+            suspicious(p, "blocked", List.of(lang().raw("proof." + v.problem())));
             return;
+        }
+        info.sign = "works";
+        info.signsDone++;
+        boolean found = false;
+        for (Map.Entry<Probe.Ask, String> e : v.answers().entrySet()) {
+            Probe.Ask a = e.getKey();
+            if (a.kind() != Probe.Kind.MOD) continue;
+            info.answered.put(a.key(), e.getValue());
+            if (e.getValue().equals(a.expect())) continue;
+            List<String[]> proof = info.signProof.computeIfAbsent(a.mod(), k -> new ArrayList<>());
+            if (proof.size() < 4) proof.add(new String[]{a.key(), clean(e.getValue(), 60)});
+            if (info.found.add(a.mod())) found = true;
         }
         if (found) judge(p);
         if (p.isOnline()) Bukkit.getScheduler().runTaskLater(plugin, () -> nextSign(p), 2L);
@@ -968,16 +992,119 @@ public final class Guard implements Listener {
     }
 
     /**
-     * A client that blocks the check or never answers it. Plenty of players use privacy mods, so the
-     * default is only a note to the team; the owner can make it a kick or a ban.
+     * The cross-check: a channel proves a mod (Fabric API, Simple Voice Chat, NeoForge), so its text
+     * must have come back filled in. Empty means a filter hides mods from the check.
      */
-    private void suspicious(Player p, String what) {
+    void crossCheck(Player p) {
+        Info info = info(p.getUniqueId());
+        if (!"works".equals(info.sign)) return;
+        List<String> proof = new ArrayList<>();
+        for (Canary c : CANARIES) {
+            String got = info.answered.get(c.key());
+            if (got == null || !got.isEmpty()) continue; // not asked, or filled in as it should be
+            String channel = null;
+            for (String ch : info.channels) for (String start : c.channelStarts()) if (channel == null && ch.toLowerCase(Locale.ROOT).startsWith(start)) channel = ch;
+            if (channel != null) proof.add(lang().raw("proof.canary").replace("{channel}", channel).replace("{mod}", display(c.mod())).replace("{key}", c.key()));
+        }
+        if (proof.isEmpty()) return;
+        info.sign = "filtered";
+        suspicious(p, "filtered", proof);
+    }
+
+    private static final Set<String> SERVER_SIDE_CHANNELS = Set.of("minecraft", "bungeecord", "velocity");
+
+    /**
+     * The lie detector: a client that says it is something it is not. Plain "vanilla" with mod channels
+     * or mod texts, or a client name only cheat clients send.
+     */
+    public List<String> disguise(Info info) {
+        List<String> proof = new ArrayList<>();
+        String raw = info.brand == null ? "" : info.brand.trim();
+        String brand = raw.toLowerCase(Locale.ROOT);
+        if (brand.equals("vanilla")) {
+            for (String ch : info.channels) {
+                String ns = ch.contains(":") ? ch.substring(0, ch.indexOf(':')).toLowerCase(Locale.ROOT) : ch.toLowerCase(Locale.ROOT);
+                if (!SERVER_SIDE_CHANNELS.contains(ns)) {
+                    proof.add(lang().raw("proof.vanilla-channel").replace("{channel}", ch));
+                    break;
+                }
+            }
+            for (String m : info.found) {
+                proof.add(lang().raw("proof.vanilla-text").replace("{mod}", display(m)));
+                break;
+            }
+        }
+        if (!raw.isEmpty()) {
+            for (String re : cfg().getStringList("fake-brands")) {
+                try {
+                    if (Pattern.compile(re).matcher(raw).matches()) proof.add(lang().raw("proof.fake-brand").replace("{brand}", raw));
+                } catch (java.util.regex.PatternSyntaxException broken) {
+                    // a broken pattern in the settings
+                }
+            }
+        }
+        return proof;
+    }
+
+    /**
+     * Weaker hints, only shown on the player's page and in /modcheck, never punished: Lunar or Feather
+     * without their own channels (a real client may simply not have sent them yet).
+     */
+    public List<String> hints(Info info) {
+        List<String> out = new ArrayList<>();
+        String brand = info.brand == null ? "" : info.brand.trim().toLowerCase(Locale.ROOT);
+        Set<String> spaces = new LinkedHashSet<>();
+        for (String ch : info.channels) spaces.add(ch.contains(":") ? ch.substring(0, ch.indexOf(':')).toLowerCase(Locale.ROOT) : ch.toLowerCase(Locale.ROOT));
+        if (brand.startsWith("lunarclient") && spaces.stream().noneMatch(s -> s.startsWith("lunar"))) out.add(lang().raw("proof.lunar"));
+        if (brand.startsWith("feather") && spaces.stream().noneMatch(s -> s.startsWith("feather"))) out.add(lang().raw("proof.feather"));
+        return out;
+    }
+
+    /** Why a mod counts as found for this player: client name, channels, what the sign showed. */
+    public List<String> proof(UUID id, String mod) {
+        Info info = info(id);
+        List<String> out = new ArrayList<>();
+        Rule r = rule(mod);
+        KnownMods.Mod known = KnownMods.find(mod);
+        List<String> brands = r != null ? r.brand() : known != null && known.client() ? List.of(known.id()) : List.of();
+        List<String> chans = r != null ? r.channel() : known != null ? known.channels() : List.of(mod);
+        String brand = info.brand == null ? "" : info.brand;
+        for (String b : brands) if (b.length() >= 3 && brand.toLowerCase(Locale.ROOT).contains(b)) {
+            out.add(lang().raw("proof.brand").replace("{brand}", brand));
+            break;
+        }
+        int shown = 0;
+        for (String ch : info.channels) {
+            boolean match = false;
+            for (String c : chans) if (channelMatches(ch, c.toLowerCase(Locale.ROOT))) match = true;
+            if (!match && mod.equals(ch.contains(":") ? ch.substring(0, ch.indexOf(':')).toLowerCase(Locale.ROOT) : ch)) match = true;
+            if (match && shown++ < 2) out.add(lang().raw("proof.channel").replace("{channel}", ch));
+        }
+        for (String[] s : info.signProof.getOrDefault(mod, List.of())) {
+            String key = s[0].startsWith("bind:") ? s[0].substring(5) : s[0];
+            if (s[1].equals(key)) out.add(lang().raw("proof.sign-raw").replace("{key}", s[0]));
+            else out.add(lang().raw(s[0].startsWith("bind:") ? "proof.bind" : "proof.sign").replace("{answer}", s[1]).replace("{key}", key));
+        }
+        return out;
+    }
+
+    /**
+     * A client that hides from the check, never answers it, or lies about itself. Plenty of players use
+     * privacy mods, so the default is only a note to the team; the owner can make it a kick or a ban.
+     */
+    private void suspicious(Player p, String what, List<String> proof) {
         if (!p.isOnline() || p.hasPermission("modcheck.bypass")) return;
         Info info = info(p.getUniqueId());
         if (!info.handled.add("__" + what)) return;
-        String action = cfg().getString(what.equals("blocked") ? "hidden-action" : "no-answer-action", "ALERT").toUpperCase(Locale.ROOT);
+        info.suspicion.addAll(proof);
+        String key = switch (what) {
+            case "no-answer" -> "no-answer-action";
+            case "disguise" -> "disguise-action";
+            default -> "hidden-action";
+        };
+        String action = cfg().getString(key, "ALERT").toUpperCase(Locale.ROOT);
         if (!List.of("ALERT", "KICK", "WARN", "BAN").contains(action)) action = "ALERT";
-        enforce(p, null, action, lang().raw("suspicious." + what), false);
+        enforce(p, null, action, lang().raw("suspicious." + what), false, proof);
     }
 
     // ---------------------------------------------------------------- text from outside
@@ -1044,7 +1171,7 @@ public final class Guard implements Listener {
 
     private final java.util.ArrayDeque<Long> discordSent = new java.util.ArrayDeque<>();
 
-    private void discord(String player, String mods, String action) {
+    private void discord(String player, String mods, String action, List<String> proof) {
         String url = cfg().getString("discord-webhook", "");
         if (url.isBlank() || !isDiscordWebhook(url)) return;
         // at most 20 messages a minute: a wave of joins must not get the webhook blocked
@@ -1053,7 +1180,8 @@ public final class Guard implements Listener {
         if (discordSent.size() >= 20) return;
         discordSent.addLast(now);
         String text = lang().raw("discord.line").replace("{player}", player).replace("{mods}", clean(mods, 200))
-                .replace("{action}", lang().raw("action." + action.toLowerCase(Locale.ROOT)));
+                .replace("{action}", lang().raw("action." + action.toLowerCase(Locale.ROOT)))
+                + (proof == null || proof.isEmpty() ? "" : "\n> " + String.join("\n> ", proof.subList(0, Math.min(5, proof.size()))));
         String body = "{\"content\":\"" + json(text.replace("@", "@\u200b")) + "\",\"allowed_mentions\":{\"parse\":[]}}";
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {

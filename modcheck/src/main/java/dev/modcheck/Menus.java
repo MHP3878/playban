@@ -100,6 +100,13 @@ public final class Menus {
             boolean passed = guard().passed(t.getUniqueId(), mod);
             List<Component> lore = new ArrayList<>();
             lore.add(lang().msg(isBlocked ? "menu.player.mod-blocked" : passed ? "menu.player.mod-passed" : "menu.player.mod-free"));
+            // the proof: why this mod counts as found
+            List<String> proof = guard().proof(t.getUniqueId(), mod);
+            if (!proof.isEmpty()) {
+                lore.add(Component.empty());
+                lore.add(lang().msg("menu.player.proof"));
+                for (String line : proof.subList(0, Math.min(4, proof.size()))) lore.add(lang().msg("menu.player.proof-line", "line", line));
+            }
             lore.add(Component.empty());
             lore.add(lang().msg("menu.player.mod-click"));
             return Menu.item(isBlocked ? Material.RED_CONCRETE : passed ? Material.LIME_CONCRETE : Material.BOOK, lang().msg("menu.player.mod", "mod", guard().display(mod)), lore);
@@ -107,6 +114,12 @@ public final class Menus {
         List<Component> head = new ArrayList<>(lang().lore("menu.player.info", "client", info.brand == null ? "?" : info.brand,
                 "channels", info.channels.size(), "warnings", guard().warnings(t.getUniqueId()), "recent", guard().recentOffenses(t.getUniqueId())));
         head.add(lang().msg("menu.player.sign." + info.sign));
+        // suspicious things about the client itself: a filter, a disguise, no answer
+        if (!info.suspicion.isEmpty()) {
+            head.add(Component.empty());
+            head.add(lang().msg("menu.player.suspicion"));
+            for (String line : info.suspicion.subList(0, Math.min(4, info.suspicion.size()))) head.add(lang().msg("menu.player.proof-line", "line", line));
+        }
         m.set(47, Menu.head(t, lang().msg("menu.players.name", "player", t.getName()), head), null);
         m.set(51, item(Material.OAK_SIGN, "menu.player.recheck"), e -> check(p, t));
         if (mods.isEmpty()) {
@@ -142,6 +155,12 @@ public final class Menus {
             lang().send(p, "check.result", "player", t.getName(), "client", info.brand == null ? "?" : info.brand,
                     "count", mods.size(), "mods", names.isEmpty() ? "-" : String.join(", ", names));
             lang().send(p, "check.result-" + info.sign);
+            // the proof right in chat: one line per mod
+            for (String mod : mods) {
+                List<String> proof = guard().proof(t.getUniqueId(), mod);
+                if (!proof.isEmpty()) p.sendMessage(lang().msg("check.proof", "mod", guard().display(mod), "proof", proof.get(0)));
+            }
+            for (String line : info.suspicion) p.sendMessage(lang().msg("check.suspicion", "line", line));
             if (p instanceof Player staff) player(staff, t);
             else p.sendMessage(lang().msg("check.channels", "channels", info.channels.isEmpty() ? "-" : String.join(", ", info.channels)));
         }, 10L, 10L);
@@ -390,6 +409,11 @@ public final class Menus {
         String noAnswer = c.getString("no-answer-action", "ALERT").toUpperCase(Locale.ROOT);
         m.set(33, item(Material.CLOCK, "menu.settings.no-answer", "value", actionName(noAnswer)), e -> {
             setGlobal("no-answer-action", next(suspiciousActions, suspiciousActions.contains(noAnswer) ? noAnswer : "ALERT"));
+            settings(p);
+        });
+        String disguise = c.getString("disguise-action", "ALERT").toUpperCase(Locale.ROOT);
+        m.set(34, item(Material.LEATHER_HELMET, "menu.settings.disguise", "value", actionName(disguise)), e -> {
+            setGlobal("disguise-action", next(suspiciousActions, suspiciousActions.contains(disguise) ? disguise : "ALERT"));
             settings(p);
         });
         String language = c.getString("language", "en");

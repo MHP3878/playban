@@ -37,9 +37,29 @@ ban:
 alert:
   mod: "<red>⚠ <white>{player}</white> <gray>has <white>{mods}</white> → {action}. <dark_gray>Click to check"
   client: "<red>⚠ <white>{player}</white> <gray>uses the client <white>{mods}</white>, not on the allow list → {action}."
+proof:
+  title: "<white><bold>Proof</bold>"
+  click: "<dark_gray>Click: check the player"
+  brand: "client name »{brand}«"
+  channel: "mod channel {channel}"
+  sign: "sign: »{answer}« for {key}"
+  bind: "sign: key »{answer}« for {key}"
+  sign-raw: "sign: hides its text but gives back the name {key}"
+  canary: "channel {channel} shows {mod}, but its text {key} came back empty: a filter hides mods"
+  vanilla-channel: "calls itself »vanilla« but has the mod channel {channel}"
+  vanilla-text: "calls itself »vanilla« but has {mod} (sign)"
+  fake-brand: "fake client name »{brand}« (how cheat clients disguise themselves)"
+  lunar: "calls itself Lunar Client but has no Lunar channels"
+  feather: "calls itself Feather but has no Feather channels"
+  blank: "a text every client knows came back empty: texts are not filled in"
+  altered: "a made-up text came back changed: the client changes texts on its own"
+  missing: "the controls on the sign did not all come back"
+  no-answer: "did not answer the sign twice"
 suspicious:
   blocked: "protection against the mod check"
   no-answer: "no answer to the mod check"
+  filtered: "filter against the mod check"
+  disguise: "disguise (pretends to be another client)"
 discord:
   line: "⚠ {player} has {mods} → {action}"
 
@@ -56,6 +76,9 @@ check:
   result-no-answer: "<gold>? The client did not answer twice (lag, or a client that ignores the check)."
   result-impossible: "<gold>? No check possible here. Stand on solid ground and try again."
   result-unknown: "<gray>? Not checked yet. If the player is dead, the check runs after the respawn."
+  proof: "<dark_gray>  • <white>{mod}</white><gray>: {proof}"
+  suspicion: "<gold>  ⚠ <gray>{line}"
+  result-filtered: "<red>✘ A filter hides mods (e.g. ExploitPreventer). Found by the cross-check; the team was told."
 
 block:
   usage: "<gray>Usage: <white>/modblock <mod name></white>, e.g. <white>/modblock freecam</white>"
@@ -114,6 +137,9 @@ menu:
     mod-passed: "<green>Allowed for this player"
     mod-free: "<gray>Not blocked"
     mod-click: "<#4facfe>Click: punish or let pass"
+    proof: "<gray>Proof:"
+    proof-line: "<dark_gray>- <white>{line}"
+    suspicion: "<gold>Suspicious:"
     info: ["<gray>Client: <white>{client}", "<gray>Mod channels: <white>{channels}", "<gray>Warnings: <white>{warnings}", "<gray>Came with a blocked mod recently: <white>{recent}"]
     sign:
       unknown: "<gray>Sign check: <white>not asked yet"
@@ -121,6 +147,7 @@ menu:
       blocked: "<red>Sign check: this client does not fill in texts"
       no-answer: "<gold>Sign check: no answer from the client"
       impossible: "<gray>Sign check: not possible here (no solid ground)"
+      filtered: "<red>Sign check: a filter hides mods"
     recheck:
       name: "<#4facfe>Check again"
       lore: ["<gray>Client name, channels and the", "<gray>hidden sign, also for well-known", "<gray>everyday mods (Sodium, Iris ...).", "<gray>The result shows after a few seconds."]
@@ -220,6 +247,9 @@ menu:
     no-answer:
       name: "<#4facfe><bold>No answer"
       lore: ["<gray>Now: <white>{value}", "<gray>When a client twice does not", "<gray>answer the sign at all", "<gray>(cheat client or heavy lag).", "", "<#4facfe>Click to change"]
+    disguise:
+      name: "<#4facfe><bold>Disguise"
+      lore: ["<gray>Now: <white>{value}", "<gray>When a client lies about what", "<gray>it is: »vanilla« with mod channels", "<gray>or mod texts; a fake Lunar name.", "", "<#4facfe>Click to change"]
     repeat-window:
       name: "<#4facfe><bold>Coming back: within"
       lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]

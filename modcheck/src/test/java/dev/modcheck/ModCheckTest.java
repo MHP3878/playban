@@ -31,6 +31,8 @@ class ModCheckTest {
         plugin = MockBukkit.load(ModCheckPlugin.class);
         // most tests are about the check itself; the check room has its own tests
         plugin.getConfig().set("check-room.enabled", false);
+        // most ban tests look at ModCheck's own list; the server's ban system has its own test
+        plugin.getConfig().set("ban-system", "modcheck");
         admin = server.addPlayer("Admin");
         admin.setOp(true);
         steve = server.addPlayer("Steve");
@@ -137,7 +139,7 @@ class ModCheckTest {
         plugin.guard().info(steve.getUniqueId()).brand = "Meteor Client";
         plugin.guard().judge(steve);
         assertEquals(1, ran.size());
-        assertEquals("Steve 3d Forbidden mod: Meteor Client", ran.get(0));
+        assertEquals("Steve 3d You have Meteor Client on. Please delete it.", ran.get(0));
     }
 
     @Test
@@ -819,5 +821,50 @@ class ModCheckTest {
         assertFalse(plugin.room().holds(alex));
         assertEquals(back.getBlockY(), alex.getLocation().getBlockY());
         assertNull(alex.getPersistentDataContainer().get(key, org.bukkit.persistence.PersistentDataType.STRING), "the note is gone once back");
+    }
+
+    @Test
+    void theHiddenSignWorksInsideTheRoomOnOlderServers() {
+        plugin.getConfig().set("lumio.mode", "optional");
+        PlayerMock alex = joinIntoRoom("Alex");
+        var c = plugin.room().center();
+        assertEquals(org.bukkit.Material.STONE, c.clone().add(0, -2, 0).getBlock().getType(), "stone under the floor for the sign");
+        var spot = plugin.guard().signSpot(alex);
+        assertNotNull(spot, "the sign finds its place under the floor");
+        assertEquals(c.getBlockY() - 2, spot.getY(), "hidden right under the bedrock floor");
+        // building the room again leaves a sign of a running check alone
+        spot.setType(org.bukkit.Material.OAK_SIGN);
+        plugin.room().build(c);
+        assertEquals(org.bukkit.Material.OAK_SIGN, spot.getType());
+        // the bottom place keeps room for the stone too
+        plugin.getConfig().set("check-room.place", "bottom");
+        var low = plugin.room().center();
+        assertTrue(low.getBlockY() - 3 > low.getWorld().getMinHeight());
+    }
+
+    @Test
+    void bansGoThroughTheServersBanSystem() {
+        // an old ModCheck ban moves to the server's ban system (here the game's own ban list)
+        plugin.getConfig().set("ban-system", "modcheck");
+        assertTrue(admin.performCommand("modblock freecam"));
+        plugin.getConfig().set("rules.freecam.action", "BAN");
+        plugin.guard().info(steve.getUniqueId()).channels.add("freecam:main");
+        plugin.guard().judge(steve);
+        assertNotNull(plugin.guard().ban(steve.getUniqueId()), "in ModCheck's own list");
+        plugin.getConfig().set("ban-system", "auto");
+        assertEquals("vanilla", plugin.guard().banSystem(), "no ban plugin here: the game's own list");
+        assertEquals(1, plugin.guard().moveOwnBans());
+        assertNull(plugin.guard().ban(steve.getUniqueId()), "moved out of ModCheck's list");
+        assertTrue(server.getOfflinePlayer(steve.getUniqueId()).isBanned(), "and into the game's ban list");
+        // /modcheck unban lifts it there too
+        assertTrue(admin.performCommand("modcheck unban Steve"));
+        assertFalse(server.getOfflinePlayer(steve.getUniqueId()).isBanned());
+        // a new ban goes straight there
+        PlayerMock alex = server.addPlayer("Alex");
+        plugin.guard().info(alex.getUniqueId()).channels.add("freecam:main");
+        plugin.guard().judge(alex);
+        assertNull(plugin.guard().ban(alex.getUniqueId()));
+        assertTrue(server.getOfflinePlayer(alex.getUniqueId()).isBanned());
+        assertFalse(alex.isOnline());
     }
 }

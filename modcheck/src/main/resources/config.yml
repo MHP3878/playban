@@ -26,7 +26,12 @@ warnings: 1
 # How long a ban lasts: e.g. 1h, 1d, 7d, 30d, or perm
 ban-duration: 7d
 
-# Ban with another plugin instead (LiteBans, EssentialsX, AdvancedBan ...). Empty = ModCheck's own ban.
+# Who bans: auto = the ban system on the server (StaffCore, LiteBans, AdvancedBan, EssentialsX), else
+# the game's own ban list. Then that plugin's ban screen shows and its /unban works. modcheck = ModCheck's
+# own list (/modcheck unban). Old ModCheck bans move to the chosen system on start.
+ban-system: auto
+
+# Or your own ban command (wins over ban-system). Empty = ban-system decides.
 # {player} {duration} {reason} {mods} are filled in. Example: "tempban {player} {duration} {reason}"
 ban-command: ""
 

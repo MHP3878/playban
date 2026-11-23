@@ -36,6 +36,11 @@ public class ModCheckPlugin extends JavaPlugin {
         room = new CheckRoom(this);
         getServer().getPluginManager().registerEvents(room, this);
         room.start();
+        // once every plugin is up: ModCheck's own old bans move to the server's ban system
+        getServer().getScheduler().runTask(this, () -> {
+            int moved = guard.moveOwnBans();
+            if (moved > 0) getLogger().info("Moved " + moved + " ModCheck ban(s) to " + guard.banSystem() + ": one ban list, one ban screen, /unban works.");
+        });
         // say once at start what a mode without Lumio costs
         if (!lumio.mode().equals("required")) getServer().getConsoleSender().sendMessage(lang.prefixed("lumio.warn-incomplete"));
         getServer().getPluginManager().registerEvents(input, this);

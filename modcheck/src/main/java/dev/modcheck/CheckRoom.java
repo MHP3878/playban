@@ -129,7 +129,8 @@ public final class CheckRoom implements Listener {
         World w = Bukkit.getWorlds().get(0);
         Location spawn = w.getSpawnLocation();
         boolean bottom = "bottom".equalsIgnoreCase(plugin.getConfig().getString("check-room.place", "top"));
-        int y = bottom ? w.getMinHeight() + 1 : w.getMaxHeight() - 2 - HIGH;
+        // under the floor there is room for two layers of stone (see build), at the bottom too
+        int y = bottom ? w.getMinHeight() + 4 : w.getMaxHeight() - 2 - HIGH;
         return new Location(w, spawn.getBlockX() + 0.5, y, spawn.getBlockZ() + 0.5, spawn.getYaw(), 0);
     }
 
@@ -139,7 +140,14 @@ public final class CheckRoom implements Listener {
         int cx = c.getBlockX(), cy = c.getBlockY(), cz = c.getBlockZ();
         for (int dx = -HALF - 1; dx <= HALF + 1; dx++) {
             for (int dz = -HALF - 1; dz <= HALF + 1; dz++) {
-                for (int dy = -1; dy <= HIGH; dy++) {
+                for (int dy = -3; dy <= HIGH; dy++) {
+                    // two layers of stone under the bedrock floor: on Paper before 1.21.9 the hidden sign
+                    // check needs a solid block a few blocks under the player, hidden under the floor
+                    if (dy < -1) {
+                        Block b = w.getBlockAt(cx + dx, cy + dy, cz + dz);
+                        if (b.getType() != Material.STONE && !b.getLocation().equals(signSpot(b))) b.setType(Material.STONE, false);
+                        continue;
+                    }
                     boolean shell = Math.abs(dx) == HALF + 1 || Math.abs(dz) == HALF + 1 || dy == -1 || dy == HIGH;
                     Material want = shell ? Material.BEDROCK
                             : dy == HIGH - 1 && Math.abs(dx) == HALF && Math.abs(dz) == HALF ? Material.LIGHT : Material.AIR;
@@ -148,6 +156,11 @@ public final class CheckRoom implements Listener {
                 }
             }
         }
+    }
+
+    /** A block that is a sign of the check right now must not be turned back into stone. */
+    private Location signSpot(Block b) {
+        return b.getType().name().endsWith("_SIGN") ? b.getLocation() : null;
     }
 
     private boolean inside(Location l) {

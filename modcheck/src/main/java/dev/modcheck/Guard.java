@@ -199,6 +199,54 @@ public final class Guard implements Listener {
         return null;
     }
 
+    /** Lifts a ban: ModCheck's own, or through the server's ban system (by name). */
+    public boolean unbanAnywhere(UUID id, String name, String by) {
+        if (unban(id, by)) return true;
+        String system = banSystem();
+        if (system.equals("modcheck") || name == null || name.isBlank()) return false;
+        String n = forCommand(name);
+        var console = Bukkit.getConsoleSender();
+        boolean done = switch (system) {
+            case "staffcore" -> Bukkit.dispatchCommand(console, "staffcore:staffcore unban " + n);
+            case "litebans" -> Bukkit.dispatchCommand(console, "litebans:unban " + n);
+            case "advancedban" -> Bukkit.dispatchCommand(console, "advancedban:unban " + n);
+            case "essentials" -> Bukkit.dispatchCommand(console, "essentials:unban " + n);
+            default -> {
+                var ban = Bukkit.getOfflinePlayer(id);
+                boolean was = ban.isBanned();
+                org.bukkit.ban.ProfileBanList list = Bukkit.getBanList(org.bukkit.BanList.Type.PROFILE);
+                list.pardon(ban.getPlayerProfile());
+                yield was;
+            }
+        };
+        if (done) log(by, "unban via " + system, name, "");
+        return done;
+    }
+
+    /**
+     * ModCheck's own bans from before move to the server's ban system once, so there is one list, one
+     * ban screen and one /unban. A ban stays here when the other system could not take it.
+     */
+    public int moveOwnBans() {
+        String system = banSystem();
+        if (system.equals("modcheck") || !cfg().getString("ban-command", "").isBlank()) return 0;
+        int moved = 0;
+        for (Ban b : bans()) {
+            long left = b.until() == 0 ? 0 : b.until() - System.currentTimeMillis();
+            String dur = left <= 0 && b.until() != 0 ? null : left == 0 ? "perm" : Math.max(1, left / 60_000L) + "m";
+            if (dur == null) continue;
+            if (banThrough(system, new OfflinePlayerRef(b.id(), b.name()), b.reason(), dur)) {
+                data.set("bans." + b.id(), null);
+                moved++;
+            }
+        }
+        if (moved > 0) {
+            save();
+            log("ModCheck", "moved bans", null, moved + " to " + system);
+        }
+        return moved;
+    }
+
     public boolean unban(UUID id, String by) {
         if (data.getConfigurationSection("bans." + id) == null) return false;
         String name = data.getString("bans." + id + ".name");
@@ -264,7 +312,9 @@ public final class Guard implements Listener {
     }
 
     public String reason(Rule r) {
-        return r == null || r.reason().isBlank() ? cfg().getString("default-reason", "Forbidden mod: {mods}") : r.reason();
+        String text = r == null || r.reason().isBlank() ? cfg().getString("default-reason", "Forbidden mod: {mods}") : r.reason();
+        // the shipped text speaks the server's language: "You have Meteor Client on. Please delete it."
+        return text.equals("Forbidden mod: {mods}") ? lang().raw("default-reason") : text;
     }
 
     public String duration(Rule r) {
@@ -688,6 +738,50 @@ public final class Guard implements Listener {
         banFor(p, reason, duration(rule));
     }
 
+    /**
+     * Which ban system bans: "auto" finds the one on the server (StaffCore, LiteBans, AdvancedBan,
+     * EssentialsX), else the game's own ban list; "modcheck" keeps ModCheck's own list.
+     */
+    public String banSystem() {
+        String set = cfg().getString("ban-system", "auto").toLowerCase(Locale.ROOT);
+        if (!set.equals("auto")) return BAN_SYSTEMS.contains(set) ? set : "vanilla";
+        var pm = Bukkit.getPluginManager();
+        if (pm.isPluginEnabled("StaffCore")) return "staffcore";
+        if (pm.isPluginEnabled("LiteBans")) return "litebans";
+        if (pm.isPluginEnabled("AdvancedBan")) return "advancedban";
+        if (pm.isPluginEnabled("Essentials")) return "essentials";
+        return "vanilla";
+    }
+
+    public static final List<String> BAN_SYSTEMS = List.of("staffcore", "litebans", "advancedban", "essentials", "vanilla", "modcheck");
+
+    /** Bans through the chosen system. Returns false when that system could not be reached. */
+    boolean banThrough(String system, OfflinePlayerRef who, String reason, String dur) {
+        long ms = Time.parse(dur);
+        boolean forever = ms <= 0;
+        String safe = forCommand(reason);
+        String time = forCommand(dur);
+        var console = Bukkit.getConsoleSender();
+        return switch (system) {
+            case "staffcore" -> Bukkit.dispatchCommand(console, "staffcore:staffcore ban " + who.name() + " " + (forever ? "perm" : time) + " " + safe);
+            case "litebans" -> Bukkit.dispatchCommand(console, forever ? "litebans:ban " + who.name() + " " + safe : "litebans:tempban " + who.name() + " " + time + " " + safe);
+            case "advancedban" -> Bukkit.dispatchCommand(console, forever ? "advancedban:ban " + who.name() + " " + safe : "advancedban:tempban " + who.name() + " " + time + " " + safe);
+            case "essentials" -> Bukkit.dispatchCommand(console, forever ? "essentials:ban " + who.name() + " " + safe : "essentials:tempban " + who.name() + " " + time + " " + safe);
+            case "vanilla" -> {
+                try {
+                    Bukkit.getOfflinePlayer(who.id()).ban(reason, forever ? null : java.time.Instant.now().plusMillis(ms), "ModCheck");
+                    yield true;
+                } catch (RuntimeException | LinkageError e) {
+                    yield false;
+                }
+            }
+            default -> false;
+        };
+    }
+
+    /** A player by id and name, online or not. */
+    public record OfflinePlayerRef(UUID id, String name) {}
+
     private void banFor(Player p, String reason, String dur) {
         String external = cfg().getString("ban-command", "");
         if (!external.isBlank()) {
@@ -695,6 +789,14 @@ public final class Guard implements Listener {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), external.replace("{player}", p.getName()).replace("{duration}", forCommand(dur))
                     .replace("{reason}", safe).replace("{mod}", safe).replace("{mods}", safe));
             if (p.isOnline()) p.kick(lang().msg("kick.screen", "reason", reason));
+            return;
+        }
+        // the server's own ban system: its ban screen, its ban list, and /unban works
+        String system = banSystem();
+        if (!system.equals("modcheck") && banThrough(system, new OfflinePlayerRef(p.getUniqueId(), p.getName()), reason, dur)) {
+            long ms = Time.parse(dur);
+            log("ModCheck", "ban via " + system, p.getName(), reason);
+            if (p.isOnline()) p.kick(lang().msg("ban.screen", "reason", reason, "time", ms <= 0 ? lang().raw("ban.forever") : Time.format(ms)));
             return;
         }
         long ms = Time.parse(dur);
@@ -928,17 +1030,21 @@ public final class Guard implements Listener {
      * for the original block. While it stands it cannot be broken, blown up or pushed, and on shutdown
      * every block is put back.
      */
+    /** Where the real sign can stand: a solid block two to four blocks under the player; null if there is none. */
+    Block signSpot(Player p) {
+        Block feet = p.getLocation().getBlock();
+        for (int down = 2; down <= 4; down++) {
+            Block b = feet.getRelative(0, -down, 0);
+            if (b.getY() <= p.getWorld().getMinHeight()) break;
+            if (originals.containsKey(b.getLocation())) continue; // another check uses this spot right now
+            if (!unsafe(b)) return b;
+        }
+        return null;
+    }
+
     private boolean realSign(Player p, List<Component> lines) {
         try {
-            Block feet = p.getLocation().getBlock();
-            Block spot = null;
-            for (int down = 2; down <= 4 && spot == null; down++) {
-                Block b = feet.getRelative(0, -down, 0);
-                if (b.getY() <= p.getWorld().getMinHeight()) break;
-                Location l = b.getLocation();
-                if (originals.containsKey(l)) continue; // another check uses this spot right now
-                if (!unsafe(b)) spot = b;
-            }
+            Block spot = signSpot(p);
             if (spot == null) return false;
             Location loc = spot.getLocation();
             originals.put(loc, spot.getBlockData());

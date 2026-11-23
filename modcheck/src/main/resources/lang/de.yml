@@ -27,6 +27,7 @@ input:
   webhook: "<#4facfe>Füge den Discord-Webhook-Link ein (https://discord.com/api/webhooks/...)."
   webhook-wrong: "<red>Das ist kein Discord-Webhook-Link. Er muss mit <white>https://discord.com/api/webhooks/</white> anfangen."
 
+default-reason: "Du hast {mods} an. Bitte lösch das."
 kick:
   forbidden: "<red><bold>Verbotene Mod</bold>\n\n<white>Du hast <red>{mods}</red> an.\n<gray>Bitte lösch das und verbinde dich neu."
   screen: "<red><bold>Gekickt</bold>\n\n<gray>{reason}"

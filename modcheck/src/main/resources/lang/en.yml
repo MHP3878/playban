@@ -27,6 +27,7 @@ input:
   webhook: "<#4facfe>Paste the Discord webhook link (https://discord.com/api/webhooks/...)."
   webhook-wrong: "<red>That is not a Discord webhook link. It must start with <white>https://discord.com/api/webhooks/</white>."
 
+default-reason: "You have {mods} on. Please delete it."
 kick:
   forbidden: "<red><bold>Forbidden mod</bold>\n\n<white>You have <red>{mods}</red> on.\n<gray>Please delete it and join again."
   screen: "<red><bold>Kicked</bold>\n\n<gray>{reason}"

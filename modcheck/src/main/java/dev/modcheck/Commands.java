@@ -147,8 +147,9 @@ public final class Commands implements TabExecutor {
                 }
                 OfflinePlayer op = known(args[1]);
                 boolean done = false;
-                if (op != null) done = guard().unban(op.getUniqueId(), sender.getName());
-                else for (Guard.Ban b : guard().bans()) if (b.name().equalsIgnoreCase(args[1])) done = guard().unban(b.id(), sender.getName());
+                for (Guard.Ban b : guard().bans()) if (b.name().equalsIgnoreCase(args[1])) done |= guard().unban(b.id(), sender.getName());
+                // also through the server's ban system (StaffCore, LiteBans, ... or the game's ban list)
+                if (!done && op != null) done = guard().unbanAnywhere(op.getUniqueId(), args[1], sender.getName());
                 lang().send(sender, done ? "ban.unbanned" : "ban.not-banned", "player", args[1]);
                 return;
             }

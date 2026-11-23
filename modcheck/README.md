@@ -10,7 +10,7 @@ See which client and mods players use, block mods just by their name, and let th
 | `/modcheck <player>` | All mods of a player; click a mod: **Punish** or **Let pass** | `modcheck.check` |
 | `/modblock <name>` (`/modsperre`) | Block a mod. `freecam`, `Free Cam`, `freecam-fabric-1.2.1.jar` all work; typos get "did you mean"; Tab suggests known mods | `modcheck.block` |
 | `/modunblock <name>` | Allow a mod again | `modcheck.block` |
-| `/modcheck unban <player>` | Lift a ModCheck ban | `modcheck.unban` |
+| `/modcheck unban <player>` | Lift a ban, also in the server's ban system (StaffCore, LiteBans, ... or the game's ban list) | `modcheck.unban` |
 | `/modcheck reset <player>` | Clear a player's warnings | `modcheck.unban` |
 | `/modcheck reload` | Reload config and texts | `modcheck.reload` |
 | `/modcheck raum` (`room`) | One simple page for joining: check room on/off, where, what happens with a forbidden mod or without Lumio, Lumio mode, the download link, injection clients, and buttons to see both windows yourself | `modcheck.settings` |
@@ -38,11 +38,13 @@ Everything a mod does not set itself comes from the general settings: default ac
 
 **Let pass** allows that one mod for that one player for good.
 
+**Bans go through the server's ban system** (`ban-system: auto`): StaffCore, LiteBans, AdvancedBan or EssentialsX when one is installed, else the game's own ban list. So there is one ban list and one ban screen (with the ban ID of StaffCore, for example), and that plugin's `/unban` lifts it; `/modcheck unban` does too. ModCheck's own bans from before move there on start. `ban-system: modcheck` keeps ModCheck's own list; `ban-command` sets your own command instead.
+
 ## How mods are found, honestly
 
 1. The **client name** the game sends: `vanilla`, `fabric`, `forge`, `lunarclient` ... (the loader, not the single mods).
 2. The **mod channels** a client registers: minimaps, voice chat, schematic mods and every mod that talks to servers. A rule hits a channel whose name space is the mod's name; short names only count exactly.
-3. The **hidden sign**, once the player has loaded the world. The sign editor is opened and closed in the same moment, so it never shows on screen; the client fills in the texts when it opens and sends them back when it closes.
+3. The **hidden sign**, once the player has loaded the world (on Paper before 1.21.9 the player needs solid ground a few blocks below; the check room has stone under its floor for this). The sign editor is opened and closed in the same moment, so it never shows on screen; the client fills in the texts when it opens and sends them back when it closes.
    - Every mod question is a translation key with an empty fallback, wrapped in a `%s` text: a client without the mod sends nothing back, a client with it its own text, old Meteor its raw key. A filter that only looks at the top level of a text never sees the key. Key bindings are asked too (`bind:`), so mods without a language file are seen by their binding.
    - **Controls on every sign, at random places**: a text every client knows (picked at random) must come back filled in, and a made-up key that looks like a real one must come back exactly as the game builds its fallback (two random words, swapped). A sign whose controls fail says nothing about mods: the client changes texts on its own (`hidden-action`). The made-up words also tie each answer to its sign, so a late answer never gets mixed up.
    - **Cross-check**: when a channel already proves a mod (Fabric API, Simple Voice Chat, NeoForge), its text must come back filled in. If it comes back empty, a filter such as ExploitPreventer hides mods (`hidden-action`).

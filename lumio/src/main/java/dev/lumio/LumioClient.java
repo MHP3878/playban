@@ -17,15 +17,24 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import dev.lumio.ui.SettingsScreen;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 /** Lumio: a clean everyday client mod. This is where it starts. */
 public final class LumioClient implements ClientModInitializer {
+    public static final Logger LOG = LoggerFactory.getLogger("Lumio");
     private static String version = "0";
     private static KeyMapping accept;
     private static KeyMapping deny;
+    private static KeyMapping menu;
+    private static KeyMapping wheel;
+    /** a screen to open on the next tick (a command closes the chat after it ran) */
+    private static Runnable openNextTick;
 
     public static String version() {
         return version;
@@ -37,6 +46,39 @@ public final class LumioClient implements ClientModInitializer {
 
     public static Component denyKeyName() {
         return deny.getTranslatedKeyMessage();
+    }
+
+    public static Component menuKeyName() {
+        return menu.getTranslatedKeyMessage();
+    }
+
+    public static Component wheelKeyName() {
+        return wheel.getTranslatedKeyMessage();
+    }
+
+    public static boolean isMenuKey(int key, int scancode) {
+        return Compat.matches(menu, key, scancode);
+    }
+
+    public static void openMenu() {
+        Minecraft.getInstance().setScreen(new SettingsScreen());
+    }
+
+    public static void openHudEditor() {
+        Cards.toast(Component.translatable("lumio.soon.title"), Component.translatable("lumio.soon.text"), Draw.accent(), 5);
+    }
+
+    public static void openWheelEditor() {
+        Cards.toast(Component.translatable("lumio.soon.title"), Component.translatable("lumio.soon.text"), Draw.accent(), 5);
+    }
+
+    /** Shows what the cards look like, without a server. */
+    public static void demo() {
+        long now = System.currentTimeMillis();
+        Cards.toast(Component.translatable("lumio.demo.toast.title"), Component.translatable("lumio.demo.toast.text"), Draw.SUCCESS, 8);
+        Cards.prompt(new Cards.Prompt("demo", Component.translatable("lumio.demo.prompt.title"),
+                Component.translatable("lumio.demo.prompt.text"), Component.translatable("lumio.prompt.accept"),
+                Component.translatable("lumio.prompt.deny"), "", "", now, now + 30_000));
     }
 
     public static void answered(Cards.Prompt p, boolean accepted) {
@@ -61,10 +103,19 @@ public final class LumioClient implements ClientModInitializer {
 
         accept = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.accept", GLFW.GLFW_KEY_Y));
         deny = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.deny", GLFW.GLFW_KEY_N));
+        menu = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.menu", GLFW.GLFW_KEY_RIGHT_SHIFT));
+        wheel = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.wheel", GLFW.GLFW_KEY_G));
+        Config.get();
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             while (accept.consumeClick()) Cards.answer(true);
             while (deny.consumeClick()) Cards.answer(false);
+            while (menu.consumeClick()) if (mc.screen == null) openMenu();
+            if (openNextTick != null && mc.screen == null) {
+                Runnable r = openNextTick;
+                openNextTick = null;
+                r.run();
+            }
             Cards.tick();
         });
         HudRenderCallback.EVENT.register((graphics, delta) -> Cards.render(graphics));
@@ -78,15 +129,11 @@ public final class LumioClient implements ClientModInitializer {
                     c.getSource().sendFeedback(Component.translatable("lumio.command.status", version,
                             Component.translatable(Protocol.onLumioServer() ? "lumio.command.connected" : "lumio.command.not-connected")
                                     .withStyle(Protocol.onLumioServer() ? ChatFormatting.GREEN : ChatFormatting.GRAY)));
+                    openNextTick = LumioClient::openMenu;
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(ClientCommandManager.literal("demo").executes(c -> {
-                    // shows what the cards look like, without a server
-                    long now = System.currentTimeMillis();
-                    Cards.toast(Component.translatable("lumio.demo.toast.title"), Component.translatable("lumio.demo.toast.text"), Draw.SUCCESS, 8);
-                    Cards.prompt(new Cards.Prompt("demo", Component.translatable("lumio.demo.prompt.title"),
-                            Component.translatable("lumio.demo.prompt.text"), Component.translatable("lumio.prompt.accept"),
-                            Component.translatable("lumio.prompt.deny"), "", "", now, now + 30_000));
+                    demo();
                     return Command.SINGLE_SUCCESS;
                 }))));
     }

@@ -97,7 +97,7 @@ public final class Protocol {
         String latest = clean(str(o, "latest", ""), 24);
         String download = clean(str(o, "download", ""), 300);
         if (!latest.isEmpty() && Versions.compare(LumioClient.version(), latest) < 0) {
-            Cards.toast(Component.translatable("lumio.update.title"), Component.translatable("lumio.update.text", latest), Draw.ACCENT, 12);
+            Cards.toast(Component.translatable("lumio.update.title"), Component.translatable("lumio.update.text", latest), Draw.accent(), 12);
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && download.startsWith("https://")) {
                 Component link = Component.translatable("lumio.update.link").withStyle(s -> Compat.openUrl(s, download)
@@ -187,7 +187,7 @@ public final class Protocol {
             case "success" -> Draw.SUCCESS;
             case "warn" -> Draw.WARN;
             case "error" -> Draw.DANGER;
-            default -> Draw.ACCENT;
+            default -> Draw.accent();
         };
         Cards.toast(Component.literal(clean(str(o, "title", ""), 48)), Component.literal(clean(str(o, "text", ""), 160)), color,
                 Math.max(2, Math.min(30, num(o, "seconds", 6))));

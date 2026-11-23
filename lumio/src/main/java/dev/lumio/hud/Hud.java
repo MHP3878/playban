@@ -26,21 +26,60 @@ public final class Hud {
         return Config.get().hud.computeIfAbsent(e.id, k -> fresh(e));
     }
 
+    /** Space between stacked elements, in GUI units. */
+    private static final int GAP = 3;
+
     /**
-     * The starting place: left or right edge, and a distance from the top in GUI units, turned into a
-     * share of this screen's free room, so the elements stack neatly whatever the window size.
+     * The starting place: the elements of each side are stacked from the top in their order, each
+     * under the one before with a small gap, at the size they are drawn now, so nothing overlaps.
+     * Kept as a share of the free room, so they stay neat whatever the window size.
      */
     private static Config.HudSlot fresh(HudElement e) {
         Minecraft mc = Minecraft.getInstance();
         int sh = mc.getWindow().getGuiScaledHeight();
-        int free = Math.max(1, sh - e.height(mc, true) - MARGIN * 2);
-        return new Config.HudSlot(e.defaultOn, e.defaultX, Math.max(0, Math.min(1, e.defaultY / free)));
+        float k = dev.lumio.ui.Ui.scale();
+        // the right side starts under Minecraft's own effect icons (two rows at the top right)
+        int y = e.defaultX >= 1.0 ? 54 : MARGIN;
+        for (HudElement o : ALL) {
+            if (o == e) break;
+            if (o.defaultX != e.defaultX) continue;
+            // only those that start switched on take room, like the element itself
+            if (o.defaultOn != e.defaultOn) continue;
+            y += Math.round(o.height(mc, true) * k) + GAP;
+        }
+        // switched-off ones start below the switched-on ones of their side
+        if (!e.defaultOn) {
+            for (HudElement o : ALL) if (o.defaultOn && o.defaultX == e.defaultX) y += Math.round(o.height(mc, true) * k) + GAP;
+        }
+        int h = Math.round(e.height(mc, true) * k);
+        int free = Math.max(1, sh - h - MARGIN * 2);
+        return new Config.HudSlot(e.defaultOn, e.defaultX, Math.max(0, Math.min(1, (y - MARGIN) / (double) free)));
     }
 
     public static void reset() {
         Config.get().hud.clear();
         for (HudElement e : ALL) slot(e);
         Config.get().save();
+    }
+
+    /**
+     * Once after 0.8.0: the places were made for another size, so every element is stacked anew;
+     * whether it shows, its size and its look stay as they were.
+     */
+    static void relayoutOnce() {
+        Config c = Config.get();
+        if (c.layoutVersion >= 1 || Minecraft.getInstance().getWindow() == null) return;
+        for (HudElement e : ALL) {
+            Config.HudSlot old = c.hud.get(e.id);
+            Config.HudSlot pos = fresh(e);
+            if (old == null) c.hud.put(e.id, pos);
+            else {
+                old.x = pos.x;
+                old.y = pos.y;
+            }
+        }
+        c.layoutVersion = 1;
+        c.save();
     }
 
     /** How big the element is drawn: its own size times Lumio's size. */
@@ -84,6 +123,7 @@ public final class Hud {
     public static void render(GuiGraphics g) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui || mc.player == null || mc.screen instanceof HudEditorScreen) return;
+        relayoutOnce();
         int sw = g.guiWidth(), sh = g.guiHeight();
         for (HudElement e : ALL) {
             if (!slot(e).on || !e.active(mc)) continue;

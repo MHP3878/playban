@@ -30,6 +30,8 @@ public final class Config {
     public String hudStyle = "solid";
     /** which look update this file has seen (1: the box is the standard again) */
     public int lookVersion;
+    /** 1: the HUD was laid out anew for Lumio 0.8's sharp sizes */
+    public int layoutVersion;
     /** a thin stripe in the theme's running colours at the left of each HUD panel */
     public boolean hudAccent = true;
     /** a shadow under HUD text */

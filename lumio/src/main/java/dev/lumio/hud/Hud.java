@@ -16,7 +16,8 @@ public final class Hud {
     public static final HudElement MUSIC = new Elements.Music();
     public static final List<HudElement> ALL = List.of(new Elements.Watermark(), new Elements.Coords(), new Elements.Fps(), new Elements.Ping(),
             new Elements.Clock(), new Elements.Armor(), new Elements.Effects(), new Elements.Keys(), new Elements.Counter(),
-            new Elements.Server(), MUSIC, new Elements.Compass(), new Elements.Speed(), new Elements.Biome());
+            new Elements.Server(), MUSIC, new Elements.Compass(), new Elements.Speed(), new Elements.Biome(),
+            new Elements.Playtime(), new Elements.Day(), new Elements.Memory());
     public static final int MARGIN = 4;
 
     private Hud() {}
@@ -64,13 +65,19 @@ public final class Hud {
     public static void draw(GuiGraphics g, HudElement e, Minecraft mc, int x, int y, boolean preview, float alpha) {
         Compat.push(g, x, y, size(e));
         drawing = slot(e);
+        Config c = Config.get();
+        // without a panel the text needs its shadow to stay readable
+        dev.lumio.ui.Draw.shadow = c.hudShadow || "minimal".equals(c.hudStyle) || !drawing.bg;
         try {
             e.render(g, mc, preview, alpha);
         } finally {
             drawing = null;
+            dev.lumio.ui.Draw.shadow = false;
             Compat.pop(g);
         }
     }
+
+    public static final List<String> STYLES = List.of("glass", "solid", "minimal");
 
     public static void render(GuiGraphics g) {
         Minecraft mc = Minecraft.getInstance();

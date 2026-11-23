@@ -160,6 +160,9 @@ public final class Draw {
 
     // ---------------------------------------------------------------- text in Inter
 
+    /** Text drawn with a shadow (the HUD sets this while it draws, as the settings say). */
+    public static boolean shadow;
+
     public static Font font() {
         return Minecraft.getInstance().font;
     }
@@ -186,12 +189,12 @@ public final class Draw {
 
     public static void text(GuiGraphics g, Component c, int x, int y, int color) {
         if (((color >>> 24) & 0xFF) < 0x14) return;
-        g.drawString(font(), c, x, y, color, false);
+        g.drawString(font(), c, x, y, color, shadow);
     }
 
     public static void text(GuiGraphics g, FormattedCharSequence c, int x, int y, int color) {
         if (((color >>> 24) & 0xFF) < 0x14) return;
-        g.drawString(font(), c, x, y, color, false);
+        g.drawString(font(), c, x, y, color, shadow);
     }
 
     public static void centered(GuiGraphics g, Component c, int cx, int y, int color) {

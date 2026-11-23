@@ -207,7 +207,7 @@ public class SettingsScreen extends BaseScreen {
                 int i = 0;
                 for (dev.lumio.hud.HudElement e : dev.lumio.hud.Hud.ALL) {
                     int ex = x + (i % 2) * (col + 10);
-                    int ey = y + 84 + (i / 2) * 20;
+                    int ey = y + 82 + (i / 2) * 18;
                     dev.lumio.Config.HudSlot slot = dev.lumio.hud.Hud.slot(e);
                     Draw.text(g, Draw.inter(e.name()), ex, ey + 2, Draw.fade(Draw.TEXT, a));
                     toggle(g, mx, my, ex + col - 30, ey, slot.on, "hud" + e.id, a, () -> {

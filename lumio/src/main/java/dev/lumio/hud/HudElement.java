@@ -46,12 +46,28 @@ public abstract class HudElement {
     protected static final int PAD_Y = 5;
     protected static final int BG = 0xB4121218;
 
-    /** The element's panel, as its settings say: dark and rounded, with a glow in the theme colour, or nothing. */
+    /**
+     * The element's panel, as the settings say. Glass: see-through dark with a light top edge and a
+     * thin border; solid: dark; minimal: none. Then the glow and the accent stripe at the left.
+     */
     protected static void back(GuiGraphics g, int w, int h, float a) {
         dev.lumio.Config.HudSlot s = Hud.drawing;
+        dev.lumio.Config c = dev.lumio.Config.get();
+        boolean panel = s == null || s.bg;
         if (s != null && s.glow) Draw.glow(g, 0, 0, w, h, a);
-        if (s == null || s.bg) Draw.round(g, 0, 0, w, h, Draw.fade(BG, a));
+        if (panel) {
+            switch (c.hudStyle) {
+                case "solid" -> Draw.round(g, 0, 0, w, h, Draw.fade(BG, a));
+                case "minimal" -> { }
+                default -> {
+                    Draw.round(g, 0, 0, w, h, Draw.fade(0x99101018, a));
+                    g.fillGradient(3, 1, w - 3, Math.max(2, h / 2), Draw.fade(0x16FFFFFF, a), Draw.fade(0x00FFFFFF, a));
+                    Draw.outline(g, 0, 0, w, h, Draw.fade(0x1CFFFFFF, a));
+                }
+            }
+        }
         if (s != null && s.glow) Draw.liveOutline(g, 0, 0, w, h, a * 0.8f);
+        if (c.hudAccent && h > 8) g.fillGradient(1, 3, 3, h - 3, Draw.fade(Draw.wave(0), a), Draw.fade(Draw.wave(1.6f), a));
     }
 
     /** A small label in the accent colour, then the value: "XYZ  12, 64, -3". */

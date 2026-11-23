@@ -27,7 +27,7 @@ import java.util.List;
 public final class HudEditorScreen extends BaseScreen {
     private static final int SNAP = 5;
     private static final int HANDLE = 6;
-    private static final int BAR_W = 360, BAR_H = 26;
+    private static final int BAR_W = 540, BAR_H = 26;
     private static final int WIN_W = 156, ROW = 18;
 
     private HudElement selected;
@@ -111,7 +111,8 @@ public final class HudEditorScreen extends BaseScreen {
 
     /** The bar at the top: title, Lumio's size, snapping, reset, done. */
     private void drawBar(GuiGraphics g, int mx, int my, float a) {
-        float s = Ui.scale();
+        // Lumio's size, but never wider than the screen
+        float s = Math.min(Ui.scale(), (float) ((width - 8) / (double) BAR_W));
         barW = BAR_W * s;
         barH = BAR_H * s;
         barX = (width - barW) / 2;
@@ -119,6 +120,7 @@ public final class HudEditorScreen extends BaseScreen {
         float lmx = (float) ((mx - barX) / s), lmy = (float) ((my - barY) / s);
         curX = barX;
         curY = barY;
+        curS = s;
         Compat.push(g, (float) barX, (float) barY, s);
         try {
             Draw.glow(g, 0, 0, BAR_W, BAR_H, a * 0.5f);
@@ -138,6 +140,20 @@ public final class HudEditorScreen extends BaseScreen {
             x += Draw.width(pct) + 3;
             x = small(g, lmx, lmy, x, 5, "+", false, a, () -> Ui.step(1)) + 10;
             Config c = Config.get();
+            // the look of every panel: glass, solid or minimal; the accent stripe; text shadow
+            x = small(g, lmx, lmy, x, 5, Component.translatable("lumio.hud.style." + c.hudStyle).getString(), true, a, () -> {
+                int i = Hud.STYLES.indexOf(c.hudStyle);
+                c.hudStyle = Hud.STYLES.get((i + 1) % Hud.STYLES.size());
+                c.save();
+            }) + 4;
+            x = small(g, lmx, lmy, x, 5, Component.translatable("lumio.hud.editor.accent").getString(), c.hudAccent, a, () -> {
+                c.hudAccent = !c.hudAccent;
+                c.save();
+            }) + 4;
+            x = small(g, lmx, lmy, x, 5, Component.translatable("lumio.hud.editor.shadow").getString(), c.hudShadow, a, () -> {
+                c.hudShadow = !c.hudShadow;
+                c.save();
+            }) + 4;
             x = small(g, lmx, lmy, x, 5, Component.translatable("lumio.hud.editor.snap").getString(), c.snap, a, () -> {
                 c.snap = !c.snap;
                 c.save();
@@ -169,6 +185,7 @@ public final class HudEditorScreen extends BaseScreen {
         float lmx = (float) ((mx - winX) / s), lmy = (float) ((my - winY) / s);
         curX = winX;
         curY = winY;
+        curS = s;
         Compat.push(g, (float) winX, (float) winY, s);
         try {
             Draw.glow(g, 0, 0, WIN_W, h, a * 0.6f);
@@ -241,13 +258,13 @@ public final class HudEditorScreen extends BaseScreen {
         hitLocal(x, y, w, 16, action);
     }
 
-    /** Where the panel being drawn stands (GUI units), for hitLocal. */
+    /** Where the panel being drawn stands (GUI units) and its size factor, for hitLocal. */
     private double curX, curY;
+    private float curS = 1;
 
     /** Remembers a clickable place given in the current panel's local units, in GUI units. */
     private void hitLocal(int x, int y, int w, int h, Runnable action) {
-        float s = Ui.scale();
-        hits.add(new Hit(curX + x * s, curY + y * s, w * s, h * s, action));
+        hits.add(new Hit(curX + x * curS, curY + y * curS, w * curS, h * curS, action));
     }
 
     private boolean inPanels(double mx, double my) {

@@ -24,6 +24,12 @@ public final class Config {
     public double uiSize = 0.8;
     /** HUD elements snap to edges, the middle and each other while being moved. */
     public boolean snap = true;
+    /** how HUD panels look: "glass" (see-through with a light edge), "solid" or "minimal" (no panel) */
+    public String hudStyle = "glass";
+    /** a thin stripe in the theme's running colours at the left of each HUD panel */
+    public boolean hudAccent = true;
+    /** a shadow under HUD text */
+    public boolean hudShadow = true;
     public String theme = "violet";
     public boolean sounds = true;
     /** where cards appear: "right" or "left" */

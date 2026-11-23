@@ -28,7 +28,10 @@ of them: click one and a small window opens beside it (size, show, background pa
 colour, center, reset); drag it where you want (it snaps to edges, the middle and other elements, or
 not, as you like), drag its corner to make it bigger, right-click switches it on or off, the arrow keys
 move it a pixel. Also there: the Lumio mark (name in running colours, FPS and time), a compass strip,
-speed and biome. Positions are kept as a share of the screen, so they stay in place when the
+speed, biome, play time, the game's day and clock, and memory. The bar at the top switches the look of
+all panels (glass, solid, minimal), the accent stripe in running colours, and text shadow. FPS and ping
+show green, yellow or red; the coordinates also show where that is in the Nether (or the Overworld);
+armour shows its durability as a bar. Positions are kept as a share of the screen, so they stay in place when the
 window or GUI scale changes.
 
 **Music.** The music element shows what is playing: cover, title, artist and a progress bar, green for

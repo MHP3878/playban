@@ -38,20 +38,37 @@ public final class Elements {
                     .append(Component.translatable("lumio.dir." + dir));
         }
 
+        /** In the Overworld where that is in the Nether, and the other way round (the second line). */
+        private Component other(Minecraft mc, boolean preview) {
+            if (mc.player == null || mc.level == null) return preview ? Component.translatable("lumio.hud.coords.nether", "16, -5") : null;
+            var p = mc.player.blockPosition();
+            if (mc.level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+                return Component.translatable("lumio.hud.coords.nether", Math.floorDiv(p.getX(), 8) + ", " + Math.floorDiv(p.getZ(), 8));
+            }
+            if (mc.level.dimension().equals(net.minecraft.world.level.Level.NETHER)) {
+                return Component.translatable("lumio.hud.coords.overworld", p.getX() * 8 + ", " + p.getZ() * 8);
+            }
+            return null;
+        }
+
         @Override
         public int width(Minecraft mc, boolean preview) {
-            return labelledWidth(Component.literal("XYZ"), value(mc, preview)) + PAD_X * 2;
+            Component o = other(mc, preview);
+            int second = o == null ? 0 : Draw.width(Draw.inter(o)) + Draw.width(Draw.bold("XYZ")) + 5;
+            return Math.max(labelledWidth(Component.literal("XYZ"), value(mc, preview)), second) + PAD_X * 2;
         }
 
         @Override
         public int height(Minecraft mc, boolean preview) {
-            return 9 + PAD_Y * 2;
+            return (other(mc, preview) == null ? 9 : 19) + PAD_Y * 2;
         }
 
         @Override
         public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
             back(g, width(mc, preview), height(mc, preview), a);
             labelled(g, Component.literal("XYZ"), value(mc, preview), PAD_X, PAD_Y + 1, a);
+            Component o = other(mc, preview);
+            if (o != null) Draw.text(g, Draw.inter(o), PAD_X + Draw.width(Draw.bold("XYZ")) + 5, PAD_Y + 11, Draw.fade(Draw.FAINT, a));
         }
     }
 
@@ -62,13 +79,18 @@ public final class Elements {
             super("fps", true, 0.0, 23);
         }
 
-        private Component value(Minecraft mc) {
-            return Component.literal(String.valueOf(mc.getFps()));
+        private float shown = -1;
+
+        /** The number glides instead of jumping. */
+        private int smooth(Minecraft mc) {
+            int now = mc.getFps();
+            shown = shown < 0 ? now : Draw.approach(shown, now, 0.15f);
+            return Math.round(shown);
         }
 
         @Override
         public int width(Minecraft mc, boolean preview) {
-            return labelledWidth(Component.literal("FPS"), value(mc)) + PAD_X * 2;
+            return labelledWidth(Component.literal("FPS"), Component.literal("0000")) + PAD_X * 2 + 6;
         }
 
         @Override
@@ -79,7 +101,11 @@ public final class Elements {
         @Override
         public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
             back(g, width(mc, preview), height(mc, preview), a);
-            labelled(g, Component.literal("FPS"), value(mc), PAD_X, PAD_Y + 1, a);
+            int fps = smooth(mc);
+            int end = labelled(g, Component.literal("FPS"), Component.literal(String.valueOf(fps)), PAD_X, PAD_Y + 1, a);
+            // green when smooth, yellow when it gets slow, red when it stutters
+            int color = fps >= 60 ? Draw.SUCCESS : fps >= 30 ? Draw.WARN : Draw.DANGER;
+            Draw.circle(g, end + 5, PAD_Y + 5, 2, Draw.fade(color, a));
         }
     }
 
@@ -195,7 +221,11 @@ public final class Elements {
                 if (st.isDamageableItem()) {
                     float left = 1 - st.getDamageValue() / (float) Math.max(1, st.getMaxDamage());
                     int color = Draw.mix(Draw.DANGER, Draw.SUCCESS, left);
-                    Draw.text(g, Draw.inter(Math.round(left * 100) + "%"), PAD_X + 19, y + 5, Draw.fade(color, a));
+                    Draw.text(g, Draw.inter(Math.round(left * 100) + "%"), PAD_X + 19, y + 2, Draw.fade(color, a));
+                    // and as a thin bar at the bottom of the row
+                    int bw = Draw.width(Draw.inter("100%"));
+                    g.fill(PAD_X + 19, y + 14, PAD_X + 19 + bw, y + 15, Draw.fade(0x33FFFFFF, a));
+                    g.fill(PAD_X + 19, y + 14, PAD_X + 19 + Math.round(bw * left), y + 15, Draw.fade(color, a));
                 } else {
                     Draw.text(g, Draw.inter("∞"), PAD_X + 19, y + 5, Draw.fade(Draw.MUTED, a));
                 }
@@ -648,6 +678,111 @@ public final class Elements {
         public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
             back(g, width(mc, preview), height(mc, preview), a);
             labelled(g, Component.translatable("lumio.hud.biome.label"), value(mc), PAD_X, PAD_Y + 1, a);
+        }
+    }
+
+    // ---------------------------------------------------------------- time played on this server
+
+    public static final class Playtime extends HudElement {
+        private static Object level;
+        private static long since;
+
+        public Playtime() {
+            super("playtime", false, 0.0, 186);
+        }
+
+        private Component value(Minecraft mc, boolean preview) {
+            // counts from joining: a new world or server starts it again
+            if (mc.level == null) return Component.literal(preview ? "1:23:45" : "0:00");
+            if (level == null || (mc.getConnection() != null && level != mc.getConnection())) {
+                level = mc.getConnection();
+                since = System.currentTimeMillis();
+            }
+            long s = (System.currentTimeMillis() - since) / 1000;
+            return Component.literal(s >= 3600 ? String.format("%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String.format("%d:%02d", s / 60, s % 60));
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return labelledWidth(Component.translatable("lumio.hud.playtime.label"), Component.literal("00:00:00")) + PAD_X * 2;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return 9 + PAD_Y * 2;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            back(g, width(mc, preview), height(mc, preview), a);
+            labelled(g, Component.translatable("lumio.hud.playtime.label"), value(mc, preview), PAD_X, PAD_Y + 1, a);
+        }
+    }
+
+    // ---------------------------------------------------------------- the day in the game, and its time
+
+    public static final class Day extends HudElement {
+        public Day() {
+            super("day", false, 0.0, 209);
+        }
+
+        private Component value(Minecraft mc) {
+            long t = mc.level == null ? 6000 : mc.level.getDayTime();
+            long day = t / 24000 + 1;
+            long inDay = (t % 24000 + 6000) % 24000;
+            int h = (int) (inDay / 1000), m = (int) (inDay % 1000 * 60 / 1000);
+            return Component.translatable("lumio.hud.day.value", day, String.format("%02d:%02d", h, m));
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return labelledWidth(Component.translatable("lumio.hud.day.label"), value(mc)) + PAD_X * 2;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return 9 + PAD_Y * 2;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            back(g, width(mc, preview), height(mc, preview), a);
+            labelled(g, Component.translatable("lumio.hud.day.label"), value(mc), PAD_X, PAD_Y + 1, a);
+        }
+    }
+
+    // ---------------------------------------------------------------- memory in use
+
+    public static final class Memory extends HudElement {
+        public Memory() {
+            super("memory", false, 0.0, 232);
+        }
+
+        private int percent() {
+            Runtime r = Runtime.getRuntime();
+            return (int) Math.round((r.totalMemory() - r.freeMemory()) * 100.0 / Math.max(1, r.maxMemory()));
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return labelledWidth(Component.literal("RAM"), Component.literal("100 %")) + PAD_X * 2;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return 9 + PAD_Y * 2 + 3;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            int w = width(mc, preview);
+            back(g, w, height(mc, preview), a);
+            int p = percent();
+            labelled(g, Component.literal("RAM"), Component.literal(p + " %"), PAD_X, PAD_Y + 1, a);
+            int bw = w - PAD_X * 2;
+            int color = p < 70 ? Draw.SUCCESS : p < 90 ? Draw.WARN : Draw.DANGER;
+            g.fill(PAD_X, PAD_Y + 12, PAD_X + bw, PAD_Y + 13, Draw.fade(0x33FFFFFF, a));
+            g.fill(PAD_X, PAD_Y + 12, PAD_X + Math.round(bw * p / 100f), PAD_Y + 13, Draw.fade(color, a));
         }
     }
 }

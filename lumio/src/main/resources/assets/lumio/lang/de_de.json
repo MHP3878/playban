@@ -113,5 +113,18 @@
   "lumio.hud.speed": "Tempo",
   "lumio.hud.speed.label": "TEMPO",
   "lumio.hud.biome": "Biom",
-  "lumio.hud.biome.label": "BIOM"
+  "lumio.hud.biome.label": "BIOM",
+  "lumio.hud.style.glass": "Stil: Glas",
+  "lumio.hud.style.solid": "Stil: Fest",
+  "lumio.hud.style.minimal": "Stil: Minimal",
+  "lumio.hud.editor.accent": "Akzent",
+  "lumio.hud.editor.shadow": "Schatten",
+  "lumio.hud.coords.nether": "Nether %s",
+  "lumio.hud.coords.overworld": "Oberwelt %s",
+  "lumio.hud.playtime": "Spielzeit",
+  "lumio.hud.playtime.label": "ZEIT",
+  "lumio.hud.day": "Tag & Ingame-Uhr",
+  "lumio.hud.day.label": "TAG",
+  "lumio.hud.day.value": "%s  ·  %s",
+  "lumio.hud.memory": "Arbeitsspeicher"
 }

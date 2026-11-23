@@ -43,18 +43,29 @@ public class SettingsScreen extends BaseScreen {
         this.tab = tab;
     }
 
+    /** Lumio's own size: the menu is the same size on screen whatever Minecraft's GUI scale is. */
+    @Override
+    protected float uiScale() {
+        return Ui.scale();
+    }
+
     @Override
     protected void init() {
-        pw = Math.min(460, width - 24);
-        ph = Math.min(280, height - 24);
-        px = (width - pw) / 2;
-        py = (height - ph) / 2;
+        // laid out in Lumio's own units (the mouse is measured in them too, see BaseScreen)
+        pw = Math.min(460, vw() - 24);
+        ph = Math.min(280, vh() - 24);
+        px = (vw() - pw) / 2;
+        py = (vh() - ph) / 2;
         rebuild();
     }
+
+    /** The input fields, drawn by the menu itself so they take part in its size. */
+    private final List<net.minecraft.client.gui.components.EditBox> boxes = new ArrayList<>();
 
     /** The input fields of the current tab (only the radial menu editor has some). */
     protected void rebuild() {
         clearWidgets();
+        boxes.clear();
         nameBox = null;
         valueBox = null;
         keywordBox = null;
@@ -90,7 +101,8 @@ public class SettingsScreen extends BaseScreen {
         b.setMaxLength(120);
         b.setTextColor(Draw.TEXT);
         b.setHint(Draw.inter(hint).withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
-        addRenderableWidget(b);
+        addWidget(b);
+        boxes.add(b);
         return b;
     }
 
@@ -118,19 +130,37 @@ public class SettingsScreen extends BaseScreen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float delta) {
         // the menu itself is drawn as the background (below), so input fields stand on top of it
-        super.render(g, mx, my, delta);
+        if (dev.lumio.compat.Compat.BACKGROUND_IN_RENDER) renderBackground(g, mx, my, delta);
+        float s = uiScale();
+        pushOpening(g);
+        for (var b : boxes) b.render(g, (int) (mx / s), (int) (my / s), delta);
+        dev.lumio.compat.Compat.pop(g);
     }
 
     @Override
     public void renderBackground(GuiGraphics g, int mx, int my, float delta) {
         super.renderBackground(g, mx, my, delta);
-        drawMenu(g, mx, my);
+        float s = uiScale();
+        pushOpening(g);
+        drawMenu(g, (int) (mx / s), (int) (my / s));
+        dev.lumio.compat.Compat.pop(g);
+    }
+
+    /** Lumio's size, and on opening a short grow from 96 % to full size around the middle. */
+    private void pushOpening(GuiGraphics g) {
+        float s = uiScale();
+        float k = 0.96f + 0.04f * Draw.easeOutCubic((System.currentTimeMillis() - opened) / 220f);
+        float cx = vw() / 2f, cy = vh() / 2f;
+        dev.lumio.compat.Compat.push(g, s * cx * (1 - k), s * cy * (1 - k), s * k);
     }
 
     private void drawMenu(GuiGraphics g, int mx, int my) {
         hits.clear();
         float a = Draw.easeOutCubic((System.currentTimeMillis() - opened) / 220f);
+        // a soft glow in the theme colour, the panel, and a thin line along the top that runs in its colours
+        Draw.glow(g, px, py, pw, ph, a * 0.7f);
         Draw.panel(g, px, py, pw, ph, a);
+        Draw.bar(g, px + 16, py, pw - 32, 1, Draw.wave(0), Draw.wave(2.5f), a);
         if (!Draw.visible(a)) return;
 
         // sidebar
@@ -230,14 +260,26 @@ public class SettingsScreen extends BaseScreen {
             c.sounds = !c.sounds;
             c.save();
         });
+        // Lumio's size: menu, HUD, cards and radial menu together
+        label(g, "lumio.menu.size", x, y + 136, a);
+        int sx2 = x + w - 92;
+        button(g, mx, my, sx2, y + 131, 20, Component.literal("−"), false, a, () -> {
+            Ui.step(-1);
+            init();
+        });
+        Draw.centered(g, Draw.bold(Ui.percent() + " %"), sx2 + 46, y + 137, Draw.fade(Draw.TEXT, a));
+        button(g, mx, my, sx2 + 72, y + 131, 20, Component.literal("+"), false, a, () -> {
+            Ui.step(1);
+            init();
+        });
         // try it
-        button(g, mx, my, x, y + 136, 150, Component.translatable("lumio.menu.demo"), false, a, () -> {
+        button(g, mx, my, x, y + 158, 150, Component.translatable("lumio.menu.demo"), false, a, () -> {
             onClose();
             LumioClient.demo();
         });
-        heading(g, "lumio.menu.keys", x, y + 168, a);
+        heading(g, "lumio.menu.keys", x, y + 188, a);
         paragraph(g, Component.translatable("lumio.menu.keys.text", LumioClient.acceptKeyName(), LumioClient.denyKeyName(),
-                LumioClient.menuKeyName(), LumioClient.wheelKeyName()), x, y + 186, w, a);
+                LumioClient.menuKeyName(), LumioClient.wheelKeyName()), x, y + 206, w, a);
     }
 
     private net.minecraft.client.gui.components.EditBox keywordBox;

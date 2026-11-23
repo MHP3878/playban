@@ -20,6 +20,10 @@ public final class Config {
     private static Config instance;
 
     // ---- look
+    /** Lumio's own size, the same on every GUI scale: 1.0 looks like GUI scale 2; smaller by default. */
+    public double uiSize = 0.8;
+    /** HUD elements snap to edges, the middle and each other while being moved. */
+    public boolean snap = true;
     public String theme = "violet";
     public boolean sounds = true;
     /** where cards appear: "right" or "left" */
@@ -42,6 +46,10 @@ public final class Config {
         public double x;
         public double y;
         public double scale = 1.0;
+        /** the dark rounded panel behind the element */
+        public boolean bg = true;
+        /** a soft glow in the theme colour around it */
+        public boolean glow = false;
 
         public HudSlot() {}
 

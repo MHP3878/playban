@@ -14,9 +14,9 @@ import java.util.List;
  */
 public final class Hud {
     public static final HudElement MUSIC = new Elements.Music();
-    public static final List<HudElement> ALL = List.of(new Elements.Coords(), new Elements.Fps(), new Elements.Ping(),
+    public static final List<HudElement> ALL = List.of(new Elements.Watermark(), new Elements.Coords(), new Elements.Fps(), new Elements.Ping(),
             new Elements.Clock(), new Elements.Armor(), new Elements.Effects(), new Elements.Keys(), new Elements.Counter(),
-            new Elements.Server(), MUSIC);
+            new Elements.Server(), MUSIC, new Elements.Compass(), new Elements.Speed(), new Elements.Biome());
     public static final int MARGIN = 4;
 
     private Hud() {}
@@ -42,20 +42,34 @@ public final class Hud {
         Config.get().save();
     }
 
+    /** How big the element is drawn: its own size times Lumio's size. */
+    public static float size(HudElement e) {
+        return (float) slot(e).scale * dev.lumio.ui.Ui.scale();
+    }
+
     /** Where the element stands on this screen, top-left corner in GUI units. */
     public static int[] place(HudElement e, Minecraft mc, int sw, int sh, boolean preview) {
         Config.HudSlot s = slot(e);
-        int w = Math.round(e.width(mc, preview) * (float) s.scale);
-        int h = Math.round(e.height(mc, preview) * (float) s.scale);
+        float k = size(e);
+        int w = Math.round(e.width(mc, preview) * k);
+        int h = Math.round(e.height(mc, preview) * k);
         int x = MARGIN + (int) Math.round(Math.max(0, Math.min(1, s.x)) * Math.max(0, sw - w - MARGIN * 2));
         int y = MARGIN + (int) Math.round(Math.max(0, Math.min(1, s.y)) * Math.max(0, sh - h - MARGIN * 2));
         return new int[]{x, y, w, h};
     }
 
+    /** The element being drawn right now: its panel and glow follow its own settings. */
+    static Config.HudSlot drawing;
+
     public static void draw(GuiGraphics g, HudElement e, Minecraft mc, int x, int y, boolean preview, float alpha) {
-        Compat.push(g, x, y, (float) slot(e).scale);
-        e.render(g, mc, preview, alpha);
-        Compat.pop(g);
+        Compat.push(g, x, y, size(e));
+        drawing = slot(e);
+        try {
+            e.render(g, mc, preview, alpha);
+        } finally {
+            drawing = null;
+            Compat.pop(g);
+        }
     }
 
     public static void render(GuiGraphics g) {

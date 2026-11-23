@@ -501,4 +501,153 @@ public final class Elements {
             }
         }
     }
+
+    // ---------------------------------------------------------------- the Lumio mark, with FPS and time
+
+    public static final class Watermark extends HudElement {
+        private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
+
+        public Watermark() {
+            super("watermark", true, 0.5, 0);
+        }
+
+        private Component rest(Minecraft mc) {
+            return Draw.inter("  " + mc.getFps() + " fps  ·  " + LocalTime.now().format(TIME));
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return Draw.width(Draw.bold("Lumio")) + Draw.width(rest(mc)) + PAD_X * 2 + 6;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return 9 + PAD_Y * 2;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            int w = width(mc, preview), h = height(mc, preview);
+            back(g, w, h, a);
+            // a small dot that breathes, the name in the theme's running colours, then FPS and time
+            float pulse = 0.6f + 0.4f * (float) Math.sin((System.currentTimeMillis() % 2000L) / 2000.0 * Math.PI * 2);
+            Draw.circle(g, PAD_X + 2, h / 2, 2, Draw.fade(Draw.wave(0), a * pulse));
+            int x = PAD_X + 7;
+            x += Draw.gradientText(g, "Lumio", x, PAD_Y + 1, a, true);
+            Draw.text(g, rest(mc), x, PAD_Y + 1, Draw.fade(Draw.MUTED, a));
+        }
+    }
+
+    // ---------------------------------------------------------------- a compass strip along the top
+
+    public static final class Compass extends HudElement {
+        private static final int W = 180;
+        private static final int H = 18;
+
+        public Compass() {
+            super("compass", false, 0.5, 20);
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return W;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return H;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            back(g, W, H, a);
+            float yaw = mc.player == null ? 0 : Mth.wrapDegrees(mc.player.getYRot());
+            int mid = W / 2;
+            float half = W / 2f - 10;
+            // a small line every 15 degrees, a letter every 45
+            for (int deg = 0; deg < 360; deg += 15) {
+                float diff = Mth.wrapDegrees(deg - yaw);
+                if (Math.abs(diff) > 90) continue;
+                int x = mid + Math.round(diff / 90f * half);
+                float edge = 1 - Math.abs(diff) / 90f;
+                if (deg % 45 == 0) {
+                    int dir = deg / 45;
+                    Component c = Draw.bold(Component.translatable("lumio.dir." + dir));
+                    int col = dir == 4 ? Draw.wave(0) : Draw.TEXT;
+                    Draw.text(g, c, x - Draw.width(c) / 2, 5, Draw.fade(col, a * (0.35f + 0.65f * edge)));
+                } else {
+                    g.fill(x, 7, x + 1, 11, Draw.fade(0x80FFFFFF, a * edge));
+                }
+            }
+            // where you look
+            g.fill(mid, H - 3, mid + 1, H, Draw.fade(Draw.accent(), a));
+            g.fill(mid - 1, H - 2, mid + 2, H - 1, Draw.fade(Draw.accent(), a));
+        }
+    }
+
+    // ---------------------------------------------------------------- speed in blocks per second
+
+    public static final class Speed extends HudElement {
+        private float shown;
+
+        public Speed() {
+            super("speed", false, 0.0, 140);
+        }
+
+        private Component value(Minecraft mc, boolean preview) {
+            float now = 0;
+            if (mc.player != null) {
+                var v = mc.player.getDeltaMovement();
+                now = (float) (Math.hypot(v.x, v.z) * 20);
+            } else if (preview) now = 4.3f;
+            shown = Draw.approach(shown, now, 0.2f);
+            return Component.literal(String.format(java.util.Locale.ROOT, "%.1f b/s", shown));
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return labelledWidth(Component.translatable("lumio.hud.speed.label"), Component.literal("00.0 b/s")) + PAD_X * 2;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return 9 + PAD_Y * 2;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            back(g, width(mc, preview), height(mc, preview), a);
+            labelled(g, Component.translatable("lumio.hud.speed.label"), value(mc, preview), PAD_X, PAD_Y + 1, a);
+        }
+    }
+
+    // ---------------------------------------------------------------- the biome you stand in
+
+    public static final class Biome extends HudElement {
+        public Biome() {
+            super("biome", false, 0.0, 163);
+        }
+
+        private Component value(Minecraft mc) {
+            if (mc.level == null || mc.player == null) return Component.translatable("biome.minecraft.plains");
+            String name = mc.level.getBiome(mc.player.blockPosition()).getRegisteredName();
+            return Component.translatable("biome." + name.replace(':', '.'));
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return labelledWidth(Component.translatable("lumio.hud.biome.label"), value(mc)) + PAD_X * 2;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return 9 + PAD_Y * 2;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            back(g, width(mc, preview), height(mc, preview), a);
+            labelled(g, Component.translatable("lumio.hud.biome.label"), value(mc), PAD_X, PAD_Y + 1, a);
+        }
+    }
 }

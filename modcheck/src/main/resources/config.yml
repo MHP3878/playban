@@ -101,7 +101,7 @@ lumio:
   # name shown to Lumio players for this server (optional)
   server-name: ""
   # Lumio players with an older version are told about the update
-  latest-version: "0.6.0"
+  latest-version: "0.7.0"
   # in required mode: older versions are refused
   min-version: "0.1.0"
   # in required mode: how long to wait for the mod list after joining

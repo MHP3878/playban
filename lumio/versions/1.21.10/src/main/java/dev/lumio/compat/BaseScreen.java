@@ -34,24 +34,57 @@ public abstract class BaseScreen extends Screen {
         return false;
     }
 
+    /**
+     * The screen's own size factor: drawn with it, and the mouse is measured in it, so the screen and
+     * its input fields work in their own smaller (or bigger) units. 1 = Minecraft's GUI units.
+     */
+    protected float uiScale() {
+        return 1f;
+    }
+
+    /** The screen's width and height in its own units. */
+    protected int vw() {
+        return Math.round(width / uiScale());
+    }
+
+    protected int vh() {
+        return Math.round(height / uiScale());
+    }
+
+    private MouseButtonEvent scaled(MouseButtonEvent e) {
+        float s = uiScale();
+        return s == 1f ? e : new MouseButtonEvent(e.x() / s, e.y() / s, e.buttonInfo());
+    }
+
     @Override
     public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
-        return click(e.x(), e.y(), e.button()) || super.mouseClicked(e, doubleClick);
+        MouseButtonEvent v = scaled(e);
+        return click(v.x(), v.y(), v.button()) || super.mouseClicked(v, doubleClick);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent e) {
-        return release(e.x(), e.y(), e.button()) || super.mouseReleased(e);
+        MouseButtonEvent v = scaled(e);
+        return release(v.x(), v.y(), v.button()) || super.mouseReleased(v);
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
-        return drag(e.x(), e.y(), e.button(), dx, dy) || super.mouseDragged(e, dx, dy);
+        MouseButtonEvent v = scaled(e);
+        float s = uiScale();
+        return drag(v.x(), v.y(), v.button(), dx / s, dy / s) || super.mouseDragged(v, dx / s, dy / s);
     }
 
     @Override
     public boolean mouseScrolled(double x, double y, double h, double v) {
-        return scroll(x, y, v) || super.mouseScrolled(x, y, h, v);
+        float s = uiScale();
+        return scroll(x / s, y / s, v) || super.mouseScrolled(x / s, y / s, h, v);
+    }
+
+    @Override
+    public void mouseMoved(double x, double y) {
+        float s = uiScale();
+        super.mouseMoved(x / s, y / s);
     }
 
     @Override

@@ -88,9 +88,20 @@ public final class Cards {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui) return;
         long now = System.currentTimeMillis();
-        int sw = g.guiWidth();
-        int sh = g.guiHeight();
+        // in Lumio's own size, the same on every GUI scale
+        float sc = Ui.scale();
+        int sw = Math.round(g.guiWidth() / sc);
+        int sh = Math.round(g.guiHeight() / sc);
         boolean left = "left".equals(Config.get().cardSide);
+        dev.lumio.compat.Compat.push(g, 0, 0, sc);
+        try {
+            drawAll(g, now, sw, sh, left);
+        } finally {
+            dev.lumio.compat.Compat.pop(g);
+        }
+    }
+
+    private static void drawAll(GuiGraphics g, long now, int sw, int sh, boolean left) {
 
         // notices: bottom corner (Minecraft's own toasts use the top right), newest at the bottom
         int y = sh - 46;
@@ -143,6 +154,7 @@ public final class Cards {
     private static void drawPrompt(GuiGraphics g, Prompt p, int x, int y, float a, long now, Boolean result) {
         List<FormattedCharSequence> lines = Draw.wrap(Draw.inter(p.text()), PROMPT_W - 26, 3);
         int h = 10 + 12 + lines.size() * 10 + 8 + 16 + 10;
+        Draw.glow(g, x, y, PROMPT_W, h, a * 0.6f);
         Draw.panel(g, x, y, PROMPT_W, h, a);
         Draw.stripe(g, x + 6, y + 8, h - 16, a);
         if (!Draw.visible(a)) return;

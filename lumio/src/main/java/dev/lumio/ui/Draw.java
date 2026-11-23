@@ -94,6 +94,38 @@ public final class Draw {
         Compat.sprite(g, "ring", cx - r, cy - r, r * 2, r * 2, color);
     }
 
+    /** A colour that slowly moves between the theme's two colours: for living edges and glows. */
+    public static int wave(float offset) {
+        double t = (System.currentTimeMillis() % 4000L) / 4000.0 * Math.PI * 2;
+        return mix(accent(), accent2(), (float) (0.5 + 0.5 * Math.sin(t + offset)));
+    }
+
+    /** A soft glow in the theme colour around a box (it breathes a little). */
+    public static void glow(GuiGraphics g, int x, int y, int w, int h, float a) {
+        float pulse = 0.75f + 0.25f * (float) Math.sin((System.currentTimeMillis() % 3000L) / 3000.0 * Math.PI * 2);
+        Compat.sprite(g, "shadow", x - 12, y - 9, w + 24, h + 24, fade(mix(wave(0), 0xFF000000, 0.15f), 0.55f * a * pulse));
+    }
+
+    /** A thin edge that runs in the theme's colours. */
+    public static void liveOutline(GuiGraphics g, int x, int y, int w, int h, float a) {
+        if (w >= 16 && h >= 16) Compat.sprite(g, "outline8", x, y, w, h, fade(wave(0), 0.9f * a));
+        else if (w >= 8 && h >= 8) Compat.sprite(g, "outline4", x, y, w, h, fade(wave(0), 0.9f * a));
+    }
+
+    /** Text whose letters run through the theme's colours. Returns its width. */
+    public static int gradientText(GuiGraphics g, String text, int x, int y, float a, boolean bold) {
+        int cx = x;
+        double t = (System.currentTimeMillis() % 3000L) / 3000.0 * Math.PI * 2;
+        for (int i = 0; i < text.length(); i++) {
+            String ch = String.valueOf(text.charAt(i));
+            Component c = bold ? bold(ch) : inter(ch);
+            int col = mix(accent(), accent2(), (float) (0.5 + 0.5 * Math.sin(t - i * 0.45)));
+            text(g, c, cx, y, fade(col, a));
+            cx += width(c);
+        }
+        return cx - x;
+    }
+
     /** A soft shadow under a card. */
     public static void shadow(GuiGraphics g, int x, int y, int w, int h, float a) {
         Compat.sprite(g, "shadow", x - 12, y - 9, w + 24, h + 24, fade(0xB0000000, a));

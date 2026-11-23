@@ -46,8 +46,12 @@ public abstract class HudElement {
     protected static final int PAD_Y = 5;
     protected static final int BG = 0xB4121218;
 
+    /** The element's panel, as its settings say: dark and rounded, with a glow in the theme colour, or nothing. */
     protected static void back(GuiGraphics g, int w, int h, float a) {
-        Draw.round(g, 0, 0, w, h, Draw.fade(BG, a));
+        dev.lumio.Config.HudSlot s = Hud.drawing;
+        if (s != null && s.glow) Draw.glow(g, 0, 0, w, h, a);
+        if (s == null || s.bg) Draw.round(g, 0, 0, w, h, Draw.fade(BG, a));
+        if (s != null && s.glow) Draw.liveOutline(g, 0, 0, w, h, a * 0.8f);
     }
 
     /** A small label in the accent colour, then the value: "XYZ  12, 64, -3". */

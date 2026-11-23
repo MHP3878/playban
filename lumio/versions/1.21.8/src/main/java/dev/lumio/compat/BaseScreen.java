@@ -31,24 +31,51 @@ public abstract class BaseScreen extends Screen {
         return false;
     }
 
+    /**
+     * The screen's own size factor: drawn with it, and the mouse is measured in it, so the screen and
+     * its input fields work in their own smaller (or bigger) units. 1 = Minecraft's GUI units.
+     */
+    protected float uiScale() {
+        return 1f;
+    }
+
+    /** The screen's width and height in its own units. */
+    protected int vw() {
+        return Math.round(width / uiScale());
+    }
+
+    protected int vh() {
+        return Math.round(height / uiScale());
+    }
+
     @Override
     public boolean mouseClicked(double x, double y, int button) {
-        return click(x, y, button) || super.mouseClicked(x, y, button);
+        float s = uiScale();
+        return click(x / s, y / s, button) || super.mouseClicked(x / s, y / s, button);
     }
 
     @Override
     public boolean mouseReleased(double x, double y, int button) {
-        return release(x, y, button) || super.mouseReleased(x, y, button);
+        float s = uiScale();
+        return release(x / s, y / s, button) || super.mouseReleased(x / s, y / s, button);
     }
 
     @Override
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
-        return drag(x, y, button, dx, dy) || super.mouseDragged(x, y, button, dx, dy);
+        float s = uiScale();
+        return drag(x / s, y / s, button, dx / s, dy / s) || super.mouseDragged(x / s, y / s, button, dx / s, dy / s);
     }
 
     @Override
     public boolean mouseScrolled(double x, double y, double h, double v) {
-        return scroll(x, y, v) || super.mouseScrolled(x, y, h, v);
+        float s = uiScale();
+        return scroll(x / s, y / s, v) || super.mouseScrolled(x / s, y / s, h, v);
+    }
+
+    @Override
+    public void mouseMoved(double x, double y) {
+        float s = uiScale();
+        super.mouseMoved(x / s, y / s);
     }
 
     @Override

@@ -15,13 +15,20 @@ Needs Fabric Loader and Fabric API.
 
 ## What it does
 
+**Lumio's own size.** Menu, HUD, cards and radial menu are the same size on screen whatever Minecraft's
+GUI scale is; "Lumio size" in the menu (and in the HUD editor) makes all of it bigger or smaller
+(80 % by default).
+
 **Menu (Right Shift, or `/lumio`).** General (six colour themes, card side, sounds), HUD, radial menu,
 chat, about. Everything is drawn in the Inter font with soft rounded panels.
 
 **HUD.** Coordinates with facing, FPS, ping, clock, armour with durability, effects, keys with clicks
 per second, important items (totems, pearls, golden apples), server info and music. "Edit HUD" shows all
-of them: drag them where you want (they snap to the middle), right-click switches one on or off, the
-mouse wheel changes its size. Positions are kept as a share of the screen, so they stay in place when the
+of them: click one and a small window opens beside it (size, show, background panel, glow in the theme
+colour, center, reset); drag it where you want (it snaps to edges, the middle and other elements, or
+not, as you like), drag its corner to make it bigger, right-click switches it on or off, the arrow keys
+move it a pixel. Also there: the Lumio mark (name in running colours, FPS and time), a compass strip,
+speed and biome. Positions are kept as a share of the screen, so they stay in place when the
 window or GUI scale changes.
 
 **Music.** The music element shows what is playing: cover, title, artist and a progress bar, green for

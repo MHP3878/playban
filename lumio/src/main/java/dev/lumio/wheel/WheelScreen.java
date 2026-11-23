@@ -54,7 +54,7 @@ public final class WheelScreen extends BaseScreen {
     }
 
     private int pick(double mx, double my) {
-        double dx = mx - width / 2.0, dy = my - height / 2.0;
+        double dx = mx - vw() / 2.0, dy = my - vh() / 2.0;
         if (Math.hypot(dx, dy) < DEAD) return -1;
         int n = page().size();
         if (n == 0) return -1;
@@ -64,19 +64,37 @@ public final class WheelScreen extends BaseScreen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mx, int my, float delta) {
-        super.render(g, mx, my, delta);
+    protected float uiScale() {
+        return dev.lumio.ui.Ui.scale();
+    }
+
+    @Override
+    public void render(GuiGraphics g, int rmx, int rmy, float delta) {
+        super.render(g, rmx, rmy, delta);
+        // in Lumio's own size: everything below is in its units
+        float sc = uiScale();
+        int mx = (int) (rmx / sc), my = (int) (rmy / sc);
+        Compat.push(g, 0, 0, sc);
+        try {
+            drawWheel(g, mx, my);
+        } finally {
+            Compat.pop(g);
+        }
+    }
+
+    private void drawWheel(GuiGraphics g, int mx, int my) {
         // letting go of the key runs the field under the mouse
         if (!clickMode && System.currentTimeMillis() - opened > 80 && !LumioClient.wheelHeld()) {
             choose(hovered);
             return;
         }
         float a = Draw.easeOutCubic((System.currentTimeMillis() - pageSince) / 180f);
-        int cx = width / 2, cy = height / 2;
+        int cx = vw() / 2, cy = vh() / 2;
         int r = Math.round(RADIUS * (0.75f + 0.25f * a));
         List<Config.WheelEntry> page = page();
         hovered = pick(mx, my);
         // the disc behind it all
+        Draw.circle(g, cx, cy, r + BUBBLE + 20, Draw.fade(Draw.wave(0), 0.18f * a));
         Draw.circle(g, cx, cy, r + BUBBLE + 14, Draw.fade(0x99101016, a));
         Draw.ring(g, cx, cy, r + BUBBLE + 14, Draw.fade(0x22FFFFFF, a));
         int n = page.size();

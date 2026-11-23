@@ -38,6 +38,8 @@ subprojects {
         runs {
             client {
                 runDir = "../../run"
+                // tests only: -PtestHidden makes Lumio play "not installed"
+                if (rootProject.hasProperty("testHidden")) vmArg "-Dlumio.test.hidden=true"
             }
         }
     }

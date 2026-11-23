@@ -112,7 +112,9 @@ public final class LumioClient implements ClientModInitializer {
         PayloadTypeRegistry.playC2S().register(JsonPayload.REPORT, JsonPayload.codec(JsonPayload.REPORT));
         PayloadTypeRegistry.playC2S().register(JsonPayload.ANSWER, JsonPayload.codec(JsonPayload.ANSWER));
         PayloadTypeRegistry.playC2S().register(JsonPayload.INTEGRITY, JsonPayload.codec(JsonPayload.INTEGRITY));
-        ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HELLO, (p, ctx) -> Protocol.onHello(p.json()));
+        // tests only: in a development setup Lumio can play "not installed" for the server
+        boolean hidden = FabricLoader.getInstance().isDevelopmentEnvironment() && Boolean.getBoolean("lumio.test.hidden");
+        if (!hidden) ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HELLO, (p, ctx) -> Protocol.onHello(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.PROMPT, (p, ctx) -> Protocol.onPrompt(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.TOAST, (p, ctx) -> Protocol.onToast(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HUD, (p, ctx) -> Protocol.onHud(p.json()));

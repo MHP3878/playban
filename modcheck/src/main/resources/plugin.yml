@@ -17,6 +17,10 @@ commands:
     description: Allow a mod again
     aliases: [modentsperren, unblockmod]
     permission: modcheck.block
+  inject:
+    description: Block injection clients (Vape, Prestige ...), one by one or all
+    aliases: [injects, injectblock]
+    permission: modcheck.block
   mcroom:
     description: The buttons of the check room window (leave, guide)
 
@@ -36,7 +40,7 @@ permissions:
     description: "/modcheck - see a player's client and mods"
     default: op
   modcheck.block:
-    description: "/modblock and /modunblock"
+    description: "/modblock, /modunblock and /inject"
     default: op
   modcheck.notify:
     description: Is told when somebody joins with a blocked mod

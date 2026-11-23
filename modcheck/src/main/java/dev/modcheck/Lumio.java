@@ -266,9 +266,11 @@ public final class Lumio implements Listener, PluginMessageListener {
         // Lumio 0.6+: check the game for injected code, and for these programs running next to it
         o.addProperty("integrity", injectionCheck());
         JsonArray watch = new JsonArray();
-        for (String w : plugin.getConfig().getStringList("injection.processes")) {
+        List<String> names = new ArrayList<>(KnownInjects.allProcesses());
+        names.addAll(plugin.getConfig().getStringList("injection.processes"));
+        for (String w : names) {
             String c = Guard.clean(w, 40).toLowerCase(Locale.ROOT);
-            if (!c.isEmpty() && watch.size() < 64) watch.add(c);
+            if (!c.isEmpty() && watch.size() < 128 && !watch.contains(new com.google.gson.JsonPrimitive(c))) watch.add(c);
         }
         o.add("watch", watch);
         p.sendPluginMessage(plugin, HELLO, o.toString().getBytes(StandardCharsets.UTF_8));
@@ -346,6 +348,7 @@ public final class Lumio implements Listener, PluginMessageListener {
         if (f == null || !f.isJsonArray()) return;
         List<String> strong = new ArrayList<>();
         List<String> weak = new ArrayList<>();
+        Map<KnownInjects.Client, List<String>> named = new java.util.LinkedHashMap<>();
         String client = "";
         int n = 0;
         for (JsonElement e : f.getAsJsonArray()) {
@@ -359,15 +362,115 @@ public final class Lumio implements Listener, PluginMessageListener {
             String template = plugin.lang().raw("injection.kind." + kind);
             String line = template.contains("missing text") ? kind + ": " + what : template.replace("{what}", what);
             if (info.integrity.size() < 64 && !info.integrity.contains(line)) info.integrity.add(line);
-            if (isStrong) {
+            // a known injection client, by its program or the beginning of its class names
+            KnownInjects.Client c = KnownInjects.match(kind, what);
+            if (c == null && !name.isEmpty()) c = KnownInjects.find(name);
+            if (c != null) {
+                named.computeIfAbsent(c, k -> new ArrayList<>()).add(line);
+            } else if (isStrong) {
                 strong.add(line);
                 if (client.isEmpty() && !name.isEmpty()) client = name;
             } else {
                 weak.add(line);
             }
         }
-        if (!weak.isEmpty()) guard().hints(p, weak);
-        if (!strong.isEmpty()) guard().injection(p, client.isEmpty() ? plugin.lang().raw("injection.unknown") : client, strong);
+        decide(p, named, strong, weak, client);
+    }
+
+    /**
+     * What the findings mean on this server (/inject): a known client gets the action set for it;
+     * with "block all" every sure finding is out, known client or not (a known client counts as sure);
+     * with "strict" small signs too. The rest only goes to the team.
+     */
+    void decide(Player p, Map<KnownInjects.Client, List<String>> named, List<String> strong, List<String> weak, String unnamed) {
+        String general = plugin.getConfig().getString("injection-action", "KICK");
+        boolean all = blockAll(), strict = strict();
+        List<String> onlyHints = new ArrayList<>();
+        for (Map.Entry<KnownInjects.Client, List<String>> e : named.entrySet()) {
+            String own = clientAction(e.getKey().id());
+            if (own != null) {
+                guard().injection(p, e.getKey().name(), e.getValue(), own);
+            } else if (all || strict) {
+                guard().injection(p, e.getKey().name(), e.getValue(), general);
+            } else {
+                onlyHints.addAll(e.getValue());
+            }
+            if (!p.isOnline()) return;
+        }
+        if (!strong.isEmpty()) {
+            if (all) guard().injection(p, unnamed.isEmpty() ? plugin.lang().raw("injection.unknown") : unnamed, strong, general);
+            else onlyHints.addAll(strong);
+            if (!p.isOnline()) return;
+        }
+        if (!weak.isEmpty()) {
+            if (strict) guard().injection(p, plugin.lang().raw("injection.signs"), weak, general);
+            else onlyHints.addAll(weak);
+            if (!p.isOnline()) return;
+        }
+        if (!onlyHints.isEmpty()) guard().hints(p, onlyHints);
+    }
+
+    /** /inject: every sure finding is out, known client or not. */
+    public boolean blockAll() {
+        return plugin.getConfig().getBoolean("injection.block-all", true);
+    }
+
+    /** /inject: also small signs (a DLL from an unusual folder, a tool attached) are out. */
+    public boolean strict() {
+        return plugin.getConfig().getBoolean("injection.strict", false);
+    }
+
+    /** The action set for one client with /inject (KICK, BAN, ALERT), or null: it follows "block all". */
+    public String clientAction(String id) {
+        String a = plugin.getConfig().getString("injection.clients." + id, "");
+        a = a == null ? "" : a.toUpperCase(Locale.ROOT);
+        return List.of("KICK", "BAN", "ALERT").contains(a) ? a : null;
+    }
+
+    public void setClientAction(String id, String action) {
+        plugin.getConfig().set("injection.clients." + id, action == null ? null : action.toUpperCase(Locale.ROOT));
+        plugin.saveConfig();
+    }
+
+    /** The general action for injections (KICK, BAN, ALERT). */
+    public String injectionAction() {
+        String a = plugin.getConfig().getString("injection-action", "KICK").toUpperCase(Locale.ROOT);
+        return List.of("KICK", "BAN", "ALERT").contains(a) ? a : "KICK";
+    }
+
+    /** Program names the server added itself, besides those of the known clients. */
+    public List<String> ownProcesses() {
+        List<String> out = new ArrayList<>();
+        for (String w : plugin.getConfig().getStringList("injection.processes")) {
+            String c = processName(w);
+            if (c != null && !out.contains(c) && !KnownInjects.allProcesses().contains(c)) out.add(c);
+        }
+        return out;
+    }
+
+    /** A program name as Lumio compares it ("Vape.exe" -> "vape"), or null when it is no usable name. */
+    public static String processName(String typed) {
+        if (typed == null) return null;
+        String c = typed.trim().toLowerCase(Locale.ROOT).replaceAll("\\.exe$", "");
+        return c.matches("[a-z0-9_.+-]{2,40}") ? c : null;
+    }
+
+    /** Adds a program name, or takes it away when it is already there: "added", "removed", "known" or "bad". */
+    public String toggleOwnProcess(String typed) {
+        String c = processName(typed);
+        if (c == null) return "bad";
+        if (KnownInjects.allProcesses().contains(c)) return "known";
+        List<String> own = ownProcesses();
+        String result;
+        if (own.remove(c)) result = "removed";
+        else if (own.size() >= 40) return "bad";
+        else {
+            own.add(c);
+            result = "added";
+        }
+        plugin.getConfig().set("injection.processes", own);
+        plugin.saveConfig();
+        return result;
     }
 
     private static String str(JsonObject o, String key, int max) {

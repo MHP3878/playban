@@ -18,6 +18,7 @@ mode:
 
 input:
   download: "<#4facfe>Write the download link for Lumio (with https://)."
+  inject-program: "<#4facfe>Write the program name (without .exe), e.g. <white>ghostloader</white>. If it is already there, it is removed."
   bad-link: "<red>That is not a valid link. It has to start with <white>https://</white>."
   cancel-hint: "<dark_gray>Type <white>cancel</white> to stop."
   reason: "<#4facfe>Type the reason. <white>{mods}</white> becomes the mod names, e.g. <white>No cheating with {mods}!</white>"
@@ -415,6 +416,7 @@ book:
 
 injection:
   unknown: "an injection client"
+  signs: "signs of an injection"
   hint: "Something unusual in the game"
   kind:
     codefile: "Code from an unknown file: {what}"
@@ -428,3 +430,63 @@ injection:
     preload: "Preloaded library: {what}"
     process: "Injector running: {what}"
     debugger: "Debugger on the game: {what}"
+
+inject:
+  usage: "<gray>Usage: <white>/inject</white> (menu), <white>/inject vape [kick|ban|alert|default]</white>, <white>/inject all on|off</white>, <white>/inject strict on|off</white>, <white>/inject action kick|ban|alert</white>, <white>/inject program <name></white>, <white>/inject list</white>"
+  saved: "<green>Saved."
+  unknown: "<gray>No known injection client called <white>{name}</white>. Known are:"
+  suggestion: "<#4facfe>  ▶ {name} <dark_gray>({id}) <gray>Click to block"
+  as-program: "<gray>  ▶ Add <white>{name}</white> as a program name <dark_gray>(click)"
+  program-added: "<green>Program <white>{name}</white> added: running next to the game counts as an injection client."
+  program-removed: "<gray>Program <white>{name}</white> removed."
+  program-known: "<gray><white>{name}</white> already belongs to a known client and is looked for anyway."
+  program-bad: "<red>That is no valid program name (2-40 characters: letters, digits, - _ . +) or the list is full."
+  client-set: "<green><white>{client}</white> is blocked: <white>{action}</white>."
+  client-default: "<gray><white>{client}</white> follows 'block all' again: {all}."
+  all-blocked: "<white>blocked"
+  all-free: "<white>only a hint to the team"
+  state-all: "blocked (block all)"
+  state-free: "only a hint to the team"
+  list-head: "<gradient:#7c5cff:#4fc3f7><bold>Injection protection</bold></gradient>"
+  list-settings: "<gray>Check: <white>{check}</white> · Block all: <white>{all}</white> · Strict: <white>{strict}</white> · Action: <white>{action}"
+  list-client: "<dark_gray> • <white>{client}</white> <gray>{state}"
+  list-client-own: "<dark_gray> • <white>{client}</white> <#ff6b6b>{state}"
+  list-programs: "<gray>Own program names: <white>{names}"
+  lumio-warning: "<yellow>⚠ Only players with Lumio are checked. So nobody plays unchecked: <white>/modcheck lumio required"
+
+injectmenu:
+  title: "<gradient:#7c5cff:#ff6b6b><bold>Injection protection</bold></gradient>"
+  entry:
+    name: "<#ff6b6b><bold>Injection clients <white>({state})"
+    lore: ["<gray>Block Vape, Prestige, Drip and other", "<gray>ghost clients one by one or all.", "<gray>Also with <white>/inject</white>."]
+  entry-all: "all blocked"
+  entry-some: "one by one"
+  lumio-ok:
+    name: "<green><bold>✔ Lumio is required"
+    lore: ["<gray>Every player has Lumio and is checked", "<gray>for injections. Without Lumio (or with", "<gray>one too old) nobody gets in."]
+  lumio-warn:
+    name: "<yellow><bold>⚠ Lumio: {mode}"
+    lore: ["<gray>Only Lumio finds injection clients.", "<gray>Players without it are not checked", "<gray>and can join with Vape and co.", "", "<#4facfe>Click: make Lumio required"]
+  check:
+    name: "<#7c5cff><bold>Check: <white>{value}"
+    lore: ["<gray>Lumio looks in the game for code put", "<gray>in from outside, and for injector", "<gray>programs next to it.", "", "<#4facfe>Click: on or off"]
+  all:
+    name: "<#ff6b6b><bold>Block all injections: <white>{value}"
+    lore: ["<gray>On: every sure injection is out,", "<gray>also a client nobody knows.", "<gray>Off: only the clients below that you", "<gray>block one by one; the rest goes to", "<gray>the team as a hint.", "", "<#4facfe>Click: on or off"]
+  strict:
+    name: "<#ff6b6b><bold>Strict: <white>{value}"
+    lore: ["<gray>Small signs are enough: a DLL from an", "<gray>odd folder, a tool attached to the", "<gray>game, code from an unknown file.", "<yellow>Finds more, but can also hit players", "<yellow>with an unusual setup.", "", "<#4facfe>Click: on or off"]
+  action:
+    name: "<#7c5cff><bold>What happens: <white>{value}"
+    lore: ["<gray>For 'block all', 'strict' and clients", "<gray>without their own setting. The kick", "<gray>says: 'You have ... on. Please delete it.'", "", "<#4facfe>Click: change"]
+  client:
+    name: "<white><bold>{client}"
+    name-own: "<#ff6b6b><bold>{client}"
+    lore: ["<gray>Now: <white>{state}", "<dark_gray>Programs: {programs} …", "", "<#4facfe>Click: default → kick → ban → alert only"]
+  programs:
+    name: "<#7c5cff><bold>Own program names"
+    lore: ["<gray>An injector missing here? Its program", "<gray>name (without .exe) is then looked", "<gray>for too.", "<gray>Now: <white>{names}", "", "<#4facfe>Click: add or remove"]
+  no-programs: "none"
+  how:
+    name: "<#7c5cff><bold>How it works"
+    lore: ["<white>1. <gray>Lumio checks the running game for", "<gray>   code put in and for injectors", "<white>2. <gray>Known client: its own setting", "<white>3. <gray>Unknown but sure: 'block all'", "<white>4. <gray>Only signs: 'strict' or a team hint", "", "<dark_gray>Only players with Lumio are checked."]

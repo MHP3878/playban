@@ -10,6 +10,10 @@ See which client and mods players use, block mods just by their name, and let th
 | `/modcheck <player>` | All mods of a player; click a mod: **Punish** or **Let pass** | `modcheck.check` |
 | `/modblock <name>` (`/modsperre`) | Block a mod. `freecam`, `Free Cam`, `freecam-fabric-1.2.1.jar` all work; typos get "did you mean"; Tab suggests known mods | `modcheck.block` |
 | `/modunblock <name>` | Allow a mod again | `modcheck.block` |
+| `/inject` | The injection menu, like `/modblock` for mods: **block all injections**, **strict**, what happens, and every known injection client (Vape V4, Vape Lite, Prestige, Drip, Entropy, Doomsday, Slinky, Karma, Sunset, Raven, Koid, Akrien, Itami) with its own action | `modcheck.block` (the switches on top: `modcheck.settings`) |
+| `/inject <client> [kick\|ban\|alert\|default]` | Block one client by name (`/inject vape`, `/inject vape lite ban`); `default` follows "block all" again | `modcheck.block` |
+| `/inject all on\|off`, `/inject strict on\|off`, `/inject action kick\|ban\|alert`, `/inject on\|off` | The switches (also `alle an\|aus`, `streng an\|aus`, `aktion`) | `modcheck.settings` |
+| `/inject program <name>`, `/inject list` | Add (or remove) a program name of your own to look for; everything in chat | `modcheck.block` |
 | `/modcheck unban <player>` | Lift a ban, also in the server's ban system (StaffCore, LiteBans, ... or the game's ban list) | `modcheck.unban` |
 | `/modcheck reset <player>` | Clear a player's warnings | `modcheck.unban` |
 | `/modcheck reload` | Reload config and texts | `modcheck.reload` |
@@ -60,10 +64,10 @@ Everything suspicious about the client itself (blocks the check, a filter, no an
    - **Code without a file**: classes defined straight into the game, the way injection clients put themselves in (strong).
    - **Threads from injected memory** (Windows): a thread that starts in memory belonging to no DLL, the mark of code mapped in by hand (strong).
    - **Java agents** on the command line (strong; `authlib-injector` of some launchers is no cheat), a debugger, or a tool attached later (only told to the team).
-   - **Injector programs** running next to the game, by name (`injection.processes`; strong).
+   - **Injector programs** running next to the game, by name (those of the known clients plus your own, `/inject program`; strong).
    - DLLs and libraries from unusual folders, code from unknown files (only told to the team, as one line per player).
 
-   Strong findings go to `injection-action`: by default a kick with "You have Vape on. Please delete it and join again." With the injection check on, `required` mode needs Lumio 0.6 or newer, and a Lumio that stops reporting for 100 seconds is out (it was switched off or blocked). Lumio sends only file names, never folders.
+   What happens is set with `/inject`. A finding that belongs to a **known client** (by its program, its DLL or the beginning of its class names) gets the action set for that client. **Block all** (on by default) puts out every sure finding, a known client or not, with `injection-action`. **Strict** (off by default) also puts out players with only small signs (a DLL from an odd folder, a tool attached later, code from an unknown file); it finds more, but can hit unusual setups. Everything else only goes to the team. The default is a kick with "You have Vape on. Please delete it and join again." With the injection check on, `required` mode needs Lumio 0.6 or newer, and a Lumio that stops reporting for 100 seconds is out (it was switched off or blocked). Lumio sends only file names, never folders.
 
 8. **The check room** (`check-room`, on by default): on joining, a player waits a moment in a closed room of bedrock high above (or deep under) the spawn, with a title and a countdown bar, until the client, the mods, the hidden sign and Lumio are checked. Then "✔ Checked" and back exactly where they were. Inside nothing can be touched, nobody sees anybody, and nobody can be hurt. Without Lumio when it is required, the player stays in the room with a **window**: a download button, a guide (Fabric Installer, Fabric API, Lumio, which folder) and "leave the server" (on 1.21.6+ a real Minecraft dialog, before that a book). A forbidden mod either kicks with its name or keeps the player in the room with a window, whichever you choose. Bedrock players (found through Floodgate/Geyser, not by a client name that could be faked) and `modcheck.bypass` skip the room.
 

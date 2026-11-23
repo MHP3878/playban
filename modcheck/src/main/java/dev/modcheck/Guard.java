@@ -673,11 +673,16 @@ public final class Guard implements Listener {
      * injection-action says what happens, by default out with "please delete it".
      */
     public void injection(Player p, String client, List<String> proof) {
+        injection(p, client, proof, cfg().getString("injection-action", "KICK"));
+    }
+
+    /** The same with the action of this client (from /inject), or the general one. */
+    public void injection(Player p, String client, List<String> proof, String chosen) {
         if (!p.isOnline() || p.hasPermission("modcheck.bypass")) return;
         Info info = info(p.getUniqueId());
         if (!info.handled.add("__injection")) return;
         info.suspicion.addAll(proof);
-        String action = cfg().getString("injection-action", "KICK").toUpperCase(Locale.ROOT);
+        String action = chosen == null ? "KICK" : chosen.toUpperCase(Locale.ROOT);
         if (!List.of("ALERT", "KICK", "BAN").contains(action)) action = "KICK";
         alertTeam(p, client, lang().raw("action." + action.toLowerCase(Locale.ROOT)), true, null, proof);
         discord(p.getName(), client, action, proof);

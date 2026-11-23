@@ -75,6 +75,99 @@ public final class Menus {
             m.set(20, item(Material.BEDROCK, "roommenu.entry"), e -> room(p));
         }
         if (p.hasPermission("modcheck.unban")) m.set(22, item(Material.IRON_BARS, "menu.main.bans", "count", guard().bans().size()), e -> bans(p, 0));
+        if (p.hasPermission("modcheck.block")) m.set(24, item(Material.SPYGLASS, "injectmenu.entry", "state",
+                lang().raw(plugin.lumio().blockAll() ? "injectmenu.entry-all" : "injectmenu.entry-some")), e -> injects(p));
+        m.fill().open(p);
+    }
+
+    // ---------------------------------------------------------------- /inject
+
+    private static final List<String> CLIENT_STEPS = List.of("", "KICK", "BAN", "ALERT");
+    private static final int[] CLIENT_SLOTS = {28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+
+    /**
+     * Injection clients, like the mods of /modblock: on top "block all", "strict", the action and
+     * whether the check runs; below every known client, a click each for its own action.
+     */
+    public void injects(Player p) {
+        if (!p.hasPermission("modcheck.block")) {
+            p.closeInventory();
+            lang().send(p, "no-permission");
+            return;
+        }
+        Lumio lumio = plugin.lumio();
+        boolean admin = p.hasPermission("modcheck.settings");
+        Menu m = new Menu(6, lang().msg("injectmenu.title"));
+        String mode = lumio.mode();
+        boolean required = mode.equals("required");
+        // what it depends on: only players with Lumio can be checked
+        m.set(4, item(required ? Material.AMETHYST_CLUSTER : Material.AMETHYST_SHARD, required ? "injectmenu.lumio-ok" : "injectmenu.lumio-warn",
+                "mode", lang().raw("lumio.mode-name." + mode)), !admin || required ? null : e -> {
+            lumio.setMode("required");
+            guard().log(p.getName(), "lumio mode", null, "required");
+            injects(p);
+        });
+        boolean check = lumio.injectionCheck();
+        boolean all = lumio.blockAll();
+        boolean strict = lumio.strict();
+        String action = lumio.injectionAction();
+        m.set(10, item(check ? Material.OBSERVER : Material.GRAY_DYE, "injectmenu.check", "value", lang().raw(check ? "word-on" : "word-off")),
+                admin ? e -> {
+                    setGlobal("injection.enabled", !check);
+                    guard().log(p.getName(), "inject check", null, String.valueOf(!check));
+                    injects(p);
+                } : null);
+        m.set(12, item(all ? Material.BARRIER : Material.GRAY_DYE, "injectmenu.all", "value", lang().raw(all ? "word-on" : "word-off")),
+                admin ? e -> {
+                    setGlobal("injection.block-all", !all);
+                    guard().log(p.getName(), "inject block-all", null, String.valueOf(!all));
+                    injects(p);
+                } : null);
+        m.set(14, item(strict ? Material.REDSTONE_BLOCK : Material.GRAY_DYE, "injectmenu.strict", "value", lang().raw(strict ? "word-on" : "word-off")),
+                admin ? e -> {
+                    setGlobal("injection.strict", !strict);
+                    guard().log(p.getName(), "inject strict", null, String.valueOf(!strict));
+                    injects(p);
+                } : null);
+        m.set(16, item(Material.TNT, "injectmenu.action", "value", actionName(action)), admin ? e -> {
+            String n = next(List.of("KICK", "BAN", "ALERT"), action);
+            setGlobal("injection-action", n);
+            guard().log(p.getName(), "inject action", null, n);
+            injects(p);
+        } : null);
+        for (int i = 0; i < KnownInjects.ALL.size() && i < CLIENT_SLOTS.length; i++) {
+            KnownInjects.Client c = KnownInjects.ALL.get(i);
+            String own = lumio.clientAction(c.id());
+            Material mat = own == null ? (all ? Material.LIGHT_GRAY_CONCRETE : Material.WHITE_CONCRETE) : switch (own) {
+                case "BAN" -> Material.RED_CONCRETE;
+                case "ALERT" -> Material.YELLOW_CONCRETE;
+                default -> Material.ORANGE_CONCRETE;
+            };
+            String state = own != null ? actionName(own) : lang().raw(all ? "inject.state-all" : "inject.state-free");
+            List<Component> lore = new ArrayList<>(lang().lore("injectmenu.client.lore", "state", state,
+                    "programs", String.join(", ", c.processes().subList(0, Math.min(3, c.processes().size())))));
+            m.set(CLIENT_SLOTS[i], Menu.item(mat, lang().msg(own != null ? "injectmenu.client.name-own" : "injectmenu.client.name", "client", c.name()), lore), e -> {
+                String n = next(CLIENT_STEPS, own == null ? "" : own);
+                lumio.setClientAction(c.id(), n.isEmpty() ? null : n);
+                guard().log(p.getName(), "inject client", null, c.id() + "=" + (n.isEmpty() ? "default" : n));
+                injects(p);
+            });
+        }
+        // more programs to look for: a name of your own
+        List<String> own = lumio.ownProcesses();
+        m.set(44, item(Material.NAME_TAG, "injectmenu.programs", "names", own.isEmpty() ? lang().raw("injectmenu.no-programs") : String.join(", ", own)), e ->
+                plugin.input().ask(p, "input.inject-program", text -> {
+                    String r = lumio.toggleOwnProcess(text);
+                    if (!r.equals("bad")) guard().log(p.getName(), "inject program " + r, null, text);
+                    lang().send(p, "inject.program-" + r, "name", Guard.clean(text, 40));
+                    injects(p);
+                }, () -> injects(p)));
+        m.set(45, item(Material.WRITTEN_BOOK, "injectmenu.how"), null);
+        m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
+        m.set(53, item(Material.REDSTONE_TORCH, "roommenu.forbidden-preview"), e -> {
+            p.closeInventory();
+            plugin.popups().forbidden(p, "Vape V4");
+        });
         m.fill().open(p);
     }
 
@@ -543,6 +636,8 @@ public final class Menus {
             setGlobal("injection-action", next(injActions, injActions.contains(injAction) ? injAction : "KICK"));
             room(p);
         });
+        m.set(22, item(Material.SPYGLASS, "injectmenu.entry", "state",
+                lang().raw(plugin.lumio().blockAll() ? "injectmenu.entry-all" : "injectmenu.entry-some")), e -> injects(p));
         m.set(23, item(Material.WRITTEN_BOOK, "roommenu.how"), null);
         m.set(24, item(Material.REDSTONE_TORCH, "roommenu.forbidden-preview"), e -> {
             p.closeInventory();

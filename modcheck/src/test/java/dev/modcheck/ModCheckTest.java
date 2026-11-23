@@ -776,6 +776,108 @@ class ModCheckTest {
         assertFalse(steve.isOnline(), "out");
     }
 
+    private void findings(PlayerMock p, String json) {
+        String nonce = greet(p);
+        plugin.lumio().integrity(p, com.google.gson.JsonParser.parseString("{\"v\":1,\"nonce\":\"" + nonce + "\",\"findings\":[" + json + "]}").getAsJsonObject());
+    }
+
+    @Test
+    void knownInjectClientsAreRecognised() {
+        assertEquals("vape", KnownInjects.match("process", "Vape.exe").id());
+        assertEquals("vapelite", KnownInjects.match("process", "vapelite.exe").id());
+        assertEquals("vapelite", KnownInjects.match("code", "gg.vape.lite.Main (Render thread)").id(), "the longer beginning wins");
+        assertEquals("vape", KnownInjects.match("code", "gg.vape.Main").id());
+        assertEquals("vape", KnownInjects.match("module", "vape.dll (Temp)").id());
+        assertEquals("prestige", KnownInjects.match("code", "dev.prestige.modules.Reach").id());
+        assertNull(KnownInjects.match("code", "net.minecraft.client.Minecraft"));
+        assertNull(KnownInjects.match("process", "sunset.exe"), "too common a name on its own");
+        assertNull(KnownInjects.match("thread", "vape"));
+        assertEquals("vapelite", KnownInjects.find("Vape Lite").id());
+        assertEquals("prestige", KnownInjects.find("prestigeclient.exe").id());
+        assertNull(KnownInjects.find("minecraft"));
+        // Lumio is told to look for all of them, plus the server's own names
+        assertEquals("added", plugin.lumio().toggleOwnProcess("GhostLoader.exe"));
+        assertEquals("known", plugin.lumio().toggleOwnProcess("vape"));
+        assertEquals("bad", plugin.lumio().toggleOwnProcess("no spaces"));
+        assertEquals(List.of("ghostloader"), plugin.lumio().ownProcesses());
+        assertEquals("removed", plugin.lumio().toggleOwnProcess("ghostloader"));
+        assertTrue(plugin.lumio().ownProcesses().isEmpty());
+    }
+
+    @Test
+    void injectBlocksOneByOneOrAll() {
+        plugin.getConfig().set("lumio.mode", "optional");
+        String sure = "{\"kind\":\"thread\",\"strong\":true,\"what\":\"start 0x7ff6000 outside every module\"}";
+        String vape = "{\"kind\":\"process\",\"strong\":true,\"name\":\"Vape\",\"what\":\"vape.exe\"}";
+        String sign = "{\"kind\":\"module\",\"strong\":false,\"what\":\"odd.dll (Downloads)\"}";
+        // "block all" is on by default: any sure injection is out
+        assertTrue(plugin.lumio().blockAll());
+        PlayerMock a = server.addPlayer("A1");
+        findings(a, sure);
+        assertFalse(a.isOnline());
+        // off: only the clients blocked one by one
+        assertTrue(admin.performCommand("inject alle aus"));
+        assertFalse(plugin.lumio().blockAll());
+        PlayerMock b = server.addPlayer("B1");
+        findings(b, sure);
+        assertTrue(b.isOnline(), "unknown and not blocked: only a hint");
+        findings(b, vape);
+        assertTrue(b.isOnline(), "Vape not blocked yet");
+        PlayerMock c = server.addPlayer("C1");
+        assertTrue(admin.performCommand("inject vape kick"));
+        assertEquals("KICK", plugin.lumio().clientAction("vape"));
+        findings(c, vape);
+        assertFalse(c.isOnline(), "Vape blocked by name");
+        // one client only told to the team, even with "block all"
+        admin.performCommand("inject alle an");
+        admin.performCommand("inject vape melden");
+        PlayerMock d = server.addPlayer("D1");
+        findings(d, vape);
+        assertTrue(d.isOnline(), "only an alert for Vape");
+        // back to the default: follows "block all"
+        admin.performCommand("inject vape standard");
+        assertNull(plugin.lumio().clientAction("vape"));
+        // strict: small signs are enough
+        PlayerMock e = server.addPlayer("E1");
+        findings(e, sign);
+        assertTrue(e.isOnline());
+        admin.performCommand("inject streng an");
+        assertTrue(plugin.lumio().strict());
+        PlayerMock f = server.addPlayer("F1");
+        findings(f, sign);
+        assertFalse(f.isOnline(), "strict: a sign is enough");
+        // players without the right cannot change it
+        steve.performCommand("inject streng aus");
+        assertTrue(plugin.lumio().strict());
+    }
+
+    @Test
+    void theInjectMenuWorksLikeModblock() {
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            assertTrue(admin.performCommand("inject"));
+            assertNoMissingTexts("inject menu " + code);
+        }
+        admin.simulateInventoryClick(12);
+        assertFalse(plugin.lumio().blockAll(), "block all switched off");
+        admin.simulateInventoryClick(14);
+        assertTrue(plugin.lumio().strict());
+        admin.simulateInventoryClick(16);
+        assertEquals("BAN", plugin.lumio().injectionAction());
+        admin.simulateInventoryClick(28);
+        assertEquals("KICK", plugin.lumio().clientAction(KnownInjects.ALL.get(0).id()));
+        admin.simulateInventoryClick(28);
+        assertEquals("BAN", plugin.lumio().clientAction(KnownInjects.ALL.get(0).id()));
+        // Lumio required from the warning
+        plugin.getConfig().set("lumio.mode", "optional");
+        admin.performCommand("inject");
+        admin.simulateInventoryClick(4);
+        assertEquals("required", plugin.lumio().mode());
+        steve.performCommand("inject");
+        var top = steve.getOpenInventory().getTopInventory();
+        assertFalse(top != null && top.getHolder() instanceof Menu, "players cannot");
+    }
+
     @Test
     void aSilentLumioIsOutWhenRequired() {
         plugin.getConfig().set("lumio.mode", "required");

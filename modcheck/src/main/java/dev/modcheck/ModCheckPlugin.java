@@ -47,7 +47,7 @@ public class ModCheckPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new Menu.Clicks(), this);
         guard.registerVirtualSignListener();
         Commands commands = new Commands(this);
-        for (String name : new String[]{"modcheck", "modblock", "modunblock", "mcroom"}) {
+        for (String name : new String[]{"modcheck", "modblock", "modunblock", "inject", "mcroom"}) {
             PluginCommand c = getCommand(name);
             if (c != null) {
                 c.setExecutor(commands);

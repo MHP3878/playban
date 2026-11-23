@@ -69,12 +69,21 @@ fake-brands: ['^lunarclient:v2\.21\.33-2612$', '^lunarclient:1\.20\.(4|1)$', '^C
 
 # Code injected into the game from outside (Vape, Prestige and other injection clients), found by
 # Lumio 0.6 or newer: KICK ("You have ... on, please delete it"), BAN or ALERT (only tell the team).
+# Everything here is also in the menu: /inject
 injection-action: KICK
 injection:
   # check for it (players with Lumio; in required mode Lumio 0.6 or newer is then needed)
   enabled: true
-  # names of programs (without .exe) of known injectors; one running next to the game counts as found
-  processes: [vape, vapelite, vape-lite, vapeloader, prestige, prestigeclient, prestige-client]
+  # block every injection Lumio is sure about, a known client or not (the action above)
+  block-all: true
+  # strict: also small signs are enough (a DLL from an odd folder, a tool attached to the game,
+  # code from an unknown file). Catches more, but can hit players with unusual setups.
+  strict: false
+  # known clients with their own action (KICK, BAN, ALERT); the others follow block-all.
+  # Known: vape, vapelite, prestige, drip, entropy, doomsday, slinky, karma, sunset, raven, koid, akrien, itami
+  clients: {}
+  # more program names (without .exe) to look for next to the game, besides those of the known clients
+  processes: []
 
 # The check room: on joining, players wait a moment in a closed room of bedrock above (or under) the
 # spawn until the check is done; then they are back exactly where they were. /modcheck raum sets it up.

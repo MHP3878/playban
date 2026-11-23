@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** /modcheck, /modblock and /modunblock. */
+/** /modcheck, /modblock, /modunblock and /inject. */
 public final class Commands implements TabExecutor {
     private final ModCheckPlugin plugin;
 
@@ -32,6 +32,7 @@ public final class Commands implements TabExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         switch (command.getName().toLowerCase(Locale.ROOT)) {
             case "modblock" -> block(sender, args);
+            case "inject" -> inject(sender, args);
             case "mcroom" -> {
                 // the buttons of the check room's window
                 if (sender instanceof Player p) plugin.room().command(p, args.length > 0 ? args[0] : "leave");
@@ -80,6 +81,131 @@ public final class Commands implements TabExecutor {
                 "action", lang().raw("action." + guard().action(r).toLowerCase(Locale.ROOT)));
         // straight to its settings, to choose what happens
         if (sender instanceof Player p) plugin.menus().rule(p, id);
+    }
+
+    private static final List<String> ON = List.of("an", "on", "ja", "yes", "true", "1");
+    private static final List<String> OFF = List.of("aus", "off", "nein", "no", "false", "0");
+
+    /** The action a word stands for: KICK, BAN, ALERT, "" for back to the default, or null. */
+    static String injectAction(String word) {
+        return switch (word.toLowerCase(Locale.ROOT)) {
+            case "kick", "kicken" -> "KICK";
+            case "ban", "bannen", "sperren" -> "BAN";
+            case "alert", "melden", "team", "nurmelden" -> "ALERT";
+            case "standard", "default", "aus", "off", "reset", "frei" -> "";
+            default -> null;
+        };
+    }
+
+    /**
+     * /inject: the menu, or by words: /inject vape [kick|ban|melden|standard], /inject alle an|aus,
+     * /inject streng an|aus, /inject aktion kick|ban|melden, /inject an|aus, /inject liste,
+     * /inject programm <name> (adds or removes a program name of your own).
+     */
+    private void inject(CommandSender sender, String[] args) {
+        Lumio lumio = plugin.lumio();
+        if (args.length == 0) {
+            if (sender instanceof Player p) plugin.menus().injects(p);
+            else injectList(sender);
+            return;
+        }
+        String first = args[0].toLowerCase(Locale.ROOT);
+        String second = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        switch (first) {
+            case "liste", "list", "status" -> {
+                injectList(sender);
+                return;
+            }
+            case "alle", "all", "streng", "strict", "an", "on", "aus", "off", "aktion", "action" -> {
+                if (!sender.hasPermission("modcheck.settings")) {
+                    lang().send(sender, "no-permission");
+                    return;
+                }
+                String key;
+                Object value;
+                if (first.equals("an") || first.equals("on") || first.equals("aus") || first.equals("off")) {
+                    key = "injection.enabled";
+                    value = first.equals("an") || first.equals("on");
+                } else if (first.equals("aktion") || first.equals("action")) {
+                    String a = injectAction(second);
+                    if (a == null || a.isEmpty()) {
+                        lang().send(sender, "inject.usage");
+                        return;
+                    }
+                    key = "injection-action";
+                    value = a;
+                } else {
+                    if (!ON.contains(second) && !OFF.contains(second)) {
+                        lang().send(sender, "inject.usage");
+                        return;
+                    }
+                    key = first.startsWith("all") ? "injection.block-all" : "injection.strict";
+                    value = ON.contains(second);
+                }
+                plugin.getConfig().set(key, value);
+                plugin.saveConfig();
+                guard().log(sender.getName(), "inject " + key, null, String.valueOf(value));
+                lang().send(sender, "inject.saved");
+                injectList(sender);
+                return;
+            }
+            case "programm", "program", "prozess", "process" -> {
+                if (args.length < 2) {
+                    lang().send(sender, "inject.usage");
+                    return;
+                }
+                String r = lumio.toggleOwnProcess(args[1]);
+                if (!r.equals("bad")) guard().log(sender.getName(), "inject program " + r, null, args[1]);
+                lang().send(sender, "inject.program-" + r, "name", Guard.clean(args[1], 40));
+                return;
+            }
+            default -> {
+                // a client by its name
+            }
+        }
+        // the name can be several words ("vape lite"); the last word may be the action
+        List<String> words = new ArrayList<>(List.of(args));
+        String action = words.size() > 1 ? injectAction(words.get(words.size() - 1)) : null;
+        if (action != null) words.remove(words.size() - 1);
+        KnownInjects.Client c = KnownInjects.find(String.join(" ", words));
+        if (c == null) {
+            lang().send(sender, "inject.unknown", "name", Guard.clean(String.join(" ", words), 40));
+            for (KnownInjects.Client k : KnownInjects.ALL) {
+                sender.sendMessage(lang().msg("inject.suggestion", "name", k.name(), "id", k.id()).clickEvent(ClickEvent.runCommand("/inject " + k.id())));
+            }
+            String asProgram = Lumio.processName(words.get(0));
+            if (asProgram != null) sender.sendMessage(lang().msg("inject.as-program", "name", asProgram).clickEvent(ClickEvent.runCommand("/inject programm " + asProgram)));
+            return;
+        }
+        if (action == null) action = "KICK"; // "/inject vape" blocks it
+        lumio.setClientAction(c.id(), action.isEmpty() ? null : action);
+        guard().log(sender.getName(), "inject client", null, c.id() + "=" + (action.isEmpty() ? "default" : action));
+        String now = lumio.clientAction(c.id());
+        lang().send(sender, now == null ? "inject.client-default" : "inject.client-set", "client", c.name(),
+                "action", now == null ? "" : lang().raw("action." + now.toLowerCase(Locale.ROOT)),
+                "all", lang().raw(lumio.blockAll() ? "inject.all-blocked" : "inject.all-free"));
+        if (sender instanceof Player p) plugin.menus().injects(p);
+    }
+
+    /** The settings and every client in chat (also for the console). */
+    private void injectList(CommandSender sender) {
+        Lumio lumio = plugin.lumio();
+        lang().send(sender, "inject.list-head");
+        lang().send(sender, "inject.list-settings",
+                "check", lang().raw(lumio.injectionCheck() ? "word-on" : "word-off"),
+                "all", lang().raw(lumio.blockAll() ? "word-on" : "word-off"),
+                "strict", lang().raw(lumio.strict() ? "word-on" : "word-off"),
+                "action", lang().raw("action." + lumio.injectionAction().toLowerCase(Locale.ROOT)));
+        for (KnownInjects.Client c : KnownInjects.ALL) {
+            String own = lumio.clientAction(c.id());
+            String state = own != null ? lang().raw("action." + own.toLowerCase(Locale.ROOT))
+                    : lang().raw(lumio.blockAll() ? "inject.state-all" : "inject.state-free");
+            sender.sendMessage(lang().msg(own != null ? "inject.list-client-own" : "inject.list-client", "client", c.name(), "state", state)
+                    .clickEvent(ClickEvent.suggestCommand("/inject " + c.id() + " ")));
+        }
+        List<String> own = lumio.ownProcesses();
+        if (!own.isEmpty()) lang().send(sender, "inject.list-programs", "names", String.join(", ", own));
+        if (!lumio.mode().equals("required")) lang().send(sender, "inject.lumio-warning");
     }
 
     private OfflinePlayer known(String name) {
@@ -185,6 +311,21 @@ public final class Commands implements TabExecutor {
         switch (command.getName().toLowerCase(Locale.ROOT)) {
             case "modblock" -> {
                 if (args.length == 1) for (KnownMods.Mod m : KnownMods.ALL) if (typed.isEmpty() || m.id().startsWith(KnownMods.normalize(typed))) out.add(m.id());
+            }
+            case "inject" -> {
+                if (args.length == 1) {
+                    for (String w : List.of("alle", "streng", "aktion", "programm", "liste", "an", "aus")) if (w.startsWith(typed)) out.add(w);
+                    for (KnownInjects.Client c : KnownInjects.ALL) if (c.id().startsWith(typed)) out.add(c.id());
+                } else if (args.length == 2) {
+                    String first = args[0].toLowerCase(Locale.ROOT);
+                    List<String> next = switch (first) {
+                        case "alle", "all", "streng", "strict" -> List.of("an", "aus");
+                        case "aktion", "action" -> List.of("kick", "ban", "melden");
+                        case "programm", "program" -> plugin.lumio().ownProcesses();
+                        default -> KnownInjects.find(first) != null ? List.of("kick", "ban", "melden", "standard") : List.of();
+                    };
+                    for (String w : next) if (w.startsWith(typed)) out.add(w);
+                }
             }
             case "mcroom" -> {
                 // nothing to suggest: the window's buttons use it

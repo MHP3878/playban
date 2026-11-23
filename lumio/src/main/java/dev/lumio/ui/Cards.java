@@ -94,9 +94,11 @@ public final class Cards {
         int sh = Math.round(g.guiHeight() / sc);
         boolean left = "left".equals(Config.get().cardSide);
         dev.lumio.compat.Compat.push(g, 0, 0, sc);
+        Draw.px = Draw.lumioPx(1);
         try {
             drawAll(g, now, sw, sh, left);
         } finally {
+            Draw.px = 0;
             dev.lumio.compat.Compat.pop(g);
         }
     }
@@ -141,6 +143,7 @@ public final class Cards {
 
     private static void drawToast(GuiGraphics g, Toast t, List<FormattedCharSequence> lines, int x, int y, int h, float a) {
         Draw.panel(g, x, y, TOAST_W, h, a);
+        Draw.tint(g, x, y, TOAST_W, h, Draw.fade(t.color(), 0.22f * a));
         g.fillGradient(x + 6, y + 7, x + 8, y + h - 7, Draw.fade(t.color(), a), Draw.fade(Draw.mix(t.color(), 0xFF000000, 0.4f), a));
         if (!Draw.visible(a)) return;
         Draw.text(g, Draw.bold(t.title()), x + 14, y + 8, Draw.fade(Draw.TEXT, a));
@@ -156,6 +159,7 @@ public final class Cards {
         int h = 10 + 12 + lines.size() * 10 + 8 + 16 + 10;
         Draw.glow(g, x, y, PROMPT_W, h, a * 0.6f);
         Draw.panel(g, x, y, PROMPT_W, h, a);
+        Draw.tint(g, x, y, PROMPT_W, h, Draw.fade(Draw.wave(0), 0.22f * a));
         Draw.stripe(g, x + 6, y + 8, h - 16, a);
         if (!Draw.visible(a)) return;
         Draw.text(g, Draw.bold(p.title()), x + 15, y + 10, Draw.fade(Draw.TEXT, a));

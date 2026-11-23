@@ -57,7 +57,12 @@ public abstract class HudElement {
         if (s != null && s.glow) Draw.glow(g, 0, 0, w, h, a);
         if (panel) {
             switch (c.hudStyle) {
-                case "solid" -> Draw.round(g, 0, 0, w, h, Draw.fade(BG, a));
+                case "solid" -> {
+                    // the box, with the theme's colour fading in from the left
+                    Draw.round(g, 0, 0, w, h, Draw.fade(BG, a));
+                    Draw.tint(g, 0, 0, w, h, Draw.fade(Draw.mix(Draw.wave(0), 0xFF000000, 0.1f), 0.32f * a));
+                    Draw.outline(g, 0, 0, w, h, Draw.fade(0x14FFFFFF, a));
+                }
                 case "minimal" -> { }
                 default -> {
                     Draw.round(g, 0, 0, w, h, Draw.fade(0x99101018, a));
@@ -70,10 +75,10 @@ public abstract class HudElement {
         if (c.hudAccent && h > 8) g.fillGradient(1, 3, 3, h - 3, Draw.fade(Draw.wave(0), a), Draw.fade(Draw.wave(1.6f), a));
     }
 
-    /** A small label in the accent colour, then the value: "XYZ  12, 64, -3". */
+    /** A small label in the theme's colour gradient, then the value: "XYZ  12, 64, -3". */
     protected static int labelled(GuiGraphics g, Component label, Component value, int x, int y, float a) {
         Component l = Draw.bold(label);
-        Draw.text(g, l, x, y, Draw.fade(Draw.accent(), a));
+        Draw.gradientText(g, label.getString(), x, y, a, true);
         int vx = x + Draw.width(l) + 5;
         Draw.text(g, Draw.inter(value), vx, y, Draw.fade(Draw.TEXT, a));
         return vx + Draw.width(Draw.inter(value));

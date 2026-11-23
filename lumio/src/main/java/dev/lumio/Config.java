@@ -25,11 +25,13 @@ public final class Config {
     /** HUD elements snap to edges, the middle and each other while being moved. */
     public boolean snap = true;
     /** how HUD panels look: "glass" (see-through with a light edge), "solid" or "minimal" (no panel) */
-    public String hudStyle = "glass";
+    public String hudStyle = "solid";
+    /** which look update this file has seen (1: the box is the standard again) */
+    public int lookVersion;
     /** a thin stripe in the theme's running colours at the left of each HUD panel */
     public boolean hudAccent = true;
     /** a shadow under HUD text */
-    public boolean hudShadow = true;
+    public boolean hudShadow = false;
     public String theme = "violet";
     public boolean sounds = true;
     /** where cards appear: "right" or "left" */
@@ -116,6 +118,12 @@ public final class Config {
         if (wheel == null) wheel = new ArrayList<>();
         if (theme == null || Theme.byId(theme) == null) theme = "violet";
         if (!"left".equals(cardSide)) cardSide = "right";
+        // 0.7.1 had glass as the standard; the box was liked better, so everyone gets it back once
+        if (lookVersion < 1) hudStyle = "solid";
+        // 0.7.1 had the text shadow on: off again, it makes small text look blurred
+        if (lookVersion < 2) hudShadow = false;
+        lookVersion = 2;
+        if (hudStyle == null || !java.util.List.of("glass", "solid", "minimal").contains(hudStyle)) hudStyle = "solid";
     }
 
     public void save() {

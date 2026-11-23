@@ -135,6 +135,7 @@ public class SettingsScreen extends BaseScreen {
         pushOpening(g);
         for (var b : boxes) b.render(g, (int) (mx / s), (int) (my / s), delta);
         dev.lumio.compat.Compat.pop(g);
+        Draw.px = 0;
     }
 
     @Override
@@ -142,8 +143,10 @@ public class SettingsScreen extends BaseScreen {
         super.renderBackground(g, mx, my, delta);
         float s = uiScale();
         pushOpening(g);
+        Draw.px = Draw.lumioPx(1);
         drawMenu(g, (int) (mx / s), (int) (my / s));
         dev.lumio.compat.Compat.pop(g);
+        Draw.px = 0;
     }
 
     /** Lumio's size, and on opening a short grow from 96 % to full size around the middle. */

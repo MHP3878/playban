@@ -75,23 +75,84 @@ public final class Draw {
     /** A rounded rectangle: radius 8 when there is room, else 4, else a plain rectangle. */
     public static void round(GuiGraphics g, int x, int y, int w, int h, int color) {
         if (w <= 0 || h <= 0 || ((color >>> 24) & 0xFF) == 0) return;
-        if (w >= 16 && h >= 16) Compat.sprite(g, "round8", x, y, w, h, color);
-        else if (w >= 8 && h >= 8) Compat.sprite(g, "round4", x, y, w, h, color);
+        if (w >= 16 && h >= 16) Compat.sprite(g, res("round8"), x, y, w, h, color);
+        else if (w >= 8 && h >= 8) Compat.sprite(g, res("round4"), x, y, w, h, color);
         else g.fill(x, y, x + w, y + h, color);
     }
 
     /** A thin rounded outline. */
     public static void outline(GuiGraphics g, int x, int y, int w, int h, int color) {
-        if (w >= 16 && h >= 16) Compat.sprite(g, "outline8", x, y, w, h, color);
-        else if (w >= 8 && h >= 8) Compat.sprite(g, "outline4", x, y, w, h, color);
+        if (w >= 16 && h >= 16) Compat.sprite(g, res("outline8"), x, y, w, h, color);
+        else if (w >= 8 && h >= 8) Compat.sprite(g, res("outline4"), x, y, w, h, color);
     }
 
     public static void circle(GuiGraphics g, int cx, int cy, int r, int color) {
-        Compat.sprite(g, "circle", cx - r, cy - r, r * 2, r * 2, color);
+        Compat.sprite(g, "circle_" + roundSize(r), cx - r, cy - r, r * 2, r * 2, color);
     }
 
     public static void ring(GuiGraphics g, int cx, int cy, int r, int color) {
-        Compat.sprite(g, "ring", cx - r, cy - r, r * 2, r * 2, color);
+        Compat.sprite(g, "ring_" + roundSize(r), cx - r, cy - r, r * 2, r * 2, color);
+    }
+
+    // ---------------------------------------------------------------- sharp at every size
+
+    /**
+     * How many screen pixels one unit is where Lumio draws right now (set while the HUD, the menu,
+     * the cards draw in Lumio's size; else the GUI scale). Shapes and text are taken in the resolution
+     * made for it, so nothing is shrunk or stretched pixel by pixel.
+     */
+    public static float px;
+
+    public static float px() {
+        if (px > 0) return px;
+        return (float) Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
+    }
+
+    /** px for something drawn in Lumio's size (and an extra factor, e.g. a HUD element's own size). */
+    public static float lumioPx(float extra) {
+        return (float) Math.max(1, Minecraft.getInstance().getWindow().getGuiScale()) * Ui.scale() * extra;
+    }
+
+    private static final float[] SHAPES = {1, 1.5f, 2, 2.5f, 3, 4};
+    private static final float[] FONTS = {1, 1.5f, 2, 2.5f, 3, 4, 5, 6};
+
+    private static String tag(float[] steps) {
+        float p = px(), best = steps[0];
+        for (float st : steps) if (Math.abs(st - p) < Math.abs(best - p)) best = st;
+        return String.valueOf(Math.round(best * 10));
+    }
+
+    /** The shape in the resolution closest to the screen: "round8_20" at two pixels per unit. */
+    static String res(String name) {
+        return name + "_" + tag(SHAPES);
+    }
+
+    static String fontTag() {
+        return tag(FONTS);
+    }
+
+    /** The smallest circle picture at least as big as the circle on screen. */
+    private static int roundSize(int r) {
+        float d = r * 2 * px();
+        for (int n : new int[]{8, 16, 24, 32, 48, 64, 96, 128, 192}) if (n >= d) return n;
+        return 256;
+    }
+
+    /**
+     * The theme's colour fading out to the right inside a rounded box: the box's left rounded end in
+     * the colour, then a smooth gradient to nothing.
+     */
+    public static void tint(GuiGraphics g, int x, int y, int w, int h, int color) {
+        if (w < 8 || h < 8) return;
+        int r = w >= 16 && h >= 16 ? 8 : 4;
+        Compat.sprite(g, res(r == 8 ? "lcap8" : "lcap4"), x, y, r, h, color);
+        int rest = w - r;
+        int steps = Math.max(1, Math.min(rest, 48));
+        for (int i = 0; i < steps; i++) {
+            int x1 = x + r + rest * i / steps, x2 = x + r + rest * (i + 1) / steps;
+            float t = (i + 0.5f) / steps;
+            g.fill(x1, y, x2, y + h, fade(color, (float) Math.pow(1 - t, 1.4)));
+        }
     }
 
     /** A colour that slowly moves between the theme's two colours: for living edges and glows. */
@@ -108,8 +169,8 @@ public final class Draw {
 
     /** A thin edge that runs in the theme's colours. */
     public static void liveOutline(GuiGraphics g, int x, int y, int w, int h, float a) {
-        if (w >= 16 && h >= 16) Compat.sprite(g, "outline8", x, y, w, h, fade(wave(0), 0.9f * a));
-        else if (w >= 8 && h >= 8) Compat.sprite(g, "outline4", x, y, w, h, fade(wave(0), 0.9f * a));
+        if (w >= 16 && h >= 16) Compat.sprite(g, res("outline8"), x, y, w, h, fade(wave(0), 0.9f * a));
+        else if (w >= 8 && h >= 8) Compat.sprite(g, res("outline4"), x, y, w, h, fade(wave(0), 0.9f * a));
     }
 
     /** Text whose letters run through the theme's colours. Returns its width. */
@@ -168,11 +229,11 @@ public final class Draw {
     }
 
     public static MutableComponent inter(Component c) {
-        return c.copy().withStyle(s -> Compat.font(s, "inter"));
+        return c.copy().withStyle(s -> Compat.font(s, "inter_" + fontTag()));
     }
 
     public static MutableComponent bold(Component c) {
-        return c.copy().withStyle(s -> Compat.font(s, "inter_bold"));
+        return c.copy().withStyle(s -> Compat.font(s, "inter_bold_" + fontTag()));
     }
 
     public static MutableComponent inter(String s) {

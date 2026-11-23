@@ -122,6 +122,7 @@ public final class HudEditorScreen extends BaseScreen {
         curY = barY;
         curS = s;
         Compat.push(g, (float) barX, (float) barY, s);
+        Draw.px = (float) Math.max(1, Minecraft.getInstance().getWindow().getGuiScale()) * s;
         try {
             Draw.glow(g, 0, 0, BAR_W, BAR_H, a * 0.5f);
             Draw.panel(g, 0, 0, BAR_W, BAR_H, a);
@@ -165,6 +166,7 @@ public final class HudEditorScreen extends BaseScreen {
             small(g, lmx, lmy, BAR_W - 10 - Draw.width(Draw.bold(Component.translatable("lumio.hud.editor.done"))) - 12, 5,
                     Component.translatable("lumio.hud.editor.done").getString(), true, a, this::onClose);
         } finally {
+            Draw.px = 0;
             Compat.pop(g);
         }
     }
@@ -187,6 +189,7 @@ public final class HudEditorScreen extends BaseScreen {
         curY = winY;
         curS = s;
         Compat.push(g, (float) winX, (float) winY, s);
+        Draw.px = Draw.lumioPx(1);
         try {
             Draw.glow(g, 0, 0, WIN_W, h, a * 0.6f);
             Draw.panel(g, 0, 0, WIN_W, h, a);
@@ -217,6 +220,7 @@ public final class HudEditorScreen extends BaseScreen {
                 Config.get().save();
             });
         } finally {
+            Draw.px = 0;
             Compat.pop(g);
         }
     }

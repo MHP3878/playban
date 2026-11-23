@@ -65,6 +65,7 @@ public final class Hud {
     public static void draw(GuiGraphics g, HudElement e, Minecraft mc, int x, int y, boolean preview, float alpha) {
         Compat.push(g, x, y, size(e));
         drawing = slot(e);
+        dev.lumio.ui.Draw.px = dev.lumio.ui.Draw.lumioPx((float) drawing.scale);
         Config c = Config.get();
         // without a panel the text needs its shadow to stay readable
         dev.lumio.ui.Draw.shadow = c.hudShadow || "minimal".equals(c.hudStyle) || !drawing.bg;
@@ -73,6 +74,7 @@ public final class Hud {
         } finally {
             drawing = null;
             dev.lumio.ui.Draw.shadow = false;
+            dev.lumio.ui.Draw.px = 0;
             Compat.pop(g);
         }
     }

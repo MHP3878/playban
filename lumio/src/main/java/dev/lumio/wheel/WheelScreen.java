@@ -75,9 +75,11 @@ public final class WheelScreen extends BaseScreen {
         float sc = uiScale();
         int mx = (int) (rmx / sc), my = (int) (rmy / sc);
         Compat.push(g, 0, 0, sc);
+        Draw.px = Draw.lumioPx(1);
         try {
             drawWheel(g, mx, my);
         } finally {
+            Draw.px = 0;
             Compat.pop(g);
         }
     }

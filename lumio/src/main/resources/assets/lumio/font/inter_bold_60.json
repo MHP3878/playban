@@ -1,0 +1,18 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "lumio:inter-semibold.ttf",
+      "size": 8.6,
+      "oversample": 6.0,
+      "shift": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:default"
+    }
+  ]
+}

@@ -118,6 +118,20 @@ public class SettingsScreen extends BaseScreen {
                 heading(g, "lumio.menu.tab.hud", x, y, a);
                 button(g, mx, my, x, y + 22, 150, Component.translatable("lumio.menu.hud.edit"), true, a, LumioClient::openHudEditor);
                 paragraph(g, Component.translatable("lumio.menu.hud.text"), x, y + 48, w, a);
+                // every element with a switch, in two columns
+                int col = (w - 10) / 2;
+                int i = 0;
+                for (dev.lumio.hud.HudElement e : dev.lumio.hud.Hud.ALL) {
+                    int ex = x + (i % 2) * (col + 10);
+                    int ey = y + 84 + (i / 2) * 20;
+                    dev.lumio.Config.HudSlot slot = dev.lumio.hud.Hud.slot(e);
+                    Draw.text(g, Draw.inter(e.name()), ex, ey + 2, Draw.fade(Draw.TEXT, a));
+                    toggle(g, mx, my, ex + col - 30, ey, slot.on, "hud" + e.id, a, () -> {
+                        slot.on = !slot.on;
+                        dev.lumio.Config.get().save();
+                    });
+                    i++;
+                }
             }
             case WHEEL -> {
                 heading(g, "lumio.menu.tab.wheel", x, y, a);

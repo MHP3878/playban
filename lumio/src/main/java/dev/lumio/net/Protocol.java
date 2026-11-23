@@ -193,6 +193,19 @@ public final class Protocol {
                 Math.max(2, Math.min(30, num(o, "seconds", 6))));
     }
 
+    /** HUD lines from the server: {"lines":[{"id":"money","label":"Balance","value":"1,250 $"}]}; an empty value removes a line. */
+    public static void onHud(String json) {
+        JsonObject o = parse(json);
+        if (o == null || !o.has("lines") || !o.get("lines").isJsonArray()) return;
+        if (o.has("clear") && o.get("clear").isJsonPrimitive() && o.get("clear").getAsBoolean()) dev.lumio.hud.HudData.clear();
+        for (JsonElement e : o.getAsJsonArray("lines")) {
+            if (!e.isJsonObject()) continue;
+            JsonObject l = e.getAsJsonObject();
+            String id = clean(str(l, "id", ""), 32);
+            if (!id.isEmpty()) dev.lumio.hud.HudData.set(id, clean(str(l, "label", ""), 24), clean(str(l, "value", ""), 40));
+        }
+    }
+
     /** A request card was answered: run its command as the player, or tell the server. */
     public static void answer(Cards.Prompt p, boolean accepted) {
         Minecraft mc = Minecraft.getInstance();

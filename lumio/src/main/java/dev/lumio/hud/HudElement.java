@@ -1,0 +1,65 @@
+package dev.lumio.hud;
+
+import dev.lumio.ui.Draw;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+
+/**
+ * One element of Lumio's HUD. It knows its size (in GUI units, before scaling) and draws itself at
+ * (0, 0); where it stands and how big it is comes from the settings. In the editor it draws sample
+ * content, so even an empty element can be placed.
+ */
+public abstract class HudElement {
+    public final String id;
+    public final boolean defaultOn;
+    /** start: 0 = left edge, 1 = right edge */
+    public final double defaultX;
+    /** start: distance from the top in GUI units */
+    public final double defaultY;
+
+    protected HudElement(String id, boolean defaultOn, double defaultX, double defaultY) {
+        this.id = id;
+        this.defaultOn = defaultOn;
+        this.defaultX = defaultX;
+        this.defaultY = defaultY;
+    }
+
+    public Component name() {
+        return Component.translatable("lumio.hud." + id);
+    }
+
+    /** Whether there is anything to show right now (e.g. effects only while there are any). */
+    public boolean active(Minecraft mc) {
+        return true;
+    }
+
+    public abstract int width(Minecraft mc, boolean preview);
+
+    public abstract int height(Minecraft mc, boolean preview);
+
+    public abstract void render(GuiGraphics g, Minecraft mc, boolean preview, float alpha);
+
+    // ---------------------------------------------------------------- shared look
+
+    protected static final int PAD_X = 6;
+    protected static final int PAD_Y = 5;
+    protected static final int BG = 0xB4121218;
+
+    protected static void back(GuiGraphics g, int w, int h, float a) {
+        Draw.round(g, 0, 0, w, h, Draw.fade(BG, a));
+    }
+
+    /** A small label in the accent colour, then the value: "XYZ  12, 64, -3". */
+    protected static int labelled(GuiGraphics g, Component label, Component value, int x, int y, float a) {
+        Component l = Draw.bold(label);
+        Draw.text(g, l, x, y, Draw.fade(Draw.accent(), a));
+        int vx = x + Draw.width(l) + 5;
+        Draw.text(g, Draw.inter(value), vx, y, Draw.fade(Draw.TEXT, a));
+        return vx + Draw.width(Draw.inter(value));
+    }
+
+    protected static int labelledWidth(Component label, Component value) {
+        return Draw.width(Draw.bold(label)) + 5 + Draw.width(Draw.inter(value));
+    }
+}

@@ -42,4 +42,15 @@ public final class Compat {
     public static boolean matches(KeyMapping k, int key, int scancode) {
         return k.matches(key, scancode);
     }
+
+    /** Draw from here on moved to (x, y) and scaled by s, until pop. */
+    public static void push(GuiGraphics g, float x, float y, float s) {
+        g.pose().pushPose();
+        g.pose().translate(x, y, 0);
+        g.pose().scale(s, s, 1);
+    }
+
+    public static void pop(GuiGraphics g) {
+        g.pose().popPose();
+    }
 }

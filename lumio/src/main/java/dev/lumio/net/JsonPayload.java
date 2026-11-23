@@ -22,6 +22,8 @@ public record JsonPayload(CustomPacketPayload.Type<JsonPayload> type, String jso
     public static final Type<JsonPayload> ANSWER = Compat.type("answer");
     /** Server to client: a short notice card. */
     public static final Type<JsonPayload> TOAST = Compat.type("toast");
+    /** Server to client: lines for the HUD, e.g. the account balance. */
+    public static final Type<JsonPayload> HUD = Compat.type("hud");
 
     /** Far more than any message needs; protects against a server sending something huge. */
     public static final int MAX_BYTES = 30_000;

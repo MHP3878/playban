@@ -65,7 +65,7 @@ public final class LumioClient implements ClientModInitializer {
     }
 
     public static void openHudEditor() {
-        Cards.toast(Component.translatable("lumio.soon.title"), Component.translatable("lumio.soon.text"), Draw.accent(), 5);
+        Minecraft.getInstance().setScreen(new dev.lumio.hud.HudEditorScreen());
     }
 
     public static void openWheelEditor() {
@@ -95,11 +95,13 @@ public final class LumioClient implements ClientModInitializer {
         PayloadTypeRegistry.playS2C().register(JsonPayload.HELLO, JsonPayload.codec(JsonPayload.HELLO));
         PayloadTypeRegistry.playS2C().register(JsonPayload.PROMPT, JsonPayload.codec(JsonPayload.PROMPT));
         PayloadTypeRegistry.playS2C().register(JsonPayload.TOAST, JsonPayload.codec(JsonPayload.TOAST));
+        PayloadTypeRegistry.playS2C().register(JsonPayload.HUD, JsonPayload.codec(JsonPayload.HUD));
         PayloadTypeRegistry.playC2S().register(JsonPayload.REPORT, JsonPayload.codec(JsonPayload.REPORT));
         PayloadTypeRegistry.playC2S().register(JsonPayload.ANSWER, JsonPayload.codec(JsonPayload.ANSWER));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HELLO, (p, ctx) -> Protocol.onHello(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.PROMPT, (p, ctx) -> Protocol.onPrompt(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.TOAST, (p, ctx) -> Protocol.onToast(p.json()));
+        ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HUD, (p, ctx) -> Protocol.onHud(p.json()));
 
         accept = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.accept", GLFW.GLFW_KEY_Y));
         deny = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.deny", GLFW.GLFW_KEY_N));
@@ -118,10 +120,14 @@ public final class LumioClient implements ClientModInitializer {
             }
             Cards.tick();
         });
-        HudRenderCallback.EVENT.register((graphics, delta) -> Cards.render(graphics));
+        HudRenderCallback.EVENT.register((graphics, delta) -> {
+            dev.lumio.hud.Hud.render(graphics);
+            Cards.render(graphics);
+        });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, mc) -> {
             Protocol.reset();
             Cards.clear();
+            dev.lumio.hud.HudData.clear();
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(ClientCommandManager.literal("lumio")

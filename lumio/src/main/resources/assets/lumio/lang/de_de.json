@@ -86,5 +86,17 @@
   "lumio.wheel.open-page": "Seite bearbeiten (%s)",
   "lumio.wheel.icon": "Symbol",
   "lumio.wheel.take-server": "Server-Vorschlag",
-  "lumio.wheel.reset": "Standard"
+  "lumio.wheel.reset": "Standard",
+  "lumio.hud.music": "Musik (Spotify & Co.)",
+  "key.lumio.media.toggle": "Musik: Pause / weiter",
+  "key.lumio.media.next": "Musik: nächster Titel",
+  "key.lumio.media.previous": "Musik: Titel davor",
+  "lumio.menu.tab.chat": "Chat",
+  "lumio.menu.chat.mentions": "Erwähnungen deines Namens markieren",
+  "lumio.menu.chat.sound": "Leiser Ton beim Markieren",
+  "lumio.menu.chat.keywords": "Eigene Stichwörter (mit Komma getrennt)",
+  "lumio.menu.chat.keywords.hint": "z. B. Event, Shop, Hilfe",
+  "lumio.menu.chat.text": "Nachrichten mit deinem Namen oder einem Stichwort leuchten im Chat in der Theme-Farbe auf und bekommen einen farbigen Balken. Dein eigener Name vor deinen eigenen Nachrichten zählt nicht.",
+  "lumio.chat.mention": "Lumio: erwähnt dich",
+  "lumio.chat.keyword": "Lumio: Stichwort „%s“"
 }

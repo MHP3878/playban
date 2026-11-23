@@ -31,6 +31,11 @@ public final class Config {
     // ---- radial menu
     public List<WheelEntry> wheel = new ArrayList<>();
 
+    // ---- chat: mark messages that name you or contain one of your words
+    public boolean chatMentions = true;
+    public boolean chatSound = true;
+    public List<String> chatKeywords = new ArrayList<>();
+
     /** One HUD element: on or off, where (as a share of the screen, 0..1) and how big. */
     public static final class HudSlot {
         public boolean on = true;

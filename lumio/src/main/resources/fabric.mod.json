@@ -3,14 +3,21 @@
   "id": "lumio",
   "version": "${version}",
   "name": "Lumio",
-  "description": "A clean, useful everyday client mod: notice cards and request cards you answer with one key, and more to come. Servers that support Lumio receive the list of installed mods (names, versions, file fingerprints) for fair play; nothing else on your computer is read.",
-  "authors": ["Lumio"],
+  "description": "A clean, useful everyday client mod: a smooth HUD you place yourself, a radial menu you fill yourself, a music widget for Spotify and other players, chat mentions, request cards you answer with one key, and a nicer multiplayer list. What is playing is read on your computer only and never sent anywhere. Servers that support Lumio receive the list of installed mods (names, versions, file fingerprints) for fair play; nothing else on your computer is read.",
+  "authors": [
+    "Lumio"
+  ],
   "license": "All-Rights-Reserved",
   "icon": "assets/lumio/icon.png",
   "environment": "client",
   "entrypoints": {
-    "client": ["dev.lumio.LumioClient"]
+    "client": [
+      "dev.lumio.LumioClient"
+    ]
   },
+  "mixins": [
+    "lumio.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.16.10",
     "minecraft": "${mc_range}",

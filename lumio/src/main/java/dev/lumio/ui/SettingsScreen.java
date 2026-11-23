@@ -20,7 +20,7 @@ import java.util.Map;
  * can be clicked is collected while drawing, so layout and clicks never disagree.
  */
 public class SettingsScreen extends BaseScreen {
-    public enum Tab { GENERAL, HUD, WHEEL, ABOUT }
+    public enum Tab { GENERAL, HUD, WHEEL, CHAT, ABOUT }
 
     private record Hit(int x, int y, int w, int h, Runnable action) {
         boolean contains(double mx, double my) {
@@ -57,6 +57,22 @@ public class SettingsScreen extends BaseScreen {
         clearWidgets();
         nameBox = null;
         valueBox = null;
+        keywordBox = null;
+        if (tab == Tab.CHAT) {
+            int[] c = chatBox();
+            keywordBox = box(c[0], c[1], c[2], Component.translatable("lumio.menu.chat.keywords.hint"));
+            keywordBox.setValue(String.join(", ", Config.get().chatKeywords));
+            keywordBox.setResponder(v -> {
+                List<String> words = new java.util.ArrayList<>();
+                for (String w : v.split(",")) {
+                    String t = w.trim();
+                    if (t.length() >= 2 && words.size() < 10) words.add(t.length() > 24 ? t.substring(0, 24) : t);
+                }
+                Config.get().chatKeywords = words;
+                Config.get().save();
+            });
+            return;
+        }
         if (tab != Tab.WHEEL) return;
         if (path.isEmpty()) {
             path.push(dev.lumio.wheel.Wheel.makeOwn());
@@ -144,6 +160,7 @@ public class SettingsScreen extends BaseScreen {
         switch (tab) {
             case GENERAL -> general(g, mx, my, cx, cy, cw, a);
             case ABOUT -> about(g, cx, cy, cw, a);
+            case CHAT -> chat(g, mx, my, cx, cy, cw, a);
             default -> content(g, mx, my, cx, cy, cw, ph - 28, a);
         }
     }
@@ -221,6 +238,34 @@ public class SettingsScreen extends BaseScreen {
         heading(g, "lumio.menu.keys", x, y + 168, a);
         paragraph(g, Component.translatable("lumio.menu.keys.text", LumioClient.acceptKeyName(), LumioClient.denyKeyName(),
                 LumioClient.menuKeyName(), LumioClient.wheelKeyName()), x, y + 186, w, a);
+    }
+
+    private net.minecraft.client.gui.components.EditBox keywordBox;
+
+    /** Where the keyword field of the chat tab stands: x, y, width. */
+    private int[] chatBox() {
+        int cx = px + 8 + 118 + 14, cy = py + 14, cw = px + pw - cx - 14;
+        return new int[]{cx, cy + 96, cw};
+    }
+
+    private void chat(GuiGraphics g, int mx, int my, int x, int y, int w, float a) {
+        Config c = Config.get();
+        heading(g, "lumio.menu.tab.chat", x, y, a);
+        label(g, "lumio.menu.chat.mentions", x, y + 24, a);
+        toggle(g, mx, my, x + w - 30, y + 23, c.chatMentions, "chatMentions", a, () -> {
+            c.chatMentions = !c.chatMentions;
+            c.save();
+        });
+        label(g, "lumio.menu.chat.sound", x, y + 46, a);
+        toggle(g, mx, my, x + w - 30, y + 45, c.chatSound, "chatSound", a, () -> {
+            c.chatSound = !c.chatSound;
+            c.save();
+        });
+        label(g, "lumio.menu.chat.keywords", x, y + 72, a);
+        int[] b = chatBox();
+        Draw.round(g, b[0], b[1], b[2], 18, Draw.fade(Draw.BG_SOFT, a));
+        if (keywordBox != null && keywordBox.isFocused()) Draw.outline(g, b[0], b[1], b[2], 18, Draw.fade(Draw.accent(), a));
+        paragraph(g, Component.translatable("lumio.menu.chat.text"), x, y + 126, w, a);
     }
 
     private void about(GuiGraphics g, int x, int y, int w, float a) {

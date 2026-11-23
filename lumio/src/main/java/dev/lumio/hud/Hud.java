@@ -13,9 +13,10 @@ import java.util.List;
  * window size or GUI scale changes, and never leave the screen.
  */
 public final class Hud {
+    public static final HudElement MUSIC = new Elements.Music();
     public static final List<HudElement> ALL = List.of(new Elements.Coords(), new Elements.Fps(), new Elements.Ping(),
             new Elements.Clock(), new Elements.Armor(), new Elements.Effects(), new Elements.Keys(), new Elements.Counter(),
-            new Elements.Server());
+            new Elements.Server(), MUSIC);
     public static final int MARGIN = 4;
 
     private Hud() {}

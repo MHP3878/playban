@@ -69,4 +69,16 @@ public final class Compat {
 
     /** Whether Screen#render itself draws the background (up to 1.21.5) or Minecraft does it before (1.21.6+). */
     public static final boolean BACKGROUND_IN_RENDER = true;
+
+    /** A picture made at run time (e.g. an album cover) as texture lumio:dynamic/name; replaces the one before. */
+    public static Object texture(String name, com.mojang.blaze3d.platform.NativeImage img) {
+        ResourceLocation key = id("dynamic/" + name);
+        net.minecraft.client.Minecraft.getInstance().getTextureManager().register(key, new net.minecraft.client.renderer.texture.DynamicTexture(img));
+        return key;
+    }
+
+    /** Draws a texture from {@link #texture} (size×size pixels) into w×h. */
+    public static void image(GuiGraphics g, Object texture, int x, int y, int w, int h, int size, int argb) {
+        g.blit(net.minecraft.client.renderer.RenderType::guiTextured, (ResourceLocation) texture, x, y, 0f, 0f, w, h, size, size, size, size, argb);
+    }
 }

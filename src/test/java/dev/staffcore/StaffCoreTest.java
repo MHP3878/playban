@@ -3761,4 +3761,24 @@ class StaffCoreTest {
         assertEquals("shop", own.get(0).getAsJsonObject().get("value").getAsString());
         assertEquals("warp farm", own.get(1).getAsJsonObject().getAsJsonArray("page").get(0).getAsJsonObject().get("value").getAsString());
     }
+
+    @Test
+    void serverListCarriesTheLumioLookInvisibly() throws Exception {
+        var e = new org.bukkit.event.server.ServerListPingEvent("localhost", java.net.InetAddress.getLoopbackAddress(),
+                Component.text("A Minecraft Server"), 1, 20);
+        // the event is asynchronous on a real server; here the listener is called directly
+        LumioFeatures lumio = new LumioFeatures(plugin);
+        lumio.onPing(e);
+        assertEquals("A Minecraft Server", plain(e.motd()), "nothing visible is added");
+        String mark = null;
+        for (Component c : e.motd().children()) if (c.insertion() != null && c.insertion().startsWith("lumio:")) mark = c.insertion();
+        assertNotNull(mark);
+        var o = com.google.gson.JsonParser.parseString(mark.substring(6)).getAsJsonObject();
+        assertEquals("#ff5f6d", o.getAsJsonArray("c").get(0).getAsString());
+        assertEquals("Survival", o.getAsJsonArray("tags").get(0).getAsString());
+        plugin.getConfig().set("lumio.server-list.enabled", false);
+        var off = new org.bukkit.event.server.ServerListPingEvent("localhost", java.net.InetAddress.getLoopbackAddress(), Component.text("x"), 1, 20);
+        lumio.onPing(off);
+        assertTrue(off.motd().children().isEmpty());
+    }
 }

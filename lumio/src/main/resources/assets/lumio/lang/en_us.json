@@ -86,5 +86,17 @@
   "lumio.wheel.open-page": "Edit page (%s)",
   "lumio.wheel.icon": "Picture",
   "lumio.wheel.take-server": "Server's suggestion",
-  "lumio.wheel.reset": "Default"
+  "lumio.wheel.reset": "Default",
+  "lumio.hud.music": "Music (Spotify & more)",
+  "key.lumio.media.toggle": "Music: pause / play",
+  "key.lumio.media.next": "Music: next track",
+  "key.lumio.media.previous": "Music: previous track",
+  "lumio.menu.tab.chat": "Chat",
+  "lumio.menu.chat.mentions": "Mark messages that name you",
+  "lumio.menu.chat.sound": "Soft sound when marking",
+  "lumio.menu.chat.keywords": "Your own words (separated by commas)",
+  "lumio.menu.chat.keywords.hint": "e.g. event, shop, help",
+  "lumio.menu.chat.text": "Messages with your name or one of your words light up in the theme colour and get a coloured bar. Your own name in front of your own messages does not count.",
+  "lumio.chat.mention": "Lumio: mentions you",
+  "lumio.chat.keyword": "Lumio: word \"%s\""
 }

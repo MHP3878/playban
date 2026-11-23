@@ -33,6 +33,9 @@ public final class LumioClient implements ClientModInitializer {
     private static KeyMapping deny;
     private static KeyMapping menu;
     private static KeyMapping wheel;
+    private static KeyMapping mediaToggle;
+    private static KeyMapping mediaNext;
+    private static KeyMapping mediaPrevious;
     /** a screen to open on the next tick (a command closes the chat after it ran) */
     private static Runnable openNextTick;
 
@@ -118,13 +121,23 @@ public final class LumioClient implements ClientModInitializer {
         deny = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.deny", GLFW.GLFW_KEY_N));
         menu = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.menu", GLFW.GLFW_KEY_RIGHT_SHIFT));
         wheel = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.wheel", GLFW.GLFW_KEY_G));
+        // music: no key by default, players choose their own (the keyboard's media keys work anyway)
+        mediaToggle = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.media.toggle", GLFW.GLFW_KEY_UNKNOWN));
+        mediaNext = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.media.next", GLFW.GLFW_KEY_UNKNOWN));
+        mediaPrevious = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.media.previous", GLFW.GLFW_KEY_UNKNOWN));
         Config.get();
+        dev.lumio.media.Media.start();
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             while (accept.consumeClick()) Cards.answer(true);
             while (deny.consumeClick()) Cards.answer(false);
             while (menu.consumeClick()) if (mc.screen == null) openMenu();
             while (wheel.consumeClick()) if (mc.screen == null && mc.player != null) mc.setScreen(new dev.lumio.wheel.WheelScreen());
+            // the music reader runs only while its HUD element is on (read here, on the game's thread)
+            dev.lumio.media.Media.setWanted(dev.lumio.hud.Hud.slot(dev.lumio.hud.Hud.MUSIC).on);
+            while (mediaToggle.consumeClick()) dev.lumio.media.Media.control("toggle");
+            while (mediaNext.consumeClick()) dev.lumio.media.Media.control("next");
+            while (mediaPrevious.consumeClick()) dev.lumio.media.Media.control("previous");
             if (openNextTick != null && mc.screen == null) {
                 Runnable r = openNextTick;
                 openNextTick = null;

@@ -271,7 +271,7 @@ public final class Elements {
         private static final int GAP = 2;
 
         public Keys() {
-            super("keys", false, 1.0, 40);
+            super("keys", false, 1.0, 150);
         }
 
         private int cps(List<Long> clicks, boolean down, boolean was, long now) {
@@ -376,7 +376,7 @@ public final class Elements {
 
     public static final class Server extends HudElement {
         public Server() {
-            super("server", true, 0.0, 92);
+            super("server", true, 1.0, 104);
         }
 
         private List<String[]> lines(boolean preview) {
@@ -409,6 +409,95 @@ public final class Elements {
             for (String[] l : lines(preview)) {
                 labelled(g, Component.literal(l[0]), Component.literal(l[1]), PAD_X, y, a);
                 y += 12;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- what is playing (Spotify and others)
+
+    public static final class Music extends HudElement {
+        private static final int W = 170;
+        private static final int H = 42;
+        private static final int ART = 32;
+        private static final int SPOTIFY = 0xFF1ED760;
+
+        public Music() {
+            super("music", true, 1.0, 56);
+        }
+
+        private static dev.lumio.media.Track track(boolean preview) {
+            dev.lumio.media.Track t = dev.lumio.media.Media.current();
+            if (t == null && preview) {
+                return new dev.lumio.media.Track("Midnight Drive", "Lumio Radio", "Spotify", true, 83_000, 214_000, System.currentTimeMillis(), "");
+            }
+            return t;
+        }
+
+        @Override
+        public boolean active(Minecraft mc) {
+            return dev.lumio.media.Media.current() != null;
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return W;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return H;
+        }
+
+        /** The text cut to the width, with "…" when it was too long. */
+        private static Component fit(String text, int max, boolean bold) {
+            String s = text == null ? "" : text;
+            Component c = bold ? Draw.bold(s) : Draw.inter(s);
+            if (Draw.width(c) <= max) return c;
+            while (!s.isEmpty()) {
+                s = s.substring(0, s.length() - 1);
+                c = bold ? Draw.bold(s.stripTrailing() + "…") : Draw.inter(s.stripTrailing() + "…");
+                if (Draw.width(c) <= max) return c;
+            }
+            return c;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            dev.lumio.media.Track t = track(preview);
+            back(g, W, H, a);
+            if (t == null) return;
+            int from = t.spotify() ? SPOTIFY : Draw.accent();
+            int to = t.spotify() ? 0xFF14B04A : Draw.accent2();
+            // the cover, or a gradient square with a note
+            int ax = 5, ay = 5;
+            Object cover = preview && dev.lumio.media.Media.current() == null ? null : dev.lumio.media.Cover.texture();
+            if (cover != null) {
+                dev.lumio.compat.Compat.image(g, cover, ax, ay, ART, ART, dev.lumio.media.Cover.SIZE, Draw.fade(0xFFFFFFFF, a));
+            } else {
+                g.fillGradient(ax, ay, ax + ART, ay + ART, Draw.fade(from, a), Draw.fade(to, a));
+                Component note = Draw.bold("♪");
+                Draw.text(g, note, ax + (ART - Draw.width(note)) / 2, ay + 12, Draw.fade(0xFFFFFFFF, a));
+            }
+            if (!t.playing()) {
+                // paused: the cover dims, two bars on it
+                g.fill(ax, ay, ax + ART, ay + ART, Draw.fade(0x88000000, a));
+                g.fill(ax + 12, ay + 10, ax + 15, ay + 22, Draw.fade(0xFFFFFFFF, a));
+                g.fill(ax + 18, ay + 10, ax + 21, ay + 22, Draw.fade(0xFFFFFFFF, a));
+            }
+            int tx = ax + ART + 7, tw = W - tx - 6;
+            Draw.text(g, fit(t.title(), tw, true), tx, 7, Draw.fade(Draw.TEXT, a));
+            String times = dev.lumio.media.Track.time(t.positionNow()) + (t.length() > 0 ? " / " + dev.lumio.media.Track.time(t.length()) : "");
+            Component time = Draw.inter(times);
+            int timeW = Draw.width(time);
+            Component who = fit(t.artist() == null || t.artist().isBlank() ? t.app() : t.artist(), tw - timeW - 6, false);
+            Draw.text(g, who, tx, 18, Draw.fade(Draw.MUTED, a));
+            Draw.text(g, time, tx + tw - timeW, 18, Draw.fade(Draw.FAINT, a));
+            // progress
+            int by = 31, bw = tw;
+            g.fill(tx, by, tx + bw, by + 3, Draw.fade(0x33FFFFFF, a));
+            if (t.length() > 0) {
+                int done = (int) Math.round(bw * Math.min(1.0, t.positionNow() / (double) t.length()));
+                Draw.bar(g, tx, by, done, 3, from, to, a);
             }
         }
     }

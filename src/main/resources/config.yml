@@ -369,6 +369,12 @@ lumio:
   hud: true
   # announcements and new tickets as small cards instead of chat lines
   cards: true
+  # how the server looks in the multiplayer list of Lumio players: its colours behind the entry and
+  # up to 4 tags next to the name (others see the usual description, nothing else)
+  server-list:
+    enabled: true
+    colors: ["#ff5f6d", "#ffc371"]
+    tags: ["Survival", "Community"]
   # suggest a radial menu (key G) to players who did not make their own
   suggest-wheel: true
   # your own radial menu; empty = made from the modules that are on. At most 8 fields per page.

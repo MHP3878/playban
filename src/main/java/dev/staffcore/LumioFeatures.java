@@ -53,6 +53,30 @@ public final class LumioFeatures implements Listener {
         }
     }
 
+    /**
+     * The multiplayer list: an invisible part in the description tells Lumio this server's colours and
+     * tags (normal clients show the usual description and nothing else).
+     */
+    @EventHandler
+    public void onPing(org.bukkit.event.server.ServerListPingEvent e) {
+        if (!plugin.getConfig().getBoolean("lumio.server-list.enabled", true)) return;
+        JsonObject o = new JsonObject();
+        o.addProperty("v", 1);
+        JsonArray colors = new JsonArray();
+        for (String c : plugin.getConfig().getStringList("lumio.server-list.colors")) {
+            String hex = c.trim().startsWith("#") ? c.trim().substring(1) : c.trim();
+            if (hex.matches("[0-9a-fA-F]{6}") && colors.size() < 2) colors.add("#" + hex);
+        }
+        if (!colors.isEmpty()) o.add("c", colors);
+        JsonArray tags = new JsonArray();
+        for (String t : plugin.getConfig().getStringList("lumio.server-list.tags")) {
+            String clean = t.replaceAll("[\\p{Cntrl}]", "").trim();
+            if (!clean.isEmpty() && tags.size() < 4) tags.add(clean.length() > 16 ? clean.substring(0, 16) : clean);
+        }
+        o.add("tags", tags);
+        e.motd(e.motd().append(net.kyori.adventure.text.Component.text().content("").insertion("lumio:" + o).build()));
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         sent.remove(e.getPlayer().getUniqueId());

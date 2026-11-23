@@ -1765,7 +1765,7 @@ module:
     lore: ["<gray>Messages that go round on their", "<gray>own, and /announce. The list is in", "<gray>config.yml under announcer.messages."]
   modguard:
     name: "<#ffc371><bold>Mod guard</bold>"
-    lore: ["<gray>Forbidden clients and mods: warn and", "<gray>kick first, punish next time. Rules", "<gray>in config.yml under mod-guard.rules."]
+    lore: ["<gray>Forbidden clients and mods: warn and", "<gray>kick first, punish next time. Rules", "<gray>in config.yml under mod-guard.rules.", "<gray>With ModCheck installed, ModCheck checks."]
   banhammer:
     name: "<#ffc371><bold>Banhammer</bold>"
     lore: ["<gray>One hit with the banhammer: the hammer", "<gray>animation, then the action you choose.", "<gray>Sneak + hit opens the punish menu."]
@@ -1805,8 +1805,21 @@ module:
   trolls:
     name: "<#ffc371><bold>Trolls</bold>"
     lore: ["<gray>/troll: harmless jokes."]
+  totem:
+    name: "<#ffc371><bold>/totem</bold>"
+    lore: ["<gray>Puts a totem from the inventory into", "<gray>the off hand after a short moment.", "<gray>With Lumio it is in the radial menu (G)."]
 
 module-setting:
+  totem:
+    delay-ticks:
+      name: "<white>Delay"
+      lore: ["<gray>In ticks, 20 = 1 second."]
+    in-combat:
+      name: "<white>Also in a fight"
+      lore: ["<gray>Off: not while the player just", "<gray>took damage."]
+    combat-seconds:
+      name: "<white>Fight seconds"
+      lore: ["<gray>How long after a hit a player", "<gray>counts as fighting."]
   banhammer:
     action:
       name: "<white>What a hit does"
@@ -2303,3 +2316,32 @@ modblock:
     ban: "ban"
     punish: "punish (cheating category)"
     alert: "only tell the team"
+
+totem:
+  done: "<gradient:#ffd36b:#ff9f43>Totem in your off hand</gradient>"
+  none: "<red>You have no totem in your inventory."
+  already: "<gray>You already hold a totem in your off hand."
+  combat: "<red>Not in a fight. Wait a moment."
+
+lumio:
+  hud:
+    money: "Balance"
+    prison: "Prison"
+    forever: "for good"
+    tickets: "Tickets"
+    vanish: "Vanish"
+    "on": "on"
+  wheel:
+    home: "Home"
+    spawn: "Spawn"
+    tpaccept: "TPA ✔"
+    tpdeny: "TPA ✖"
+    totem: "Totem"
+    ticket: "Ticket"
+    money: "Money"
+    more: "More"
+    homes: "Homes"
+    sethome: "Set home"
+    baltop: "Richest"
+  ticket-title: "New ticket #{id}"
+  ticket-text: "{player}: {text}"

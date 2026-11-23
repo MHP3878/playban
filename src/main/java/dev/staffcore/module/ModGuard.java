@@ -243,6 +243,7 @@ public final class ModGuard implements Listener, TabExecutor {
      * on older servers a real sign stands for two ticks deep under the player and the block is put back.
      */
     public void probe(Player p) {
+        if (!enabled()) return;
         List<String[]> all = new ArrayList<>();
         for (Rule r : rules()) for (String k : r.keys()) all.add(new String[]{k, r.name()});
         if (all.isEmpty()) return;

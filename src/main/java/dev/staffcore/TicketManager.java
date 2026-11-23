@@ -206,6 +206,15 @@ public final class TicketManager {
         lang().send(author, "ticket.sent", "id", t.id);
         plugin.punishments().notifyStaff(lang().prefixed("ticket.new", "id", t.id, "player", t.authorName,
                 "reason", reason.name(), "text", text).clickEvent(ClickEvent.runCommand("/ticket open " + t.id)));
+        // the team with Lumio also gets a card: Y opens the ticket
+        if (plugin.getConfig().getBoolean("lumio.cards", true)) {
+            for (Player staff : Bukkit.getOnlinePlayers()) {
+                if (!staff.hasPermission("staffcore.notify") || !dev.staffcore.LumioBridge.has(staff)) continue;
+                dev.staffcore.LumioBridge.prompt(staff, "ticket:" + t.id, lang().plain("lumio.ticket-title", "id", t.id),
+                        lang().plain("lumio.ticket-text", "player", t.authorName,
+                        "text", text.length() > 120 ? text.substring(0, 119) + "…" : text), "ticket open " + t.id, "", 15);
+            }
+        }
         webhook(lang().plain("ticket.webhook", "id", t.id, "player", t.authorName, "reason", reason.name(), "text", text));
         return t;
     }

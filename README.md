@@ -221,12 +221,23 @@ Honest limit: many cheat clients (Meteor too) pretend to be plain Fabric and reg
 | Lag tools | `/lag`, `/cleanup` | - |
 | Announcements | `/announce` | how often, random order, sound |
 | Prison, fake bases, trolls | `/prison`, `/fakebase`, `/troll` | prison key time; fake base minutes and maximum |
+| Totem | `/totem`: a totem from the inventory into the off hand | delay (default half a second), also in a fight or not |
 
 Teleports from homes and requests count down while you stand still; moving cancels them. Frozen, cuffed, jailed or punished players cannot use them, and vanished staff cannot be found with `/tpa`.
 
 **Money** is kept in `money.yml`. With Vault installed and no other economy, StaffCore offers its balances to Vault, so shops and other plugins use them; if another economy is already there, StaffCore keeps out of its way. The gift tasks of a PlayBan use it as well.
 
 **Admin ESP** shows chests, barrels, shulker boxes and other containers as glowing outlines through walls (colored by kind), and every player with a name tag through walls with health, distance and the item in hand (vanished staff marked `[V]`). Only the team member who switched it on sees it, nobody else gets any of it. The spyglass in staff mode switches off, players, chests, both; leaving staff mode switches it off.
+
+## Lumio (client mod)
+
+Players with the client mod [Lumio](lumio/README.md) get extras; everyone else sees no difference. Settings under `lumio:` in `config.yml`:
+
+- **Cards:** a teleport request is a card answered with Y or N; announcements and, for the team, new tickets (Y opens it) come as small cards instead of chat lines (`cards`).
+- **HUD:** balance, time left in prison, and for the team open tickets and vanish appear in Lumio's HUD (`hud`).
+- **Radial menu:** players who did not make their own get a menu (key G) made from the modules that are on: home, spawn, accept a teleport, totem, ticket, money and a second page. `wheel:` in `config.yml` sets your own, with commands, chat messages and next pages (`suggest-wheel` switches it off).
+
+With the plugin **ModCheck** on the server, StaffCore's mod guard steps back: ModCheck checks mods, and its commands do not clash.
 
 ## Ranks
 

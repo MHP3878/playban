@@ -1765,7 +1765,7 @@ module:
     lore: ["<gray>Nachrichten, die von selbst herum-", "<gray>gehen, und /announce. Die Liste steht", "<gray>in config.yml unter announcer.messages."]
   modguard:
     name: "<#ffc371><bold>Mod-Sperre</bold>"
-    lore: ["<gray>Verbotene Clients und Mods: erst warnen", "<gray>und kicken, beim nächsten Mal bestrafen.", "<gray>Regeln in config.yml unter mod-guard.rules."]
+    lore: ["<gray>Verbotene Clients und Mods: erst warnen", "<gray>und kicken, beim nächsten Mal bestrafen.", "<gray>Regeln in config.yml unter mod-guard.rules.", "<gray>Ist ModCheck installiert, prüft ModCheck."]
   banhammer:
     name: "<#ffc371><bold>Bannhammer</bold>"
     lore: ["<gray>Ein Schlag mit dem Bannhammer: die Hammer-", "<gray>Animation, dann die Aktion, die du wählst.", "<gray>Schleichen + Schlag öffnet das Strafmenü."]
@@ -1805,8 +1805,21 @@ module:
   trolls:
     name: "<#ffc371><bold>Trolls</bold>"
     lore: ["<gray>/troll: harmlose Späße."]
+  totem:
+    name: "<#ffc371><bold>/totem</bold>"
+    lore: ["<gray>Legt ein Totem aus dem Inventar in", "<gray>die Nebenhand, nach kurzer Zeit. Mit", "<gray>Lumio liegt es im Kreismenü (G)."]
 
 module-setting:
+  totem:
+    delay-ticks:
+      name: "<white>Wartezeit"
+      lore: ["<gray>In Ticks, 20 = 1 Sekunde."]
+    in-combat:
+      name: "<white>Auch im Kampf"
+      lore: ["<gray>Aus: nicht, wenn der Spieler gerade", "<gray>Schaden bekommen hat."]
+    combat-seconds:
+      name: "<white>Kampf-Sekunden"
+      lore: ["<gray>So lange nach einem Treffer gilt", "<gray>man als im Kampf."]
   banhammer:
     action:
       name: "<white>Was ein Schlag macht"
@@ -2303,3 +2316,32 @@ modblock:
     ban: "bannen"
     punish: "bestrafen (Kategorie cheating)"
     alert: "nur das Team informieren"
+
+totem:
+  done: "<gradient:#ffd36b:#ff9f43>Totem in der Nebenhand</gradient>"
+  none: "<red>Du hast kein Totem im Inventar."
+  already: "<gray>Du hast schon ein Totem in der Nebenhand."
+  combat: "<red>Nicht im Kampf. Warte kurz."
+
+lumio:
+  hud:
+    money: "Konto"
+    prison: "Haft"
+    forever: "für immer"
+    tickets: "Tickets"
+    vanish: "Unsichtbar"
+    "on": "an"
+  wheel:
+    home: "Home"
+    spawn: "Spawn"
+    tpaccept: "TPA ✔"
+    tpdeny: "TPA ✖"
+    totem: "Totem"
+    ticket: "Ticket"
+    money: "Geld"
+    more: "Mehr"
+    homes: "Homes"
+    sethome: "Home setzen"
+    baltop: "Reichste"
+  ticket-title: "Neues Ticket #{id}"
+  ticket-text: "{player}: {text}"

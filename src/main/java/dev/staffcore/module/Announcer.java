@@ -56,7 +56,15 @@ public final class Announcer implements TabExecutor {
         String raw = plugin.getConfig().getBoolean("announcer.random", false)
                 ? messages.get(new java.util.Random().nextInt(messages.size())) : messages.get(next++ % messages.size());
         Component line = lang().msg("announce.prefix").append(MiniMessage.miniMessage().deserialize(raw));
+        String title = lang().plain("announce.title");
+        String plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(MiniMessage.miniMessage().deserialize(raw));
+        boolean cards = plugin.getConfig().getBoolean("lumio.cards", true);
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // Lumio shows it as a small card (with its own sound) instead of a chat line
+            if (cards && dev.staffcore.LumioBridge.has(p)) {
+                dev.staffcore.LumioBridge.toast(p, title, plain, "info", 8);
+                continue;
+            }
             p.sendMessage(line);
             if (plugin.getConfig().getBoolean("announcer.sound", true)) p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.4f);
         }

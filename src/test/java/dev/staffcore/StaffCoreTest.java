@@ -3695,4 +3695,70 @@ class StaffCoreTest {
         server.getScheduler().performTicks(45);
         assertEquals(Material.STONE, spot.getType(), "whatever happens, the ground under the player is stone again");
     }
+
+    @Test
+    void totemCommandPutsATotemIntoTheOffHand() {
+        bystander.getInventory().clear();
+        bystander.getInventory().setItem(5, new ItemStack(Material.TOTEM_OF_UNDYING));
+        bystander.getInventory().setItemInOffHand(new ItemStack(Material.SHIELD));
+        assertTrue(bystander.performCommand("totem"));
+        assertEquals(Material.SHIELD, bystander.getInventory().getItemInOffHand().getType(), "not at once: after a short moment");
+        server.getScheduler().performTicks(11);
+        assertEquals(Material.TOTEM_OF_UNDYING, bystander.getInventory().getItemInOffHand().getType());
+        assertEquals(Material.SHIELD, bystander.getInventory().getItem(5).getType(), "the shield went where the totem was");
+        // already one in the off hand: nothing changes
+        bystander.performCommand("totem");
+        server.getScheduler().performTicks(11);
+        assertEquals(Material.SHIELD, bystander.getInventory().getItem(5).getType());
+        // none left in the inventory
+        bystander.getInventory().setItemInOffHand(null);
+        bystander.getInventory().setItem(5, null);
+        while (bystander.nextMessage() != null) { }
+        bystander.performCommand("totem");
+        assertTrue(plain(bystander.nextComponentMessage()).contains(plugin.lang().plain("totem.none")));
+        // in a fight it waits, unless the owner allows it
+        bystander.getInventory().setItem(3, new ItemStack(Material.TOTEM_OF_UNDYING));
+        server.getPluginManager().callEvent(new EntityDamageEvent(bystander, EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.MOB_ATTACK).build(), 2));
+        bystander.performCommand("totem");
+        server.getScheduler().performTicks(11);
+        assertNotEquals(Material.TOTEM_OF_UNDYING, bystander.getInventory().getItemInOffHand().getType(), "not in a fight");
+        plugin.getConfig().set("totem.in-combat", true);
+        bystander.performCommand("totem");
+        server.getScheduler().performTicks(11);
+        assertEquals(Material.TOTEM_OF_UNDYING, bystander.getInventory().getItemInOffHand().getType());
+    }
+
+    @Test
+    void lumioGetsHudLinesAndAMenuFromTheModules() {
+        LumioFeatures lumio = new LumioFeatures(plugin);
+        var lines = lumio.lines(bystander);
+        assertEquals("money", lines.get(0)[0]);
+        assertEquals(plugin.money().format(plugin.money().balance(bystander.getUniqueId())), lines.get(0)[2]);
+        assertTrue(lines.stream().noneMatch(l -> l[0].equals("tickets")), "players see no team lines");
+        plugin.prison().jail(troll, 60_000, "test", "Admin");
+        assertTrue(lumio.lines(troll).stream().anyMatch(l -> l[0].equals("prison") && !l[2].isEmpty()));
+        plugin.prison().release(troll.getUniqueId(), "Admin");
+        plugin.punishments().setVanished(admin, true);
+        assertTrue(lumio.lines(admin).stream().anyMatch(l -> l[0].equals("vanish")));
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            for (String[] l : lumio.lines(admin)) assertFalse(l[1].contains("missing text") || l[2].contains("missing text"), code + ": " + l[1]);
+            var wheel = lumio.wheel(bystander);
+            assertTrue(wheel.size() >= 6 && wheel.size() <= 8, "home, spawn, tpa, totem, ticket, money and a next page");
+            assertFalse(wheel.toString().contains("missing text"), code + ": " + wheel);
+            assertTrue(wheel.toString().contains("\"totem\""));
+        }
+        // a module that is off is not offered
+        plugin.getConfig().set("totem.enabled", false);
+        assertFalse(lumio.wheel(bystander).toString().contains("\"totem\""));
+        // the owner's own menu wins, with a next page and without a leading slash
+        plugin.getConfig().set("lumio.wheel", java.util.List.of(
+                Map.of("name", "Shop", "icon", "minecraft:emerald", "command", "/shop"),
+                Map.of("name", "Warps", "icon", "minecraft:chest", "page", java.util.List.of(Map.of("name", "Farm", "command", "warp farm")))));
+        var own = lumio.wheel(bystander);
+        assertEquals(2, own.size());
+        assertEquals("shop", own.get(0).getAsJsonObject().get("value").getAsString());
+        assertEquals("warp farm", own.get(1).getAsJsonObject().getAsJsonArray("page").get(0).getAsJsonObject().get("value").getAsString());
+    }
 }

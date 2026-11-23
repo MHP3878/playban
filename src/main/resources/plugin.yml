@@ -214,6 +214,9 @@ permissions:
   staffcore.announce:
     description: "/announce - a message with a title to everybody"
     default: op
+  staffcore.totem:
+    description: "/totem - put a totem from the inventory into the off hand"
+    default: true
   staffcore.modblock:
     description: "/modblock and /modunblock - forbid mods by name"
     default: op

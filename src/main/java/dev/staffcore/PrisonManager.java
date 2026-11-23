@@ -85,6 +85,13 @@ public final class PrisonManager implements Listener, org.bukkit.command.TabExec
         return cells.containsKey(id);
     }
 
+    /** Time left in prison: -1 when not jailed, 0 when for good. */
+    public long remaining(UUID id) {
+        Cell c = cells.get(id);
+        if (c == null) return -1;
+        return c.expiresAt <= 0 ? 0 : Math.max(1, c.expiresAt - System.currentTimeMillis());
+    }
+
     // ---------------------------------------------------------------- storage
 
     public void load() {

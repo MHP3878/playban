@@ -176,6 +176,9 @@ public class StaffCorePlugin extends JavaPlugin {
         economy.fallback(() -> modules.on("money") ? money : null);
         antiCheat.start();
         announcer.start();
+        LumioFeatures lumio = new LumioFeatures(this);
+        getServer().getPluginManager().registerEvents(lumio, this);
+        lumio.start();
         VoiceCommand voiceExecutor = new VoiceCommand(this);
         PluginCommand voiceCommand = getCommand("voice");
         if (voiceCommand != null) {
@@ -294,7 +297,12 @@ public class StaffCorePlugin extends JavaPlugin {
                 .setting("anticheat.max-cps", CYCLE, org.bukkit.Material.STONE_BUTTON, 22, 18, 22, 26);
         modules.add("adminmode", org.bukkit.Material.NETHERITE_CHESTPLATE, "admin-mode.required", true);
         dev.staffcore.module.ModBlockCommand modBlock = new dev.staffcore.module.ModBlockCommand(this);
-        modules.add("modguard", org.bukkit.Material.NAME_TAG, "mod-guard.enabled", true)
+        // with the plugin ModCheck installed, that one checks mods: no second sign check and no clashing commands
+        modules.add("modguard", org.bukkit.Material.NAME_TAG,
+                        () -> !modCheckInstalled() && getConfig().getBoolean("mod-guard.enabled", true), v -> {
+                            getConfig().set("mod-guard.enabled", v);
+                            saveConfig();
+                        })
                 .command(new dev.staffcore.module.ModuleManager.Cmd("mods", "Which client and mods a player has", "staffcore.check", modGuard,
                         java.util.List.of("modscheck", "modcheck")))
                 .command(new dev.staffcore.module.ModuleManager.Cmd("modblock", "Forbid a mod by its name: kick, ban or warn on join", "staffcore.modblock",
@@ -351,6 +359,13 @@ public class StaffCorePlugin extends JavaPlugin {
                 .setting("announcer.interval-seconds", CYCLE, org.bukkit.Material.CLOCK, 300, 60, 180, 300, 600, 1200)
                 .setting("announcer.random", BOOL, org.bukkit.Material.COMPARATOR, false)
                 .setting("announcer.sound", BOOL, org.bukkit.Material.NOTE_BLOCK, true);
+        dev.staffcore.module.TotemCommand totem = new dev.staffcore.module.TotemCommand(this);
+        getServer().getPluginManager().registerEvents(totem, this);
+        modules.add("totem", org.bukkit.Material.TOTEM_OF_UNDYING, "totem.enabled", true)
+                .command(new dev.staffcore.module.ModuleManager.Cmd("totem", "Put a totem from your inventory into your off hand", "staffcore.totem", totem))
+                .setting("totem.delay-ticks", CYCLE, org.bukkit.Material.CLOCK, 10, 0, 5, 10, 20, 40)
+                .setting("totem.in-combat", BOOL, org.bukkit.Material.IRON_SWORD, false)
+                .setting("totem.combat-seconds", CYCLE, org.bukkit.Material.SHIELD, 10, 5, 10, 15, 30);
         modules.add("banhammer", org.bukkit.Material.MACE, "modules.banhammer", true)
                 .setting("banhammer.action", CYCLE, org.bukkit.Material.MACE, "KICK", "KICK", "PLAYBAN 1h", "PLAYBAN 1d", "BAN 1d", "BAN 7d", "BAN perm", "CATEGORY cheating");
         modules.add("trolls", org.bukkit.Material.EGG, "modules.trolls", true)
@@ -448,6 +463,11 @@ public class StaffCorePlugin extends JavaPlugin {
     public dev.staffcore.module.PlayerCheck playerCheck() { return playerCheck; }
 
     public dev.staffcore.module.ModGuard modGuard() { return modGuard; }
+
+    /** Whether the plugin ModCheck is on this server (it then does the mod check instead of StaffCore). */
+    public boolean modCheckInstalled() {
+        return getServer().getPluginManager().getPlugin("ModCheck") != null;
+    }
 
     public dev.staffcore.module.PlayerStatus playerStatus() { return playerStatus; }
 

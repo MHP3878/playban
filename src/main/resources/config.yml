@@ -352,6 +352,32 @@ playban:
     z: 0
     yaw: 0
 
+# ---- /totem (/sc modules) ----
+# Puts a totem from the inventory into the off hand, done by the server after a short moment.
+totem:
+  enabled: true
+  # 20 ticks = 1 second
+  delay-ticks: 10
+  # false: not while the player took damage in the last combat-seconds
+  in-combat: false
+  combat-seconds: 10
+
+# ---- Lumio (client mod) ----
+# Players with the client mod Lumio get extras; everyone else sees no difference.
+lumio:
+  # balance, prison time and, for the team, open tickets and vanish in Lumio's HUD
+  hud: true
+  # announcements and new tickets as small cards instead of chat lines
+  cards: true
+  # suggest a radial menu (key G) to players who did not make their own
+  suggest-wheel: true
+  # your own radial menu; empty = made from the modules that are on. At most 8 fields per page.
+  # Each field: name, icon (an item id), and command, chat or page (a list of fields).
+  wheel: []
+  #  - {name: "Shop", icon: "minecraft:emerald", command: "shop"}
+  #  - {name: "Hallo", icon: "minecraft:bell", chat: "Hallo zusammen!"}
+  #  - {name: "Warps", icon: "minecraft:chest", page: [{name: "Farm", icon: "minecraft:wheat", command: "warp farm"}]}
+
 # ---- Announcements (/sc modules) ----
 announcer:
   enabled: true

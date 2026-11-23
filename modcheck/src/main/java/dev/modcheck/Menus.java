@@ -114,6 +114,7 @@ public final class Menus {
         List<Component> head = new ArrayList<>(lang().lore("menu.player.info", "client", info.brand == null ? "?" : info.brand,
                 "channels", info.channels.size(), "warnings", guard().warnings(t.getUniqueId()), "recent", guard().recentOffenses(t.getUniqueId())));
         head.add(lang().msg("menu.player.sign." + info.sign));
+        head.add(lumioLine(info));
         // suspicious things about the client itself: a filter, a disguise, no answer
         if (!info.suspicion.isEmpty()) {
             head.add(Component.empty());
@@ -155,6 +156,7 @@ public final class Menus {
             lang().send(p, "check.result", "player", t.getName(), "client", info.brand == null ? "?" : info.brand,
                     "count", mods.size(), "mods", names.isEmpty() ? "-" : String.join(", ", names));
             lang().send(p, "check.result-" + info.sign);
+            p.sendMessage(lumioLine(info));
             // the proof right in chat: one line per mod
             for (String mod : mods) {
                 List<String> proof = guard().proof(t.getUniqueId(), mod);
@@ -164,6 +166,12 @@ public final class Menus {
             if (p instanceof Player staff) player(staff, t);
             else p.sendMessage(lang().msg("check.channels", "channels", info.channels.isEmpty() ? "-" : String.join(", ", info.channels)));
         }, 10L, 10L);
+    }
+
+    /** "Lumio 0.1.0 · Minecraft 1.21.11 · 12 mods reported", or "No Lumio". */
+    private Component lumioLine(Guard.Info info) {
+        if (info.lumio == null || !info.lumio.complete) return lang().msg("lumio.none");
+        return lang().msg("lumio.line", "version", info.lumio.lumio, "minecraft", info.lumio.minecraft, "count", info.lumio.installed().size());
     }
 
     /** Punish (what the settings say) or let pass, for one mod of one player. */

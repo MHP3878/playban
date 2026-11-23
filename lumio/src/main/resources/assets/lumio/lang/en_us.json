@@ -1,0 +1,21 @@
+{
+  "key.categories.lumio": "Lumio",
+  "key.category.lumio.main": "Lumio",
+  "key.lumio.accept": "Accept request",
+  "key.lumio.deny": "Deny request",
+  "lumio.prompt.accept": "Accept",
+  "lumio.prompt.deny": "Deny",
+  "lumio.prompt.accepted": "✔ Accepted",
+  "lumio.prompt.denied": "✖ Denied",
+  "lumio.update.title": "Lumio update",
+  "lumio.update.text": "Version %s is out. This server recommends updating.",
+  "lumio.update.chat": "Lumio %s is available.",
+  "lumio.update.link": "Download",
+  "lumio.command.status": "Lumio %s · this server: %s",
+  "lumio.command.connected": "supports Lumio",
+  "lumio.command.not-connected": "no Lumio features",
+  "lumio.demo.toast.title": "Welcome to Lumio",
+  "lumio.demo.toast.text": "This is a notice card. Servers can send these instead of chat spam.",
+  "lumio.demo.prompt.title": "Teleport request",
+  "lumio.demo.prompt.text": "Steve wants to teleport to you."
+}

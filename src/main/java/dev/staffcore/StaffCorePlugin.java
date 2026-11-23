@@ -86,6 +86,7 @@ public class StaffCorePlugin extends JavaPlugin {
         tickets.load();
 
         getServer().getPluginManager().registerEvents(input, this);
+        LumioBridge.enable(this);
         getServer().getPluginManager().registerEvents(new MenuListener(), this);
         getServer().getPluginManager().registerEvents(new RestrictionListener(this), this);
         getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);

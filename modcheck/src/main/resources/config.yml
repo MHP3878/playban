@@ -62,6 +62,24 @@ disguise-action: ALERT
 # Client names only cheat clients send (regular expressions): LiquidBounce's and ThunderHack's fake Lunar names, CheatBreaker
 fake-brands: ['^lunarclient:v2\.21\.33-2612$', '^lunarclient:1\.20\.(4|1)$', '^CB$']
 
+# Lumio, the client mod (Fabric). Players who have it send the list of their mods (from the mod loader
+# itself, so mod-hiding filters do not work against it) and get cards with keys instead of chat buttons.
+lumio:
+  # off, optional (players with Lumio send their list), required (only players with Lumio may play)
+  mode: optional
+  # where players get Lumio (shown when it is missing or outdated)
+  download: ""
+  # name shown to Lumio players for this server (optional)
+  server-name: ""
+  # Lumio players with an older version are told about the update
+  latest-version: "0.1.0"
+  # in required mode: older versions are refused
+  min-version: "0.1.0"
+  # in required mode: how long to wait for the mod list after joining
+  wait-seconds: 15
+  # clients that cannot load mods and never need Lumio (Bedrock players via Geyser are always free)
+  exempt-brands: [geyser, floodgate]
+
 # Discord webhook for alerts (optional). Empty = off.
 discord-webhook: ""
 

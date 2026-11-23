@@ -13,6 +13,7 @@ public class ModCheckPlugin extends JavaPlugin {
     private Guard guard;
     private Menus menus;
     private ChatInput input;
+    private Lumio lumio;
 
     @Override
     public void onEnable() {
@@ -26,6 +27,9 @@ public class ModCheckPlugin extends JavaPlugin {
         menus = new Menus(this);
         input = new ChatInput(this);
         getServer().getPluginManager().registerEvents(guard, this);
+        lumio = new Lumio(this);
+        lumio.enable();
+        getServer().getPluginManager().registerEvents(lumio, this);
         getServer().getPluginManager().registerEvents(input, this);
         getServer().getPluginManager().registerEvents(new Menu.Clicks(), this);
         guard.registerVirtualSignListener();

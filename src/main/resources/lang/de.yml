@@ -1688,6 +1688,7 @@ home:
   none-lore: ["<gray>/sethome speichert eins, wo du stehst."]
 
 tpa:
+  card-title: "Teleport-Anfrage"
   usage: "<gray>Benutzung: <white>/tpa <spieler></white> oder <white>/tpahere <spieler></white>"
   self: "<gray>Das bist du."
   sent: "<gray>Anfrage an <white>{player}</white> geschickt. Sie gilt {seconds} Sekunden."

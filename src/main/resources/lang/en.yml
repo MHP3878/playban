@@ -1688,6 +1688,7 @@ home:
   none-lore: ["<gray>/sethome saves one where you stand."]
 
 tpa:
+  card-title: "Teleport request"
   usage: "<gray>Usage: <white>/tpa <player></white> or <white>/tpahere <player></white>"
   self: "<gray>That is you."
   sent: "<gray>Request sent to <white>{player}</white>. It stays open for {seconds} seconds."

@@ -1,0 +1,57 @@
+plugins {
+    id "fabric-loom" version "1.14.10" apply false
+}
+
+subprojects {
+    apply plugin: "fabric-loom"
+    apply plugin: "java"
+
+    version = rootProject.property("mod_version") + "+" + project.property("minecraft_version")
+    group = "dev.lumio"
+    base { archivesName = "lumio" }
+
+    repositories {
+        maven { url = "https://maven.fabricmc.net/" }
+        mavenCentral()
+    }
+
+    dependencies {
+        minecraft "com.mojang:minecraft:${project.property('minecraft_version')}"
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${rootProject.property('loader_version')}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${project.property('fabric_api_version')}"
+    }
+
+    // shared code and texts, plus what this version needs of its own
+    sourceSets {
+        main {
+            java.srcDirs = [rootProject.file("src/main/java"), file("src/main/java")]
+            resources.srcDirs = [rootProject.file("src/main/resources"), file("src/main/resources")]
+        }
+    }
+
+    loom {
+        runs {
+            client {
+                runDir = "../../run"
+            }
+        }
+    }
+
+    processResources {
+        def props = [version: project.version, mc_range: project.property("mc_range"), loader_version: rootProject.property("loader_version")]
+        inputs.properties props
+        filesMatching("fabric.mod.json") { expand props }
+    }
+
+    java {
+        toolchain.languageVersion = JavaLanguageVersion.of(21)
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    tasks.withType(JavaCompile).configureEach { options.encoding = "UTF-8"; options.release = 21 }
+
+    // every version's jar also lands in lumio/dist
+    tasks.named("remapJar") { doLast { copy { from archiveFile; into rootProject.file("dist") } } }
+}

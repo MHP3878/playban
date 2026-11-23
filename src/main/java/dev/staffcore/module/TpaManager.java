@@ -99,9 +99,16 @@ public final class TpaManager implements TabExecutor {
                         .put(p.getUniqueId(), new Request(p.getUniqueId(), target.getUniqueId(), here, System.currentTimeMillis()));
                 lang().send(p, "tpa.sent", "player", target.getName(), "seconds", timeout() / 1000);
                 target.sendMessage(lang().prefixed(here ? "tpa.asked-here" : "tpa.asked", "player", p.getName()));
-                target.sendMessage(lang().msg("tpa.accept-button").clickEvent(ClickEvent.runCommand("/tpaccept " + p.getName()))
-                        .append(Component.text("  "))
-                        .append(lang().msg("tpa.deny-button").clickEvent(ClickEvent.runCommand("/tpdeny " + p.getName()))));
+                if (dev.staffcore.LumioBridge.has(target)) {
+                    // Lumio: a card with two keys instead of buttons in chat
+                    dev.staffcore.LumioBridge.prompt(target, "tpa:" + p.getUniqueId(), lang().plain("tpa.card-title"),
+                            lang().plain(here ? "tpa.asked-here" : "tpa.asked", "player", p.getName()),
+                            "tpaccept " + p.getName(), "tpdeny " + p.getName(), (int) (timeout() / 1000));
+                } else {
+                    target.sendMessage(lang().msg("tpa.accept-button").clickEvent(ClickEvent.runCommand("/tpaccept " + p.getName()))
+                            .append(Component.text("  "))
+                            .append(lang().msg("tpa.deny-button").clickEvent(ClickEvent.runCommand("/tpdeny " + p.getName()))));
+                }
                 target.playSound(target.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 0.7f, 1.4f);
             }
             case "tpaccept" -> {

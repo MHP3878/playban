@@ -1,0 +1,21 @@
+{
+  "key.categories.lumio": "Lumio",
+  "key.category.lumio.main": "Lumio",
+  "key.lumio.accept": "Anfrage annehmen",
+  "key.lumio.deny": "Anfrage ablehnen",
+  "lumio.prompt.accept": "Annehmen",
+  "lumio.prompt.deny": "Ablehnen",
+  "lumio.prompt.accepted": "✔ Angenommen",
+  "lumio.prompt.denied": "✖ Abgelehnt",
+  "lumio.update.title": "Lumio-Update",
+  "lumio.update.text": "Version %s ist da. Dieser Server empfiehlt das Update.",
+  "lumio.update.chat": "Lumio %s ist verfügbar.",
+  "lumio.update.link": "Herunterladen",
+  "lumio.command.status": "Lumio %s · dieser Server: %s",
+  "lumio.command.connected": "unterstützt Lumio",
+  "lumio.command.not-connected": "keine Lumio-Funktionen",
+  "lumio.demo.toast.title": "Willkommen bei Lumio",
+  "lumio.demo.toast.text": "Das ist eine Hinweis-Karte. Server können sie statt Chat-Spam schicken.",
+  "lumio.demo.prompt.title": "Teleport-Anfrage",
+  "lumio.demo.prompt.text": "Steve möchte sich zu dir teleportieren."
+}

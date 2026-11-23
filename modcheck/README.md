@@ -49,6 +49,8 @@ Everything a mod does not set itself comes from the general settings: default ac
 
 Everything suspicious about the client itself (blocks the check, a filter, no answer, disguise) is by default only told to the team; each can be set to kick, warn or ban in the settings.
 
+6. **Lumio** (the client mod, `lumio/` in this repository): players who have it send the mods Fabric Loader loaded, with a fingerprint of each jar. Translation filters cannot hide anything from that list; it is cross-checked against the channels and the sign, and a mod seen there but missing in the list marks the list as forged. `lumio.mode`: `off`, `optional` (default) or `required` (only players with Lumio may play; Bedrock players and `modcheck.bypass` are free). Lumio players also get cards with keys instead of chat buttons (StaffCore's TPA requests use them).
+
 **What no server plugin can see**: Wurst and LiquidBounce keep their texts outside the game's language, many hack clients and addons ship no language file, and mods without texts (Lithium, FerriteCore, Baritone) leave nothing to ask for. A client that hides every mod text *and* every mod channel *and* calls itself vanilla (OpSec's vanilla mode) looks exactly like vanilla. For a guarantee use the allow list, or a client mod every player must install.
 
 ## Files

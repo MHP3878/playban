@@ -37,6 +37,14 @@ ban:
 alert:
   mod: "<red>⚠ <white>{player}</white> <gray>has <white>{mods}</white> → {action}. <dark_gray>Click to check"
   client: "<red>⚠ <white>{player}</white> <gray>uses the client <white>{mods}</white>, not on the allow list → {action}."
+lumio:
+  kick-missing: "<white><bold>Lumio is needed</bold>\n\n<gray>On this server you play with the Lumio client.\n<gray>It is free and makes the game look better.\n\n<white>{download}"
+  kick-no-report: "<white><bold>Lumio did not answer</bold>\n\n<gray>Please reconnect. If that does not help, update Lumio:\n<white>{download}"
+  kick-outdated: "<white><bold>Please update Lumio</bold>\n\n<gray>This server needs Lumio <white>{min}</white> or newer.\n\n<white>{download}"
+  ask-team: "Ask the team for the download link."
+  line: "<gray>Lumio <white>{version}</white> · Minecraft <white>{minecraft}</white> · <white>{count}</white> mods reported"
+  none: "<gray>No Lumio"
+
 proof:
   title: "<white><bold>Proof</bold>"
   click: "<dark_gray>Click: check the player"
@@ -55,11 +63,16 @@ proof:
   altered: "a made-up text came back changed: the client changes texts on its own"
   missing: "the controls on the sign did not all come back"
   no-answer: "did not answer the sign twice"
+  lumio: "Lumio report: {name} {version} ({id})"
+  lumio-missing: "{mod} ({how}) is missing in the Lumio report: the report is forged"
+  how-sign: "seen on the sign"
+  how-channel: "channel {channel}"
 suspicious:
   blocked: "protection against the mod check"
   no-answer: "no answer to the mod check"
   filtered: "filter against the mod check"
   disguise: "disguise (pretends to be another client)"
+  lumio-lie: "forged Lumio report"
 discord:
   line: "⚠ {player} has {mods} → {action}"
 

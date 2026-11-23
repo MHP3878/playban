@@ -66,6 +66,8 @@ public final class Guard implements Listener {
         /** why this client is suspicious (filter, disguise ...), for the team */
         public final List<String> suspicion = new ArrayList<>();
         final List<String> oldNonces = new ArrayList<>();
+        /** what Lumio reported, when the player has it */
+        public Lumio.Report lumio;
         int signsDone;
         /** rules and findings already dealt with in this session: no second alert for the same thing */
         public final Set<String> handled = new HashSet<>();
@@ -280,7 +282,7 @@ public final class Guard implements Listener {
         List<Rule> out = new ArrayList<>();
         for (Rule r : rules()) {
             if (passed(id, r.id())) continue;
-            boolean hit = info.found.contains(r.id());
+            boolean hit = info.found.contains(r.id()) || reported(info, r.id()) != null;
             for (String b : r.brand()) if (b.length() >= 3 && brand.contains(b)) hit = true;
             for (String c : r.channel()) for (String ch : info.channels) if (channelMatches(ch, c)) hit = true;
             if (hit) out.add(r);
@@ -318,6 +320,13 @@ public final class Guard implements Listener {
             KnownMods.Mod known = KnownMods.find(info.brand);
             if (known != null && known.client()) out.add(known.id());
         }
+        // what Lumio reported: the mods the player installed (not the parts bundled inside other mods)
+        if (info.lumio != null && info.lumio.complete) {
+            for (Lumio.Mod m : info.lumio.installed()) {
+                KnownMods.Mod known = KnownMods.find(m.id());
+                out.add(known != null ? known.id() : m.id());
+            }
+        }
         return new ArrayList<>(out);
     }
 
@@ -325,7 +334,41 @@ public final class Guard implements Listener {
         Rule r = rule(mod);
         if (r != null) return r.display();
         KnownMods.Mod k = KnownMods.find(mod);
-        return k != null ? k.name() : mod;
+        if (k != null) return k.name();
+        return mod;
+    }
+
+    /** The mod in the Lumio report that is this mod (by id, name or a known alias), or null. */
+    public static Lumio.Mod reported(Info info, String mod) {
+        if (info.lumio == null || !info.lumio.complete) return null;
+        String want = mod.toLowerCase(Locale.ROOT);
+        for (Lumio.Mod m : info.lumio.mods) {
+            if (m.id().equals(want) || KnownMods.normalize(m.id()).equals(KnownMods.normalize(want))) return m;
+            KnownMods.Mod known = KnownMods.find(m.id());
+            if (known != null && known.id().equals(want)) return m;
+        }
+        return null;
+    }
+
+    /**
+     * A forged Lumio report: the server itself saw a mod (on the sign, or by a channel of a known mod)
+     * that the report leaves out. The report is put together by the client, so this is the check that
+     * keeps it honest.
+     */
+    public List<String> reportLies(Info info) {
+        List<String> out = new ArrayList<>();
+        if (info.lumio == null || !info.lumio.complete) return out;
+        for (String m : info.found) {
+            if (reported(info, m) == null) out.add(lang().raw("proof.lumio-missing").replace("{mod}", display(m)).replace("{how}", lang().raw("proof.how-sign")));
+        }
+        for (String ch : info.channels) {
+            String ns = ch.contains(":") ? ch.substring(0, ch.indexOf(':')).toLowerCase(Locale.ROOT) : ch.toLowerCase(Locale.ROOT);
+            if (LIBRARIES.contains(ns) || ns.startsWith("fabric-")) continue;
+            KnownMods.Mod known = KnownMods.find(ns);
+            if (known == null || info.found.contains(known.id()) || reported(info, known.id()) != null || reported(info, ns) != null) continue;
+            out.add(lang().raw("proof.lumio-missing").replace("{mod}", known.name()).replace("{how}", lang().raw("proof.how-channel").replace("{channel}", ch)));
+        }
+        return out;
     }
 
     // ---------------------------------------------------------------- blocking by name
@@ -479,6 +522,9 @@ public final class Guard implements Listener {
         }
         List<String> lie = disguise(info);
         if (!lie.isEmpty()) suspicious(p, "disguise", lie);
+        if (!p.isOnline()) return;
+        List<String> forged = reportLies(info);
+        if (!forged.isEmpty()) suspicious(p, "lumio-lie", forged);
         for (String hint : hints(info)) if (!info.suspicion.contains(hint)) info.suspicion.add(hint);
     }
 
@@ -1080,6 +1126,9 @@ public final class Guard implements Listener {
             if (!match && mod.equals(ch.contains(":") ? ch.substring(0, ch.indexOf(':')).toLowerCase(Locale.ROOT) : ch)) match = true;
             if (match && shown++ < 2) out.add(lang().raw("proof.channel").replace("{channel}", ch));
         }
+        Lumio.Mod rep = reported(info, mod);
+        if (rep != null) out.add(lang().raw("proof.lumio").replace("{name}", rep.name().isEmpty() ? rep.id() : rep.name())
+                .replace("{version}", rep.version()).replace("{id}", rep.id()));
         for (String[] s : info.signProof.getOrDefault(mod, List.of())) {
             String key = s[0].startsWith("bind:") ? s[0].substring(5) : s[0];
             if (s[1].equals(key)) out.add(lang().raw("proof.sign-raw").replace("{key}", s[0]));
@@ -1099,7 +1148,7 @@ public final class Guard implements Listener {
         info.suspicion.addAll(proof);
         String key = switch (what) {
             case "no-answer" -> "no-answer-action";
-            case "disguise" -> "disguise-action";
+            case "disguise", "lumio-lie" -> "disguise-action";
             default -> "hidden-action";
         };
         String action = cfg().getString(key, "ALERT").toUpperCase(Locale.ROOT);

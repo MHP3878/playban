@@ -1,0 +1,13 @@
+pluginManagement {
+    repositories {
+        maven { url = "https://maven.fabricmc.net/" }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+rootProject.name = "lumio"
+// One build per group of Minecraft versions; the code in src/ is shared, versions/<v>/src holds what differs.
+["1.21.4", "1.21.8", "1.21.10", "1.21.11"].each { v ->
+    include(":$v")
+    project(":$v").projectDir = file("versions/$v")
+}

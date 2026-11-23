@@ -531,4 +531,34 @@ class ModCheckTest {
         assertTrue(steve.isOnline());
         assertTrue(g.proof(steve.getUniqueId(), "freecam").get(0).contains("freecam:main"), "the channel is the proof");
     }
+
+    @Test
+    void lumioReportIsTrustedOnlyWhenItMatches() {
+        assertNull(KnownMods.find("fabric"), "a loader name is no mod");
+        assertNull(KnownMods.find("forge"));
+        assertEquals("fabricapi", KnownMods.find("fabric-api").id());
+        assertEquals("meteor", KnownMods.find("meteor-client").id());
+        assertEquals("simplevoicechat", KnownMods.find("voicechat").id());
+        var g = plugin.guard();
+        Guard.Info info = g.info(steve.getUniqueId());
+        info.lumio = new Lumio.Report();
+        info.lumio.complete = true;
+        info.lumio.mods.add(new Lumio.Mod("fabric-api", "Fabric API", "0.141.6", "ab", ""));
+        info.lumio.mods.add(new Lumio.Mod("sodium", "Sodium", "0.8.0", "cd", ""));
+        info.channels.add("fabric:recipe_sync");
+        info.channels.add("fabric-screen-handler-api-v1:open_screen");
+        info.found.add("fabricapi");
+        info.found.add("sodium");
+        assertTrue(g.reportLies(info).isEmpty(), "an honest report");
+        assertTrue(g.mods(steve.getUniqueId()).contains("sodium"));
+        assertTrue(g.proof(steve.getUniqueId(), "sodium").stream().anyMatch(l -> l.contains("0.8.0")), "the report is proof");
+        // the sign saw Meteor, the report leaves it out: forged
+        info.found.add("meteor");
+        assertFalse(g.reportLies(info).isEmpty());
+        // a reported blocked mod is a hit on its own
+        info.found.remove("meteor");
+        info.lumio.mods.add(new Lumio.Mod("meteor-client", "Meteor Client", "1.21.11-50", "ef", ""));
+        assertTrue(g.hits(steve.getUniqueId()).stream().anyMatch(r -> r.id().equals("meteor")));
+        assertTrue(g.reportLies(info).isEmpty());
+    }
 }

@@ -37,6 +37,14 @@ ban:
 alert:
   mod: "<red>⚠ <white>{player}</white> <gray>hat <white>{mods}</white> → {action}. <dark_gray>Klick zum Prüfen"
   client: "<red>⚠ <white>{player}</white> <gray>nutzt den Client <white>{mods}</white>, nicht erlaubt → {action}."
+lumio:
+  kick-missing: "<white><bold>Lumio wird benötigt</bold>\n\n<gray>Auf diesem Server spielst du mit dem Lumio-Client.\n<gray>Er ist kostenlos und macht das Spiel schöner.\n\n<white>{download}"
+  kick-no-report: "<white><bold>Lumio hat nicht geantwortet</bold>\n\n<gray>Bitte verbinde dich neu. Hilft das nicht, aktualisiere Lumio:\n<white>{download}"
+  kick-outdated: "<white><bold>Bitte Lumio aktualisieren</bold>\n\n<gray>Dieser Server braucht Lumio <white>{min}</white> oder neuer.\n\n<white>{download}"
+  ask-team: "Frag das Team nach dem Download-Link."
+  line: "<gray>Lumio <white>{version}</white> · Minecraft <white>{minecraft}</white> · <white>{count}</white> Mods gemeldet"
+  none: "<gray>Kein Lumio"
+
 proof:
   title: "<white><bold>Beweis</bold>"
   click: "<dark_gray>Klick: Spieler prüfen"
@@ -55,11 +63,16 @@ proof:
   altered: "Ein ausgedachter Text kam verändert zurück: der Client verändert Texte selbst"
   missing: "Die Kontrollen auf dem Schild kamen nicht vollständig zurück"
   no-answer: "Hat zweimal nicht auf das Schild geantwortet"
+  lumio: "Lumio-Bericht: {name} {version} ({id})"
+  lumio-missing: "{mod} ({how}) fehlt im Lumio-Bericht: der Bericht ist gefälscht"
+  how-sign: "auf dem Schild gesehen"
+  how-channel: "Kanal {channel}"
 suspicious:
   blocked: "Schutz gegen die Mod-Prüfung"
   no-answer: "keine Antwort auf die Mod-Prüfung"
   filtered: "Filter gegen die Mod-Prüfung"
   disguise: "Tarnung (gibt sich als anderer Client aus)"
+  lumio-lie: "gefälschter Lumio-Bericht"
 discord:
   line: "⚠ {player} hat {mods} → {action}"
 

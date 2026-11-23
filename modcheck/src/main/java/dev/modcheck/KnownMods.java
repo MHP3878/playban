@@ -63,6 +63,7 @@ public final class KnownMods {
             mod("inventoryprofilesnext", "Inventory Profiles Next", List.of("ipn", "inventoryprofiles"), List.of("inventoryprofilesnext"), List.of()),
             mod("wynntils", "Wynntils", List.of(), List.of("wynntils"), List.of("command.wynntils.compass.description")),
             mod("replaymod", "Replay Mod", List.of("replay"), List.of("replaymod"), List.of("replaymod.gui.replayviewer", "key.replaymod.marker")),
+            mod("lumio", "Lumio", List.of("lumio-client"), List.of("lumio"), List.of()),
             // loaders: tell what the client really is (the lie detector uses them)
             mod("fabricapi", "Fabric API", List.of("fabric-api"), List.of(), List.of("pack.source.fabricmod")),
             mod("neoforgeloader", "NeoForge / Forge", List.of("neo-forge-loader"), List.of(), List.of("fml.menu.mods")),
@@ -114,9 +115,11 @@ public final class KnownMods {
     /** The known mod a name means, or null. */
     public static Mod find(String input) {
         String n = normalize(input);
+        // "fabric", "forge" ... clean up to nothing: nothing is not a mod
+        if (n.isEmpty()) return null;
         for (Mod m : ALL) {
-            if (m.id().equals(n) || normalize(m.name()).equals(n)) return m;
-            for (String a : m.aliases()) if (normalize(a).equals(n)) return m;
+            if (m.id().equals(n) || n.equals(normalize(m.name()))) return m;
+            for (String a : m.aliases()) if (n.equals(normalize(a))) return m;
         }
         return null;
     }

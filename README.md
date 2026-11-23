@@ -238,7 +238,7 @@ Players with the client mod [Lumio](lumio/README.md) get extras; everyone else s
 - **Radial menu:** players who did not make their own get a menu (key G) made from the modules that are on: home, spawn, accept a teleport, totem, ticket, money and a second page. `wheel:` in `config.yml` sets your own, with commands, chat messages and next pages (`suggest-wheel` switches it off).
 - **Multiplayer list:** your colours behind the server's entry, up to four tags next to its name and a bar of how full it is (`server-list`). It travels as an invisible part of the description, so other clients see the usual list.
 
-With the plugin **ModCheck** on the server, StaffCore's mod guard steps back: ModCheck checks mods, and its commands do not clash.
+With the plugin **Bastion** (called ModCheck before) on the server, StaffCore's mod guard and anti-cheat step back: Bastion checks mods and cheats, and the commands do not clash.
 
 ## Ranks
 

@@ -1,0 +1,107 @@
+name: Bastion
+version: '${project.version}'
+main: dev.bastion.BastionPlugin
+api-version: '1.21'
+description: Anti-cheat, cheat clients, injectors, cheat resource packs and mods - with a file on every player.
+softdepend: [StaffCore, LuckPerms, LiteBans, AdvancedBan, Essentials, floodgate, Geyser-Spigot]
+
+commands:
+  bastion:
+    description: The Bastion menu, or a player's client, mods and file
+    aliases: [modcheck, modscheck, mods, ac, anticheat]
+    permission: bastion.check
+  setup:
+    description: "How strict Bastion is: 1 mild, 2 strict, 3 hard"
+    aliases: [bsetup, bastionsetup]
+    permission: bastion.settings
+  akte:
+    description: Everything about a player in one file
+    aliases: [file, playerfile, record]
+    permission: bastion.akte
+  modblock:
+    description: Forbid a mod just by its name
+    aliases: [modsperre, blockmod]
+    permission: bastion.block
+  modunblock:
+    description: Allow a mod again
+    aliases: [modentsperren, unblockmod]
+    permission: bastion.block
+  inject:
+    description: Block injection clients (Vape, Prestige ...), one by one or all
+    aliases: [injects, injectblock]
+    permission: bastion.block
+  mcroom:
+    description: The buttons of the check room window (leave, guide)
+
+permissions:
+  bastion.admin:
+    description: Everything in Bastion
+    default: op
+    children:
+      bastion.check: true
+      bastion.akte: true
+      bastion.block: true
+      bastion.notify: true
+      bastion.unban: true
+      bastion.reload: true
+      bastion.settings: true
+      bastion.ranks: true
+      bastion.commands: true
+  bastion.check:
+    description: "/bastion - the menu, see a player's client and mods"
+    default: op
+  bastion.akte:
+    description: "/akte - read a player's file and write notes"
+    default: op
+  bastion.block:
+    description: "/modblock, /modunblock and /inject"
+    default: op
+  bastion.notify:
+    description: Is told about cheats, blocked mods, injectors and packs
+    default: op
+  bastion.unban:
+    description: "/bastion unban <player> and /bastion reset <player>"
+    default: op
+  bastion.reload:
+    description: "/bastion reload"
+    default: op
+  bastion.settings:
+    description: "/setup and the general settings (punishments, anti-cheat, Lumio, Discord ...)"
+    default: op
+  bastion.ranks:
+    description: "Ranks & rights: which rank may do what in Bastion, also per player"
+    default: op
+  bastion.commands:
+    description: Set console commands (ban command, command per mod); this is server-wide power
+    default: op
+  bastion.bypass:
+    description: Never checked, also not by the anti-cheat
+    default: false
+  # the permissions of ModCheck, which Bastion was called before, keep working
+  modcheck.admin:
+    default: false
+    children: {bastion.admin: true}
+  modcheck.check:
+    default: false
+    children: {bastion.check: true}
+  modcheck.block:
+    default: false
+    children: {bastion.block: true}
+  modcheck.notify:
+    default: false
+    children: {bastion.notify: true}
+  modcheck.unban:
+    default: false
+    children: {bastion.unban: true}
+  modcheck.reload:
+    default: false
+    children: {bastion.reload: true}
+  modcheck.settings:
+    default: false
+    children: {bastion.settings: true}
+  modcheck.commands:
+    default: false
+    children: {bastion.commands: true}
+  modcheck.bypass:
+    default: false
+    children: {bastion.bypass: true}

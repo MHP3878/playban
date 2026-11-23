@@ -1,0 +1,790 @@
+prefix: "<gradient:#4facfe:#00f2fe><bold>Bastion</bold></gradient> <dark_gray>» "
+word-on: "on"
+word-off: "off"
+no-permission: "<red>You may not do that."
+no-permission-commands: "<red>Only an admin may set console commands (permission <white>bastion.commands</white>)."
+reloaded: "<green>Bastion reloaded."
+not-found: "<red><white>{player}</white> is not online or unknown."
+
+action:
+  alert: "only tell the team"
+  kick: "kick"
+  warn: "warn (kick), then ban"
+  ban: "ban"
+  command: "run the command"
+mode:
+  blocklist: "block list (everything except blocked mods)"
+  allowlist: "allow list (only allowed clients)"
+
+input:
+  download: "<#4facfe>Write the download link for Lumio (with https://)."
+  inject-program: "<#4facfe>Write the program name (without .exe), e.g. <white>ghostloader</white>. If it is already there, it is removed."
+  bad-link: "<red>That is not a valid link. It has to start with <white>https://</white>."
+  cancel-hint: "<dark_gray>Type <white>cancel</white> to stop."
+  reason: "<#4facfe>Type the reason. <white>{mods}</white> becomes the mod names, e.g. <white>No cheating with {mods}!</white>"
+  command: "<#4facfe>Type the command, without /. <white>{player} {reason} {duration} {mods}</white> are filled in, several separated by <white>;</white>"
+  mod: "<#4facfe>Type the mod's name, e.g. <white>freecam</white> or <white>beelocator-21.11.jar</white>."
+  ban-command: "<#4facfe>Type your ban plugin's command, without /, e.g. <white>tempban {player} {duration} {reason}</white>"
+  webhook: "<#4facfe>Paste the Discord webhook link (https://discord.com/api/webhooks/...)."
+  webhook-wrong: "<red>That is not a Discord webhook link. It must start with <white>https://discord.com/api/webhooks/</white>."
+
+default-reason: "You have {mods} on. Please delete it."
+kick:
+  forbidden: "<red><bold>Forbidden mod</bold>\n\n<white>You have <red>{mods}</red> on.\n<gray>Please delete it and join again."
+  screen: "<red><bold>Kicked</bold>\n\n<gray>{reason}"
+  warn-screen: "<gold><bold>Please remove it</bold>\n\n<gray>{reason}\n\n<white>Remove the mod and join again.\n<red>Warnings left before a ban: {left}"
+  pack: "<red><bold>Cheat resource pack</bold></red>\n\n<white>You have <red>{pack}</red> on.\n<gray>Please take the pack out and join again."
+  pack-reason: "Cheat resource pack: {pack}"
+ban:
+  screen: "<red><bold>Banned</bold>\n\n<gray>{reason}\n\n<white>Time: {time}"
+  forever: "permanent"
+  unbanned: "<green><white>{player}</white> is unbanned."
+  not-banned: "<gray><white>{player}</white> is not banned by Bastion."
+
+alert:
+  hints: "<yellow>⚠</yellow> <white>{player}</white> <gray>has {count} unusual thing(s) in the game, just so you know. <#4facfe>Hover: details"
+  mod: "<red>⚠ <white>{player}</white> <gray>has <white>{mods}</white> → {action}. <dark_gray>Click to check"
+  client: "<red>⚠ <white>{player}</white> <gray>uses the client <white>{mods}</white>, not on the allow list → {action}."
+lumio:
+  kick-silent: "<white><bold>Lumio stopped answering</bold>\n\n<gray>Lumio was switched off or blocked.\n<gray>Restart Minecraft and join again."
+  kick-missing: "<white><bold>Lumio is needed</bold>\n\n<gray>On this server you play with the Lumio client.\n<gray>It is free and makes the game look better.\n\n<white>{download}"
+  kick-no-report: "<white><bold>Lumio did not answer</bold>\n\n<gray>Please reconnect. If that does not help, update Lumio:\n<white>{download}"
+  kick-outdated: "<white><bold>Please update Lumio</bold>\n\n<gray>This server needs Lumio <white>{min}</white> or newer.\n\n<white>{download}"
+  ask-team: "Ask the team for the download link."
+  line: "<gray>Lumio <white>{version}</white> · Minecraft <white>{minecraft}</white> · <white>{count}</white> mods reported"
+  none: "<gray>No Lumio <dark_gray>(mod list incomplete: only client name, channels and sign)"
+  usage: "<gray>Usage: <white>/bastion lumio [off|optional|required]</white>"
+  status: "<gray>Lumio: <white>{mode}</white>"
+  mode-name:
+    "off": "off"
+    optional: "optional"
+    required: "required"
+  explain-off: "<gray>Lumio is off. Bastion only checks the client name, mod channels and the hidden sign."
+  explain-optional: "<gray>Lumio is optional. Players who have it send their full mod list; everyone else is only checked by client name, channels and sign."
+  explain-required: "<gray>Lumio is required. Only players with Lumio can play, and the full mod list comes from everyone."
+  warn-incomplete: "<gold>⚠ <gray>Without Lumio being required, Bastion does <white>not know every mod</white>. Mods without texts (e.g. Lithium, Baritone), Wurst and LiquidBounce, and clients that pretend to be vanilla (e.g. OpSec) stay invisible. Only safe: <white>/bastion lumio required</white>"
+  warn-required: "<gold>⚠ <gray>Players without Lumio are refused from their next join (Bedrock players and bastion.bypass excepted). Online without Lumio right now: <white>{count}</white>"
+  warn-no-download: "<gold>⚠ <gray>Add a download link (<white>lumio.download</white> in config.yml), or players do not know where to get Lumio."
+
+proof:
+  title: "<white><bold>Proof</bold>"
+  click: "<dark_gray>Click: check the player"
+  brand: "client name »{brand}«"
+  channel: "mod channel {channel}"
+  sign: "sign: »{answer}« for {key}"
+  bind: "sign: key »{answer}« for {key}"
+  sign-raw: "sign: hides its text but gives back the name {key}"
+  canary: "channel {channel} shows {mod}, but its text {key} came back empty: a filter hides mods"
+  vanilla-channel: "calls itself »vanilla« but has the mod channel {channel}"
+  vanilla-text: "calls itself »vanilla« but has {mod} (sign)"
+  fake-brand: "fake client name »{brand}« (how cheat clients disguise themselves)"
+  lunar: "calls itself Lunar Client but has no Lunar channels"
+  feather: "calls itself Feather but has no Feather channels"
+  blank: "a text every client knows came back empty: texts are not filled in"
+  altered: "a made-up text came back changed: the client changes texts on its own"
+  missing: "the controls on the sign did not all come back"
+  no-answer: "did not answer the sign twice"
+  lumio: "Lumio report: {name} {version} ({id})"
+  lumio-missing: "{mod} ({how}) is missing in the Lumio report: the report is forged"
+  how-sign: "seen on the sign"
+  how-channel: "channel {channel}"
+  pack: "Resource pack \"{pack}\": {why}"
+  pack-name: "name of a known x-ray pack"
+suspicious:
+  blocked: "protection against the mod check"
+  no-answer: "no answer to the mod check"
+  filtered: "filter against the mod check"
+  disguise: "disguise (pretends to be another client)"
+  lumio-lie: "forged Lumio report"
+discord:
+  line: "⚠ {player} has {mods} → {action}"
+
+check:
+  usage: "<gray>Usage: <white>/bastion [player]</white>, <white>/bastion unban <player></white>, <white>/bastion reset <player></white>, <white>/bastion reload</white>, <white>/bastion lumio [off|optional|required]</white>"
+  reset: "<gray>The warnings of <white>{player}</white> are cleared."
+  header: "<white>{player}</white><gray>: client <white>{client}</white>, warnings <white>{warnings}</white>"
+  mods: "<gray>Mods: <white>{mods}"
+  channels: "<gray>Mod channels: <white>{channels}"
+  running: "<gray>Checking <white>{player}</white> ..."
+  result: "<white><bold>{player}</bold></white><gray>: client <white>{client}</white>, <white>{count}</white> mod(s): <white>{mods}"
+  result-works: "<green>✔ Check worked. What the client has is listed."
+  result-blocked: "<red>✘ This client blocks the check (a mod that hides mods). Nothing it says counts; the team was told."
+  result-no-answer: "<gold>? The client did not answer twice (lag, or a client that ignores the check)."
+  result-impossible: "<gold>? No check possible here. Stand on solid ground and try again."
+  result-unknown: "<gray>? Not checked yet. If the player is dead, the check runs after the respawn."
+  proof: "<dark_gray>  • <white>{mod}</white><gray>: {proof}"
+  suspicion: "<gold>  ⚠ <gray>{line}"
+  result-filtered: "<red>✘ A filter hides mods (e.g. ExploitPreventer). Found by the cross-check; the team was told."
+
+block:
+  usage: "<gray>Usage: <white>/modblock <mod name></white>, e.g. <white>/modblock freecam</white>"
+  usage-unblock: "<gray>Usage: <white>/modunblock <mod name></white>"
+  did-you-mean: "<gray>No known mod called <white>{mod}</white>. Did you mean:"
+  suggestion: "<#4facfe>  ▶ {mod} <dark_gray>({id}) <gray>click to block"
+  as-typed: "<gray>  ▶ Block it as <white>{mod}</white> anyway <dark_gray>(click)"
+  done: "<green><white>{mod}</white> is blocked: <white>{action}</white>. Everybody online was checked."
+  done-unknown: "<green><white>{mod}</white> is blocked: <white>{action}</white>. <gray>Not a known mod: it is found if it registers a channel or answers the sign check under this name."
+  unblocked: "<gray><white>{mod}</white> is allowed again."
+  not-blocked: "<gray><white>{mod}</white> is not blocked."
+
+decide:
+  punished: "<red><white>{player}</white> was punished for <white>{mod}</white>: {action}."
+  passed: "<green><white>{player}</white> may keep <white>{mod}</white>."
+
+menu:
+  previous:
+    name: "<white>Previous page"
+    lore: []
+  next:
+    name: "<white>Next page"
+    lore: []
+  back:
+    name: "<gray>Back"
+    lore: []
+  main:
+    anticheat:
+      name: "<#ff4d4d><bold>Anti-cheat <white>({count})"
+      lore: ["<gray>Who stands out right now, who is", "<gray>watched, and what was found.", "", "<#4facfe>Click to open"]
+    akten:
+      name: "<#7c5cff><bold>Player files"
+      lore: ["<gray>Everything about every player: clients,", "<gray>mods, cheats, punishments, notes.", "", "<#4facfe>Click to open"]
+    setup:
+      name: "<gold><bold>How strict? <white>Level {level}"
+      lore: ["<gray>/setup: mild, strict or hard.", "<gray>Sets everything at once.", "", "<#4facfe>Click to open"]
+    ranks:
+      name: "<#4fc3f7><bold>Ranks & rights"
+      lore: ["<gray>Which rank may do what, also", "<gray>for single players.", "", "<#4facfe>Click to open"]
+    title: "<dark_gray>Bastion"
+    players:
+      name: "<#4facfe><bold>Check players"
+      lore: ["<gray>{count} online. Click a player to", "<gray>see their client and mods.", "", "<#4facfe>Click to open"]
+    blocked:
+      name: "<#4facfe><bold>Blocked mods"
+      lore: ["<gray>{count} blocked. Click a mod to", "<gray>set what happens.", "", "<#4facfe>Click to open"]
+    add:
+      name: "<green><bold>Block a mod"
+      lore: ["<gray>Just type its name.", "<gray>Versions and .jar do not matter."]
+    suggestions:
+      name: "<#4facfe><bold>Suggestions"
+      lore: ["<gray>Known mods and cheat clients", "<gray>that are not blocked yet."]
+    settings:
+      name: "<#4facfe><bold>Settings"
+      lore: ["<gray>Default action, reason, ban length,", "<gray>warnings, allow list, Discord ..."]
+    bans:
+      name: "<#4facfe><bold>Banned players"
+      lore: ["<gray>{count} banned by Bastion.", "", "<#4facfe>Click to open"]
+  players:
+    title: "<dark_gray>Players"
+    name: "<white><bold>{player}"
+    lore: ["<gray>Client: <white>{client}", "<gray>Mods found: <white>{mods}", "", "<#4facfe>Click to check"]
+    blocked: "<red>{count} blocked mod(s)!"
+  player:
+    title: "<dark_gray>Mods of {player}"
+    mod: "<white><bold>{mod}"
+    mod-blocked: "<red>Blocked"
+    mod-passed: "<green>Allowed for this player"
+    mod-free: "<gray>Not blocked"
+    mod-click: "<#4facfe>Click: punish or let pass"
+    proof: "<gray>Proof:"
+    proof-line: "<dark_gray>- <white>{line}"
+    suspicion: "<gold>Suspicious:"
+    info: ["<gray>Client: <white>{client}", "<gray>Mod channels: <white>{channels}", "<gray>Warnings: <white>{warnings}", "<gray>Came with a blocked mod recently: <white>{recent}"]
+    sign:
+      unknown: "<gray>Sign check: <white>not asked yet"
+      works: "<green>Sign check: works with this client"
+      blocked: "<red>Sign check: this client does not fill in texts"
+      no-answer: "<gold>Sign check: no answer from the client"
+      impossible: "<gray>Sign check: not possible here (no solid ground)"
+      filtered: "<red>Sign check: a filter hides mods"
+    recheck:
+      name: "<#4facfe>Check again"
+      lore: ["<gray>Client name, channels and the", "<gray>hidden sign, also for well-known", "<gray>everyday mods (Sodium, Iris ...).", "<gray>The result shows after a few seconds."]
+    none:
+      clean: "<green>No mods found"
+      hidden: "<gray>Mods unknown"
+  decide:
+    title: "<dark_gray>{player}: {mod}"
+    blocked: ["<red>Blocked", "", "<gray>Punish does: <white>{action}", "<gray>Reason: <white>{reason}", "<gray>Ban length: <white>{duration}"]
+    not-blocked: ["<gray>Not blocked. Punish uses the defaults:", "<gray>Action: <white>{action}", "<gray>Reason: <white>{reason}", "<gray>Ban length: <white>{duration}"]
+    punish:
+      name: "<red><bold>Punish"
+      lore: ["<gray>Does what is set: <white>{action}", "<gray>Reason: <white>{reason}"]
+    pass:
+      name: "<green><bold>Let pass"
+      lore: ["<gray>This player may keep the mod.", "<gray>They are not checked for it any more."]
+    block:
+      name: "<#4facfe><bold>Block for everybody"
+      lore: ["<gray>Puts the mod on the block list."]
+    settings:
+      name: "<#4facfe><bold>Settings of this mod"
+      lore: ["<gray>Action, reason, ban length ..."]
+  blocked:
+    title: "<dark_gray>Blocked mods ({count})"
+    entry: ["<gray>Action: <white>{action}", "<gray>Reason: <white>{reason}", "", "<#4facfe>Click: settings"]
+  rule:
+    title: "<dark_gray>Settings: {mod}"
+    default: "default"
+    what: ["<gray>What happens when somebody", "<gray>joins with this mod, or a", "<gray>moderator presses Punish."]
+    action:
+      name: "<#4facfe><bold>Action"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    reason:
+      name: "<#4facfe><bold>Reason"
+      lore: ["<gray>Now: <white>{value}", "<gray>{mods} becomes the mod name.", "", "<#4facfe>Click: type a new one", "<red>Shift-click: back to the default"]
+    duration:
+      name: "<#4facfe><bold>Ban length"
+      lore: ["<gray>Now: <white>{value}", "<gray>For ban, and warn after the warnings.", "", "<#4facfe>Click to change"]
+    warnings:
+      name: "<#4facfe><bold>Warnings before a ban"
+      lore: ["<gray>Now: <white>{value}", "<gray>How often warn only kicks.", "", "<#4facfe>Click to change"]
+    command:
+      name: "<#4facfe><bold>Own command"
+      lore: ["<gray>Now: <white>{value}", "<gray>e.g. tempban {player} 3d {reason}", "", "<#4facfe>Click: type it (sets the action)", "<red>Shift-click: remove"]
+    notify:
+      name: "<#4facfe><bold>Tell the team"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to switch"]
+    discord:
+      name: "<#4facfe><bold>Discord"
+      lore: ["<gray>Now: <white>{value}", "<gray>Needs a webhook in the settings.", "", "<#4facfe>Click to switch"]
+    preview:
+      name: "<white>What the player reads"
+      lore: ["<gray>{reason}"]
+    unblock:
+      name: "<red><bold>Allow again"
+      lore: ["<red>Shift-click to remove the block"]
+  suggestions:
+    title: "<dark_gray>Known mods"
+    client: ["<red>Cheat client", "", "<#4facfe>Click to block"]
+    mod: ["<gray>Mod", "", "<#4facfe>Click to block"]
+  settings:
+    title: "<dark_gray>Settings"
+    own-ban: "Bastion's own ban"
+    action:
+      name: "<#4facfe><bold>Default action"
+      lore: ["<gray>Now: <white>{value}", "<gray>For mods without their own.", "", "<#4facfe>Click to change"]
+    reason:
+      name: "<#4facfe><bold>Default reason"
+      lore: ["<gray>Now: <white>{value}", "<gray>{mods} becomes the mod names.", "", "<#4facfe>Click: type a new one"]
+    duration:
+      name: "<#4facfe><bold>Default ban length"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    warnings:
+      name: "<#4facfe><bold>Warnings before a ban"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    ban-command:
+      name: "<#4facfe><bold>Ban with"
+      lore: ["<gray>Now: <white>{value}", "<gray>Your ban plugin's command, or", "<gray>Bastion's own ban.", "", "<#4facfe>Click: type a command", "<red>Shift-click: own ban"]
+    notify:
+      name: "<#4facfe><bold>Tell the team"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to switch"]
+    discord:
+      name: "<#4facfe><bold>Discord webhook"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click: paste a link", "<red>Shift-click: off"]
+    mode:
+      name: "<#4facfe><bold>Mode"
+      lore: ["<gray>Now: <white>{value}", "<gray>Allowed clients: <white>{clients}", "", "<#4facfe>Click to switch"]
+    not-allowed:
+      name: "<#4facfe><bold>Client not allowed"
+      lore: ["<gray>Now: <white>{value}", "<gray>Only in allow-list mode.", "", "<#4facfe>Click to change"]
+    sign:
+      name: "<#4facfe><bold>Hidden sign check"
+      lore: ["<gray>Now: <white>{value}", "<gray>Asks the client for mod texts;", "<gray>invisible to the player.", "", "<#4facfe>Click to switch"]
+    hidden:
+      name: "<#4facfe><bold>Check blocked"
+      lore: ["<gray>Now: <white>{value}", "<gray>When a client blocks the sign", "<gray>check (a mod that hides mods).", "<gray>Harmless privacy mods can do", "<gray>it too: alert is the safest.", "", "<#4facfe>Click to change"]
+    no-answer:
+      name: "<#4facfe><bold>No answer"
+      lore: ["<gray>Now: <white>{value}", "<gray>When a client twice does not", "<gray>answer the sign at all", "<gray>(cheat client or heavy lag).", "", "<#4facfe>Click to change"]
+    disguise:
+      name: "<#4facfe><bold>Disguise"
+      lore: ["<gray>Now: <white>{value}", "<gray>When a client lies about what", "<gray>it is: »vanilla« with mod channels", "<gray>or mod texts; a fake Lunar name.", "", "<#4facfe>Click to change"]
+    lumio:
+      name: "<#4facfe><bold>Lumio required"
+      lore: ["<gray>Now: <white>{value}", "<gray>Lumio sends the full mod", "<gray>list from the mod loader."]
+      incomplete: ["", "<gold>⚠ Not required: Bastion does", "<gold>not know every mod: mods without", "<gold>texts, Wurst and disguised", "<gold>clients stay invisible."]
+      required: ["", "<green>Every player sends the", "<green>full mod list.", "<gray>Without Lumio: refused."]
+      click: "<#4facfe>Click: off → optional → required"
+    repeat-window:
+      name: "<#4facfe><bold>Coming back: within"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    repeat-times:
+      name: "<#4facfe><bold>Coming back: how often"
+      lore: ["<gray>Now: <white>{value} times", "", "<#4facfe>Click to change"]
+    repeat-action:
+      name: "<#4facfe><bold>Coming back: then"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]
+    repeat-rule:
+      name: "<white><bold>Rule for coming back"
+      "on": ["<gray>Whoever joins <white>{times} times</white> within", "<white>{window}</white> <gray>with a blocked mod", "<gray>gets: <red>{punish}"]
+      "off": ["<gray>Off. Set a time on the left", "<gray>to switch it on."]
+    language:
+      name: "<#4facfe><bold>Language"
+      lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to switch"]
+  bans:
+    title: "<dark_gray>Banned players ({count})"
+    entry: ["<gray>Reason: <white>{reason}", "<gray>Time: <white>{time}", "", "<red>Shift-click to unban"]
+
+repeat:
+  suffix: "(again within a short time)"
+  alert-action: "came back again with it → {action}"
+  ban: "ban {time}"
+  window:
+    "off": "off"
+    10m: "10 minutes"
+    1h: "1 hour"
+    1d: "1 day"
+    7d: "7 days"
+    30d: "30 days"
+
+roommenu:
+  title: "<gradient:#7c5cff:#4fc3f7><bold>Check room & Lumio</bold></gradient>"
+  entry:
+    name: "<#7c5cff><bold>Check room & Lumio"
+    lore: ["<gray>What happens on joining: check room,", "<gray>Lumio and injection clients."]
+  enabled:
+    name: "<#7c5cff><bold>Check room: <white>{value}"
+    lore: ["<gray>On joining, players wait a moment in a", "<gray>room of bedrock until the check is done.", "<gray>Then they are back exactly where they were.", "", "<#4facfe>Click: on or off"]
+  place:
+    name: "<#7c5cff><bold>Place: <white>{value}"
+    lore: ["<gray>Where the room is.", "", "<#4facfe>Click: change"]
+  place-top: "high above the spawn"
+  place-bottom: "down in the bedrock"
+  forbidden:
+    name: "<#7c5cff><bold>Forbidden mod: <white>{value}"
+    lore: ["<gray>What happens when somebody has a", "<gray>forbidden mod (rules that kick or warn).", "", "<#4facfe>Click: change"]
+  missing:
+    name: "<#7c5cff><bold>Without Lumio: <white>{value}"
+    lore: ["<gray>Only when Lumio is required. In the room", "<gray>the player gets a window with a download", "<gray>button and a guide.", "", "<#4facfe>Click: change"]
+  choice-kick: "kick"
+  choice-stay: "stay in the room, with a window"
+  lumio:
+    name: "<#7c5cff><bold>Lumio: <white>{value}"
+    lore: ["<gray>Off, optional or required. Only when it is", "<gray>required does Bastion see every mod and", "<gray>every injection client.", "", "<#4facfe>Click: change"]
+  download:
+    name: "<#7c5cff><bold>Download link"
+    lore: ["<white>{value}", "<gray>Where the download button in the window leads.", "", "<#4facfe>Click: write the link in chat"]
+  no-link: "none yet"
+  preview:
+    name: "<#7c5cff><bold>See the window \"Lumio missing\""
+    lore: ["<gray>Shows you the window players", "<gray>without Lumio get."]
+  forbidden-preview:
+    name: "<#7c5cff><bold>See the window \"Forbidden mod\""
+    lore: ["<gray>What it looks like when somebody with a", "<gray>forbidden mod stays in the room."]
+  injection:
+    name: "<#7c5cff><bold>Find injection clients: <white>{value}"
+    lore: ["<gray>Lumio checks the game for code put in from", "<gray>outside (Vape, Prestige and the like).", "<gray>Needs Lumio 0.6 or newer.", "", "<#4facfe>Click: on or off"]
+  injection-action:
+    name: "<#7c5cff><bold>Injection client found: <white>{value}"
+    lore: ["<gray>The kick says: \"You have ... on.", "<gray>Please delete it.\"", "", "<#4facfe>Click: change"]
+  how:
+    name: "<#7c5cff><bold>How it works"
+    lore: ["<white>1. <gray>A player joins and lands in the room", "<white>2. <gray>Bastion checks client, mods, the", "<gray>   hidden sign and Lumio", "<white>3. <gray>All fine: back, \"✔ Checked\"", "<white>4. <gray>Else: kick or a window in the room"]
+
+room:
+  enter-title: "<gradient:#7c5cff:#4fc3f7><bold>Quick check</bold></gradient>"
+  enter-subtitle: "<gray>Just a moment …"
+  bar-checking: "<white>Checking <dark_gray>·</dark_gray> <gray>{seconds} s left"
+  bar-lumio: "<red>Lumio missing <dark_gray>·</dark_gray> <gray>see the window"
+  bar-forbidden: "<red>Forbidden mod: {mods}"
+  done-title: "<green><bold>✔ Checked</bold>"
+  done-subtitle: "<gray>Have fun!"
+  wait: "<gray>Wait a moment, the check is running."
+  leave-screen: "<white><bold>See you soon!</bold>\n\n<gray>Install Lumio and join again."
+
+window:
+  missing:
+    title: "<gradient:#7c5cff:#4fc3f7><bold>Lumio is needed</bold></gradient>"
+    text: "<white>On this server you play with <#b388ff>Lumio</#b388ff>, the free client mod: smooth text, your own HUD, a radial menu, a music widget and more.\n\n<gray>Install it once, then you are straight in."
+  noreport:
+    title: "<gold><bold>Lumio did not answer</bold>"
+    text: "<white>Your Lumio did not report.\n\n<gray>Restart Minecraft. If that does not help, download Lumio again."
+  outdated:
+    title: "<gold><bold>Lumio is too old</bold>"
+    text: "<white>Your Lumio is too old for this server.\n\n<gray>Download the new version and replace the old file in the mods folder."
+  forbidden:
+    title: "<red><bold>Forbidden mod found</bold>"
+    text: "<white>You have <red>{mods}</red> on.\n\n<gray>Please delete it and join again."
+  no-link: "<gray>Ask the team for the download link."
+  download: "⬇ Download Lumio"
+  download-tip: "Opens the download page"
+  guide: "Guide"
+  guide-tip: "Step by step"
+  leave: "Leave the server"
+  back: "Back"
+  guide-title: "<gradient:#7c5cff:#4fc3f7><bold>How to install Lumio</bold></gradient>"
+  guide-steps: "<white>1.</white> <gray>Get the <white>Fabric Installer</white> and install Fabric for your Minecraft version.\n<white>2.</white> <gray>Download <white>Fabric API</white>.\n<white>3.</white> <gray>Download <white>Lumio</white> (the file for your version).\n<white>4.</white> <gray>Put Fabric API and Lumio into the folder <white>.minecraft/mods</white>.\n<white>5.</white> <gray>Start Minecraft with the Fabric profile and join again."
+  fabric: "Fabric Installer"
+  fabric-api: "Fabric API"
+
+book:
+  missing: "<dark_purple><bold>Lumio is needed</bold></dark_purple>\n<black>Install the free client mod once, then you are straight in."
+  noreport: "<gold><bold>Lumio did not answer</bold></gold>\n<black>Restart Minecraft or download Lumio again."
+  outdated: "<gold><bold>Lumio is too old</bold></gold>\n<black>Download the new version."
+  download: "<dark_purple><bold>⬇ Download</bold>"
+  no-link: "<gray>Ask the team for the link."
+  guide: "<blue><bold>» Guide</bold>"
+  leave: "<red>Leave the server"
+  guide-steps: "<black>1. Install Fabric\n2. Get Fabric API\n3. Get Lumio\n4. Both into .minecraft/mods\n5. Start with Fabric\n"
+  fabric: "<blue><u>Fabric Installer</u>"
+  fabric-api: "<blue><u>Fabric API</u>"
+  lumio: "<dark_purple><u>Lumio</u>"
+  forbidden: "<red><bold>Forbidden mod</bold></red>\n<black>You have {mods} on. Please delete it and join again."
+
+injection:
+  unknown: "an injection client"
+  signs: "signs of an injection"
+  hint: "Something unusual in the game"
+  kind:
+    codefile: "Code from an unknown file: {what}"
+    codeloader: "Code from a foreign loader: {what}"
+    agent: "Java agent at start: {what}"
+    attach: "Attached later: {what}"
+    code: "Code without origin: {what}"
+    module: "Foreign DLL in the game: {what}"
+    thread: "Thread from injected memory: {what}"
+    library: "Foreign library in the game: {what}"
+    preload: "Preloaded library: {what}"
+    process: "Injector running: {what}"
+    debugger: "Debugger on the game: {what}"
+
+inject:
+  usage: "<gray>Usage: <white>/inject</white> (menu), <white>/inject vape [kick|ban|alert|default]</white>, <white>/inject all on|off</white>, <white>/inject strict on|off</white>, <white>/inject action kick|ban|alert</white>, <white>/inject program <name></white>, <white>/inject list</white>"
+  saved: "<green>Saved."
+  unknown: "<gray>No known injection client called <white>{name}</white>. Known are:"
+  suggestion: "<#4facfe>  ▶ {name} <dark_gray>({id}) <gray>Click to block"
+  as-program: "<gray>  ▶ Add <white>{name}</white> as a program name <dark_gray>(click)"
+  program-added: "<green>Program <white>{name}</white> added: running next to the game counts as an injection client."
+  program-removed: "<gray>Program <white>{name}</white> removed."
+  program-known: "<gray><white>{name}</white> already belongs to a known client and is looked for anyway."
+  program-bad: "<red>That is no valid program name (2-40 characters: letters, digits, - _ . +) or the list is full."
+  client-set: "<green><white>{client}</white> is blocked: <white>{action}</white>."
+  client-default: "<gray><white>{client}</white> follows 'block all' again: <white>{all}</white>."
+  all-blocked: "blocked"
+  all-free: "only a hint to the team"
+  state-all: "blocked (block all)"
+  state-free: "only a hint to the team"
+  list-head: "<gradient:#7c5cff:#4fc3f7><bold>Injection protection</bold></gradient>"
+  list-settings: "<gray>Check: <white>{check}</white> · Block all: <white>{all}</white> · Strict: <white>{strict}</white> · Action: <white>{action}"
+  list-client: "<dark_gray> • <white>{client}</white> <gray>{state}"
+  list-client-own: "<dark_gray> • <white>{client}</white> <#ff6b6b>{state}"
+  list-programs: "<gray>Own program names: <white>{names}"
+  lumio-warning: "<yellow>⚠ Only players with Lumio are checked. So nobody plays unchecked: <white>/bastion lumio required"
+
+injectmenu:
+  title: "<gradient:#7c5cff:#ff6b6b><bold>Injection protection</bold></gradient>"
+  entry:
+    name: "<#ff6b6b><bold>Injection clients <white>({state})"
+    lore: ["<gray>Block Vape, Prestige, Drip and other", "<gray>ghost clients one by one or all.", "<gray>Also with <white>/inject</white>."]
+  entry-all: "all blocked"
+  entry-some: "one by one"
+  lumio-ok:
+    name: "<green><bold>✔ Lumio is required"
+    lore: ["<gray>Every player has Lumio and is checked", "<gray>for injections. Without Lumio (or with", "<gray>one too old) nobody gets in."]
+  lumio-warn:
+    name: "<yellow><bold>⚠ Lumio: {mode}"
+    lore: ["<gray>Only Lumio finds injection clients.", "<gray>Players without it are not checked", "<gray>and can join with Vape and co.", "", "<#4facfe>Click: make Lumio required"]
+  check:
+    name: "<#7c5cff><bold>Check: <white>{value}"
+    lore: ["<gray>Lumio looks in the game for code put", "<gray>in from outside, and for injector", "<gray>programs next to it.", "", "<#4facfe>Click: on or off"]
+  all:
+    name: "<#ff6b6b><bold>Block all injections: <white>{value}"
+    lore: ["<gray>On: every sure injection is out,", "<gray>also a client nobody knows.", "<gray>Off: only the clients below that you", "<gray>block one by one; the rest goes to", "<gray>the team as a hint.", "", "<#4facfe>Click: on or off"]
+  strict:
+    name: "<#ff6b6b><bold>Strict: <white>{value}"
+    lore: ["<gray>Small signs are enough: a DLL from an", "<gray>odd folder, a tool attached to the", "<gray>game, code from an unknown file.", "<yellow>Finds more, but can also hit players", "<yellow>with an unusual setup.", "", "<#4facfe>Click: on or off"]
+  action:
+    name: "<#7c5cff><bold>What happens: <white>{value}"
+    lore: ["<gray>For 'block all', 'strict' and clients", "<gray>without their own setting. The kick", "<gray>says: 'You have ... on. Please delete it.'", "", "<#4facfe>Click: change"]
+  client:
+    name: "<white><bold>{client}"
+    name-own: "<#ff6b6b><bold>{client}"
+    lore: ["<gray>Now: <white>{state}", "<dark_gray>Programs: {programs} …", "", "<#4facfe>Click: default → kick → ban → alert only"]
+  programs:
+    name: "<#7c5cff><bold>Own program names"
+    lore: ["<gray>An injector missing here? Its program", "<gray>name (without .exe) is then looked", "<gray>for too.", "<gray>Now: <white>{names}", "", "<#4facfe>Click: add or remove"]
+  no-programs: "none"
+  how:
+    name: "<#7c5cff><bold>How it works"
+    lore: ["<white>1. <gray>Lumio checks the running game for", "<gray>   code put in and for injectors", "<white>2. <gray>Known client: its own setting", "<white>3. <gray>Unknown but sure: 'block all'", "<white>4. <gray>Only signs: 'strict' or a team hint", "", "<dark_gray>Only players with Lumio are checked."]
+
+anticheat:
+  antixray-state: "<gray>Paper anti-xray: <white>{state}</white>. <white>/bastion ac antixray on</white> or <white>off</white>."
+  antixray-on: "<green>Paper anti-xray is switched on for the overworld and the nether (ores, ancient debris, spawners, chests). It works after the next restart. Backups: *.staffcore-backup"
+  antixray-off: "<gray>Paper anti-xray is switched off. Takes effect after the next restart."
+  antixray-failed: "<red>Could not write the Paper config: {error}"
+  alerts-on: "<green>Anti-cheat alerts are on for you."
+  alerts-off: "<gray>Anti-cheat alerts are off for you. <white>/bastion alerts</white> switches them on again."
+  warn-title: "<red><bold>⚠ ANTI-CHEAT ⚠</bold>"
+  warn-subtitle: "<white>{check} is not allowed here!"
+  warn-chat: "<red><bold>Careful!</bold> <white>{check}</white> <gray>is not allowed on this server. You have <white>{points}</white> of <white>{limit}</white> points. At <white>{limit}</white> you are punished. This was your warning."
+  alert: "<red>⚠ <white>{player}</white> <gray>{check} <white>+{points}</white> <dark_gray>({total}/{limit}) {detail}</dark_gray> <gray>Click to take the case."
+  alert-watched: "<gold>👁 <white>{player}</white> <gray>{check} <white>+{points}</white> <dark_gray>({total}/{limit}) {detail}</dark_gray> <gray>Click to take the case."
+  caught: "<red><bold>Caught:</bold> <white>{player}</white> <gray>({checks}) → <white>{step}</white>"
+  kicked: "<red><bold>Anti-cheat</bold>\n\n<gray>{reason}"
+  playbanned: "<red>The anti-cheat gave you a PlayBan for <white>{time}</white>. Others do not see you and you do not see them. <gray>Unfair? <white>/ticket</white>"
+  reason: "Anti-cheat: {checks}"
+  antibot-on: "<red>⚠ Many new accounts at once: bot protection is on for 2 minutes. Only players who were here before can join."
+  antibot-kick: "<red>Too many players are joining right now.\n<gray>Please try again in a few minutes."
+  watched-join: "<gold>👁 <white>{player}</white> <gray>is on the watch list and just joined."
+  now-watched: "<gold>👁 <white>{player}</white> <gray>is watched now: points count one and a half, every finding is reported."
+  not-watched: "<gray><white>{player}</white> is no longer watched."
+  reset: "<gray>The points of <white>{player}</white> are back to 0."
+  points-header: "<gray><white>{player}</white>: <white>{total}</white>/<white>{limit}</white> points, watched: <white>{watched}</white>"
+  points-line: "<gray> {check}: <white>{points}"
+  header: "<gradient:#ff5f6d:#ffc371>Anti-cheat</gradient> <gray>({count} marked)"
+  line: "<white>{player}</white> <gray>{score}/{limit} {watched}"
+  unknown: "<red>No player called <white>{player}</white> is known."
+  cleared: "<gray>The mark of <white>{player}</white> is gone."
+  check:
+    noweb: "Ignoring cobwebs"
+    fastclimb: "Fast climbing"
+    sprint: "Sprinting while starving"
+    fasteat: "Fast eating"
+    grim: "Grim"
+    elytra: "Elytra fly / speed"
+    trident: "Trident boost"
+    xraybait: "Dug to fake ores"
+    snap: "Sudden aim jump"
+    botmine: "Mining like a bot"
+    aim: "Aim (mouse)"
+    criticals: "Criticals"
+    invmove: "Inventory while running"
+    fastbow: "Fast bow"
+    fly: "Flying"
+    speed: "Speed"
+    reach: "Reach"
+    aura: "Kill aura"
+    autoclick: "Auto clicker"
+    nofall: "No fall damage"
+    velocity: "No knockback"
+    xray: "X-ray (ores)"
+    timer: "Timer"
+    step: "Step"
+    jesus: "Walking on water"
+    fastbreak: "Fast break"
+    nuker: "Nuker"
+    scaffold: "Scaffold / fast place"
+    noslow: "No slowdown"
+    badpackets: "Impossible movement"
+    autototem: "Auto totem"
+    anchor: "Anchor macro"
+    crystal: "Crystal macro"
+    bot: "Bot"
+  detail:
+    no-elytra: "gliding without an elytra"
+    ground: "claims ground in the air"
+    dry: "riptide without water or rain"
+    no-riptide: "riptide boost without a riptide trident"
+    autoblock: "hits while blocking/eating"
+    glide: "glides without sinking or a rocket"
+    hover: "hangs in the air"
+    rise: "rises without help"
+    multi: "two targets at once"
+    wall: "through a wall"
+    no-brand: "no client name"
+    instant-chat: "writes the moment they join"
+    chat-wave: "same message as several others"
+
+replay:
+  usage: "<gray>Usage: <white>/anticheat replay <player> [1-5|now] [first|follow|free]</white>"
+  state: "<gray>Replay: <white>{state}</white>, speed <white>{speed}x"
+  paused: "paused"
+  playing: "playing"
+  button:
+    first: "<#ffc371>[Eyes]"
+    follow: "<#ffc371>[Follow]"
+    free: "<#ffc371>[Free]"
+    pause: "<white>[Pause]"
+    slower: "<white>[Slower]"
+    faster: "<white>[Faster]"
+    stop: "<red>[Stop]"
+  bar: "<red>Replay: <white>{player}</white> <gray>- {reason}"
+  started: "<gray>Replay of <white>{player}</white>, {seconds} seconds. Only you see the figure. <white>[Stop]</white> ends it."
+  ended: "<gray>Replay over."
+  event: "<#ffc371>{event}"
+  none: "<gray>There is no recording of this player."
+  live: "recorded now"
+
+tools:
+  banhammer-text: <red><bold>BANNED
+
+# ---- Bastion: screens
+screen:
+  date-format: "yyyy-MM-dd HH:mm"
+  never: "never"
+  discord: "<gray>Appeal or questions? Join our Discord: <aqua><u>{discord}</u>"
+  ban: "<gradient:#ff4d4d:#ff9a3c><bold>⛨ {server}</bold></gradient>\n\n<white><bold>You are banned</bold>\n\n<gray>Reason: <white>{reason}\n<gray>Duration: <white>{time} <dark_gray>· <gray>Ends: <white>{until}\n\n<dark_gray>Case <white>#{case}</white> · Player ID <white>{uuid}</white>"
+  kick: "<gradient:#ff9a3c:#ffd23c><bold>⛨ {server}</bold></gradient>\n\n<white><bold>You were kicked</bold>\n\n<gray>Reason: <white>{reason}\n<gray>Next time: <white>{next}"
+  warn: "<gradient:#ffd23c:#ff9a3c><bold>⛨ {server}</bold></gradient>\n\n<yellow><bold>Warning {n} of {of}</bold>\n\n<gray>Reason: <white>{reason}\n<gray>Next time: <white>{next}"
+
+step:
+  kick: "Kick"
+  warn: "Warning"
+  ban: "Ban for {time}"
+
+acmenu:
+  title: "<gradient:#ff4d4d:#ff9a3c><bold>Anti-cheat</bold></gradient>"
+  name: "<white><bold>{player}"
+  lore: ["<gray>Points now: <white>{points}</white>/<white>{limit}", "<gray>Caught before: <white>{caught}x", "<gray>Watched: <white>{watched}", ""]
+  check: "<dark_gray> • <gray>{check} <white>{points}"
+
+akte:
+  usage: "<gray>Usage: <white>/akte [player]"
+  title: "<gradient:#7c5cff:#4fc3f7><bold>File: {player}</bold></gradient>"
+  list-title: "<gradient:#7c5cff:#4fc3f7><bold>Player files</bold></gradient>"
+  list-lore: ["<gray>Kicks <white>{kicks}</white> · Warnings <white>{warns}</white> · Bans <white>{bans}", "<gray>Anti-cheat: caught <white>{caught}x", "", "<#4facfe>Click: open the file"]
+  history-title: "<gradient:#7c5cff:#4fc3f7><bold>History: {player}</bold></gradient>"
+  mods-title: "<gradient:#7c5cff:#4fc3f7><bold>Mods: {player}</bold></gradient>"
+  online: "online now"
+  no-lumio: "no Lumio"
+  note-ask: "<#4facfe>Write the note about this player."
+  staff-reason: "Punished by the team"
+  reset-done: "Punishment level and warnings reset"
+  event: "<white>{date} <dark_gray>· <#ff9a3c>{type}"
+  line: "<gray>{text}"
+  by: "<dark_gray>by {by}"
+  console: "<white>{player}<gray>: kicks {kicks}, warnings {warns}, bans {bans}, anti-cheat {caught}x, clients: {clients}, {mods} mods"
+  console-line: "<dark_gray> • <gray>{type}: <white>{text} <dark_gray>({by})"
+  type:
+    kick: "Kick"
+    warn: "Warning"
+    ban: "Ban"
+    unban: "Unbanned"
+    reset: "Reset"
+    cheat: "Anti-cheat"
+    mod: "Forbidden mod"
+    inject: "Injection client"
+    pack: "Cheat resource pack"
+    note: "Note"
+    rights: "Rights"
+  head:
+    name: "<white><bold>{player}"
+    lore: ["<gray>Player ID: <white>{uuid}", "<gray>First seen: <white>{first}", "<gray>Last seen: <white>{last}", "<gray>Joins: <white>{joins}", "<gray>Names: <white>{names}"]
+    banned: "<red>Banned <dark_gray>(#{case})</dark_gray> until <white>{until}"
+  clients:
+    name: "<#4facfe><bold>Clients & Lumio"
+    lore: ["<gray>Clients: <white>{list}", "<gray>Lumio: <white>{lumio}"]
+  mods:
+    name: "<#4facfe><bold>Mods <white>({count})"
+    lore: ["<gray>{list}", "", "<#4facfe>Click: see all"]
+  packs:
+    name: "<#4facfe><bold>Resource packs <white>({count})"
+    lore: ["<gray>{list}"]
+  cheat:
+    name: "<#ff4d4d><bold>Anti-cheat"
+    lore: ["<gray>Caught: <white>{caught}x", "<gray>Points now: <white>{now}</white>/<white>{limit}", "<gray>Watched: <white>{watched}", "", "<gray>Most so far:"]
+    click: "<#4facfe>Click: watch on/off"
+  punish:
+    name: "<#ff9a3c><bold>Punishments"
+    lore: ["<gray>Kicks: <white>{kicks}", "<gray>Warnings: <white>{warns}", "<gray>Bans: <white>{bans}", "", "<gray>Next step: <white>{next}"]
+  notes:
+    name: "<#7c5cff><bold>Notes <white>({count})"
+    lore: ["<gray>Last: <white>{last}", "", "<#4facfe>Click: write a note"]
+  history:
+    name: "<#7c5cff><bold>History <white>({count})"
+    lore: ["<gray>Everything that happened,", "<gray>newest first.", "", "<#4facfe>Click: open"]
+  act-punish:
+    name: "<red><bold>Punish"
+    lore: ["<gray>The next step of the ladder:", "<white>{next}"]
+  act-check:
+    name: "<#4facfe><bold>Check client & mods"
+    lore: ["<gray>What the player has on right now."]
+  act-unban:
+    name: "<green><bold>Unban"
+    lore: ["<gray>Close case <white>#{case}</white>, also in", "<gray>the server's ban system."]
+  act-reset:
+    name: "<yellow><bold>Reset"
+    lore: ["<gray>Punishment level, warnings and", "<gray>anti-cheat points back to zero."]
+  act-rights:
+    name: "<#7c5cff><bold>This player's rights"
+    lore: ["<gray>Set what they may do in", "<gray>Bastion, just for them."]
+
+setup:
+  usage: "<gray>Usage: <white>/setup</white> (menu) or <white>/setup 1</white> | <white>2</white> | <white>3</white>"
+  title: "<gradient:#7c5cff:#ff4d4d><bold>Bastion · How strict?</bold></gradient>"
+  current: "<green>✔ Set right now"
+  click: "<#4facfe>Click: take this level"
+  done: "<green>Level <white>{level}</white> (<white>{name}</white>) is set:"
+  lumio-hint: "<yellow>⚠ <gray>Bastion sees injection clients, cheat packs and every mod only for players with Lumio. For full protection: <white>/bastion lumio required"
+  xray-on: "Paper anti-x-ray switched on (works after a restart)"
+  xray-off: "Paper anti-x-ray switched off (works after a restart)"
+  xray-failed: "Paper anti-x-ray could not be set"
+  xray-note: "<gray>{note}"
+  level1:
+    short: "Mild"
+    name: "<green><bold>① Mild"
+    lore: ["<gray>Cheat clients, injectors and x-ray", "<gray>are out, punishments grow slowly:", "<white>3x kick → 3x warning →", "<white>bans 1 h, 1 day, 7 days, 30 days, forever", "<gray>Anti-cheat: 35 points until caught"]
+  level2:
+    short: "Strict"
+    name: "<gold><bold>② Strict"
+    lore: ["<gray>Also Freecam, Baritone, ESP & co.", "<gray>Punishments grow faster:", "<white>kick → 2x warning →", "<white>bans 1 day, 7 days, 30 days, forever", "<gray>3x in 24 h with a client: 1 day ban", "<gray>Anti-cheat: 25 points, anti-x-ray on"]
+  level3:
+    short: "Hard"
+    name: "<red><bold>③ Hard"
+    lore: ["<gray>Also automation mods (Tweakeroo, …)", "<gray>No second chance:", "<white>kick → ban 7 days → 30 days → forever", "<gray>Back with a client within 24 h:", "<white>7 days ban, no discussion", "<gray>Anti-cheat: 15 points, at once for fly,", "<gray>speed, reach, aura …, strict mode on"]
+  lumio:
+    name: "<#7c5cff><bold>Lumio: <white>{mode}"
+    lore: ["<gray>Only with Lumio required Bastion sees", "<gray>every mod, every injector and every", "<gray>cheat resource pack.", "", "<#4facfe>Click: required on/off"]
+  discord:
+    name: "<#5865F2><bold>Discord link"
+    lore: ["<gray>Shown on ban, kick and", "<gray>warning screens.", "<gray>Now: <white>{link}", "", "<#4facfe>Click: type it"]
+    none: "none"
+    ask: "<#4facfe>Write the Discord link (e.g. <white>discord.gg/yourserver</white>). Empty = none."
+  xray:
+    name: "<#4fc3f7><bold>Paper anti-x-ray: <white>{value}"
+    lore: ["<gray>Hides ores from x-ray packs and", "<gray>mods. On from level 2."]
+
+rights:
+  title: "<gradient:#7c5cff:#4fc3f7><bold>Ranks & rights</bold></gradient>"
+  group-title: "<gradient:#7c5cff:#4fc3f7><bold>Rank: {rank}</bold></gradient>"
+  player-title: "<gradient:#7c5cff:#4fc3f7><bold>Rights: {player}</bold></gradient>"
+  source:
+    name: "<white><bold>Ranks from: <#4facfe>{source}"
+    lore: ["<gray>The ranks on this server and who has", "<gray>which. Click a rank: set what it may do."]
+    own: "Bastion (no rank plugin)"
+  op: "Operators"
+  everybody: "All players"
+  group:
+    name: "<white><bold>{rank} <dark_gray>(level {weight})"
+    members: "<gray>Members: <white>{count}"
+    names: "<dark_gray>{names}"
+    click: "<#4facfe>Click: set rights"
+  can: "<green>✔ <gray>{right}"
+  cannot: "<red>✘ <dark_gray>{right}"
+  state-on: "<green>✔ This rank may. <#4facfe>Click: forbid"
+  state-off: "<red>✘ This rank may not. <#4facfe>Click: allow"
+  state-rank: "<gray>As their rank says"
+  state-allowed: "<green>Allowed for them"
+  state-forbidden: "<red>Forbidden for them"
+  has-now: "<dark_gray>Has it now: yes"
+  has-not: "<dark_gray>Has it now: no"
+  player-click: "<#4facfe>Click: as rank → allowed → forbidden"
+  player-head: ["<gray>Rank: <white>{ranks}"]
+  member: "<white><bold>{player}"
+  member-lore: ["<#4facfe>Click: rights just for them"]
+  right:
+    check: "Check players & menu"
+    akte: "Read files & notes"
+    notify: "Get alerts"
+    block: "Block mods/injectors, punish"
+    unban: "Unban & reset"
+    settings: "Settings & /setup"
+    ranks: "Manage ranks & rights"
+    bypass: "Never checked"
+  desc:
+    check: ["<gray>/bastion, see which clients and", "<gray>mods players have."]
+    akte: ["<gray>/akte: everything about a player,", "<gray>write notes."]
+    notify: ["<gray>Gets the alerts about cheats,", "<gray>mods, injectors and packs."]
+    block: ["<gray>/modblock, /inject, and punish", "<gray>players from their file."]
+    unban: ["<gray>Lift bans, reset punishment level", "<gray>and warnings."]
+    settings: ["<gray>/setup and every setting."]
+    ranks: ["<gray>This page: who may do what.", "<red>For owners only!"]
+    bypass: ["<gray>Anti-cheat and mod check leave", "<gray>this rank alone.", "<red>Careful: a cheater with this rank", "<red>would not be caught."]
+
+time:
+  day: "day"
+  days: "days"
+  hour: "hour"
+  hours: "hours"
+  minute: "minute"
+  minutes: "minutes"

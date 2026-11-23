@@ -99,12 +99,14 @@ public final class Protocol {
         java.util.List<String> watch = new ArrayList<>();
         if (o.has("watch") && o.get("watch").isJsonArray()) {
             for (JsonElement w : o.getAsJsonArray("watch")) {
-                if (!w.isJsonPrimitive() || watch.size() >= 64) continue;
+                if (!w.isJsonPrimitive() || watch.size() >= 128) continue;
                 String name = clean(w.getAsString(), 40).toLowerCase(java.util.Locale.ROOT);
                 if (name.matches("[a-z0-9 ._-]{2,40}")) watch.add(name);
             }
         }
-        dev.lumio.guard.Integrity.onHello(nonce, check, watch);
+        // newer servers (Bastion) also ask which resource packs are on (x-ray packs)
+        packsWanted = o.has("packs") && o.get("packs").isJsonPrimitive() && o.get("packs").getAsBoolean();
+        dev.lumio.guard.Integrity.onHello(nonce, check, watch, packsWanted);
         String latest = clean(str(o, "latest", ""), 24);
         String download = clean(str(o, "download", ""), 300);
         if (!latest.isEmpty() && Versions.compare(LumioClient.version(), latest) < 0) {
@@ -122,6 +124,9 @@ public final class Protocol {
      * The report: our Lumio version, Minecraft, the loader and every mod with its fingerprint. A long
      * list is split into parts, each carrying the server's word, so the server can put it together.
      */
+    /** Whether the server asked for the resource packs. */
+    private static volatile boolean packsWanted;
+
     static void sendReport(String nonce, List<ModList.Mod> mods) {
         if (!ClientPlayNetworking.canSend(JsonPayload.REPORT)) return;
         List<JsonArray> parts = new ArrayList<>();
@@ -156,6 +161,17 @@ public final class Protocol {
                         .map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?"));
                 r.addProperty("loader", "fabric " + FabricLoader.getInstance().getModContainer("fabricloader")
                         .map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?"));
+                if (packsWanted) {
+                    JsonArray packs = new JsonArray();
+                    for (dev.lumio.guard.Packs.Info pk : dev.lumio.guard.Packs.active()) {
+                        JsonObject x = new JsonObject();
+                        x.addProperty("name", pk.name());
+                        x.addProperty("xray", pk.xray());
+                        if (!pk.why().isEmpty()) x.addProperty("why", pk.why());
+                        packs.add(x);
+                    }
+                    r.add("packs", packs);
+                }
             }
             r.add("mods", parts.get(i));
             ClientPlayNetworking.send(new JsonPayload(JsonPayload.REPORT, r.toString()));

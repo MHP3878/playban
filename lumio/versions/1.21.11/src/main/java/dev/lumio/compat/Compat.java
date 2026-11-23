@@ -83,4 +83,16 @@ public final class Compat {
     public static void image(GuiGraphics g, Object texture, int x, int y, int w, int h, int size, int argb) {
         g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, (Identifier) texture, x, y, 0f, 0f, w, h, size, size, size, size, argb);
     }
+
+    /** A file inside a resource pack ("minecraft", "textures/block/stone.png"), or null when the pack has none. */
+    public static java.io.InputStream packFile(net.minecraft.server.packs.PackResources pack, String namespace, String path) {
+        try {
+            Identifier key = Identifier.tryBuild(namespace, path);
+            if (key == null) return null;
+            var supplier = pack.getResource(net.minecraft.server.packs.PackType.CLIENT_RESOURCES, key);
+            return supplier == null ? null : supplier.get();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

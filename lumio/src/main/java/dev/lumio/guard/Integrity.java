@@ -28,6 +28,7 @@ public final class Integrity {
 
     private static volatile String nonce;
     private static volatile List<String> watch = List.of();
+    private static volatile boolean packs;
     private static final Map<String, Finding> FOUND = new LinkedHashMap<>();
     private static final List<String> CHECKS = new ArrayList<>();
     private static Thread thread;
@@ -36,9 +37,10 @@ public final class Integrity {
     private Integrity() {}
 
     /** The server's greeting: whether to check, and which program names count as injectors. */
-    public static synchronized void onHello(String word, boolean check, List<String> names) {
+    public static synchronized void onHello(String word, boolean check, List<String> names, boolean withPacks) {
         if (!check || word == null || word.isEmpty()) return;
         watch = List.copyOf(names);
+        packs = withPacks;
         synchronized (FOUND) {
             FOUND.clear();
         }
@@ -92,6 +94,8 @@ public final class Integrity {
                     }
                     List<String> names = watch;
                     changed |= add(checks, "processes", () -> Checks.processes(names));
+                    // resource packs switched on later (an x-ray pack after joining) count too
+                    if (packs) changed |= add(checks, "packs", Packs::findings);
                     synchronized (CHECKS) {
                         CHECKS.clear();
                         CHECKS.addAll(checks);

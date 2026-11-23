@@ -279,7 +279,11 @@ public class StaffCorePlugin extends JavaPlugin {
         modules.add("ranks", org.bukkit.Material.GOLDEN_HELMET, ranks::enabled, ranks::setEnabled)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("rank", "Give and manage ranks", "staffcore.ranks", new dev.staffcore.command.RankCommand(this)))
                 .settingsMenu(p -> rankMenus.list(p));
-        modules.add("anticheat", org.bukkit.Material.IRON_SWORD, "anticheat.enabled", true)
+        // with Bastion installed, that one is the anti-cheat: no second one that counts and punishes twice
+        modules.add("anticheat", org.bukkit.Material.IRON_SWORD, () -> !modCheckInstalled() && getConfig().getBoolean("anticheat.enabled", true), v -> {
+                    getConfig().set("anticheat.enabled", v);
+                    saveConfig();
+                })
                 .command(new dev.staffcore.module.ModuleManager.Cmd("anticheat", "Players the anti-cheat marked", "staffcore.anticheat", antiCheat,
                         java.util.List.of("ac")))
                 .command(new dev.staffcore.module.ModuleManager.Cmd("alerts", "Anti-cheat alerts on or off for you", "staffcore.anticheat", antiCheat))
@@ -464,9 +468,13 @@ public class StaffCorePlugin extends JavaPlugin {
 
     public dev.staffcore.module.ModGuard modGuard() { return modGuard; }
 
-    /** Whether the plugin ModCheck is on this server (it then does the mod check instead of StaffCore). */
+    /**
+     * Whether Bastion (called ModCheck before) is on this server: it then does the mod check and the
+     * anti-cheat instead of StaffCore.
+     */
     public boolean modCheckInstalled() {
-        return getServer().getPluginManager().getPlugin("ModCheck") != null;
+        var pm = getServer().getPluginManager();
+        return pm.getPlugin("Bastion") != null || pm.getPlugin("ModCheck") != null;
     }
 
     public dev.staffcore.module.PlayerStatus playerStatus() { return playerStatus; }

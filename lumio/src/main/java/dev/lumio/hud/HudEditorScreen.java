@@ -136,7 +136,7 @@ public final class HudEditorScreen extends BaseScreen {
             Draw.text(g, size, x, 9, Draw.fade(Draw.MUTED, a));
             x += Draw.width(size) + 5;
             x = small(g, lmx, lmy, x, 5, "−", false, a, () -> Ui.step(-1)) + 3;
-            Component pct = Draw.bold(Ui.percent() + " %");
+            Component pct = Draw.bold(Component.translatable(Ui.sizeKey()));
             Draw.text(g, pct, x, 9, Draw.fade(Draw.TEXT, a));
             x += Draw.width(pct) + 3;
             x = small(g, lmx, lmy, x, 5, "+", false, a, () -> Ui.step(1)) + 10;
@@ -200,10 +200,10 @@ public final class HudEditorScreen extends BaseScreen {
             // size
             Draw.text(g, Draw.inter(Component.translatable("lumio.hud.editor.element-size")), 10, y + 4, Draw.fade(Draw.MUTED, a));
             int bx = WIN_W - 82;
-            small(g, lmx, lmy, bx, y, "−", false, a, () -> resize(slot, -0.1));
+            small(g, lmx, lmy, bx, y, "−", false, a, () -> resize(slot, -0.25));
             Component pct = Draw.bold(Math.round(slot.scale * 100) + " %");
             Draw.text(g, pct, bx + 36 - Draw.width(pct) / 2, y + 4, Draw.fade(Draw.TEXT, a));
-            small(g, lmx, lmy, WIN_W - 24, y, "+", false, a, () -> resize(slot, 0.1));
+            small(g, lmx, lmy, WIN_W - 24, y, "+", false, a, () -> resize(slot, 0.25));
             y += ROW;
             y = toggleRow(g, lmx, lmy, y, "lumio.hud.editor.shown", slot.on, a, () -> slot.on = !slot.on);
             y = toggleRow(g, lmx, lmy, y, "lumio.hud.editor.panel", slot.bg, a, () -> slot.bg = !slot.bg);
@@ -225,8 +225,9 @@ public final class HudEditorScreen extends BaseScreen {
         }
     }
 
+    /** Sizes in quarter steps: with Lumio's whole-pixel size they stay on the pixel grid, sharp. */
     private void resize(Config.HudSlot slot, double by) {
-        slot.scale = Math.max(0.4, Math.min(2.5, Math.round((slot.scale + by) * 10) / 10.0));
+        slot.scale = Math.max(0.5, Math.min(2.5, Math.round((slot.scale + by) * 4) / 4.0));
         Config.get().save();
     }
 
@@ -328,7 +329,7 @@ public final class HudEditorScreen extends BaseScreen {
         if (resizing) {
             double w = Math.max(10, mx - startX);
             Config.HudSlot s = Hud.slot(dragging);
-            s.scale = Math.max(0.4, Math.min(2.5, Math.round(startScale * w / startW * 20) / 20.0));
+            s.scale = Math.max(0.5, Math.min(2.5, Math.round(startScale * w / startW * 4) / 4.0));
             return true;
         }
         int[] p = Hud.place(dragging, mc, width, height, true);
@@ -392,7 +393,7 @@ public final class HudEditorScreen extends BaseScreen {
     protected boolean scroll(double mx, double my, double amount) {
         HudElement e = under(Minecraft.getInstance(), mx, my);
         if (e == null) return false;
-        resize(Hud.slot(e), amount > 0 ? 0.1 : -0.1);
+        resize(Hud.slot(e), amount > 0 ? 0.25 : -0.25);
         return true;
     }
 

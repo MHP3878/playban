@@ -99,7 +99,7 @@
   "lumio.menu.chat.text": "Messages with your name or one of your words light up in the theme colour and get a coloured bar. Your own name in front of your own messages does not count.",
   "lumio.chat.mention": "Lumio: mentions you",
   "lumio.chat.keyword": "Lumio: word \"%s\"",
-  "lumio.menu.size": "Lumio size (menu, HUD, cards)",
+  "lumio.menu.size": "Lumio size",
   "lumio.hud.editor.size": "Size",
   "lumio.hud.editor.snap": "Snap",
   "lumio.hud.editor.element-size": "Size",
@@ -126,5 +126,14 @@
   "lumio.hud.day": "Day & game clock",
   "lumio.hud.day.label": "DAY",
   "lumio.hud.day.value": "%s  ·  %s",
-  "lumio.hud.memory": "Memory"
+  "lumio.hud.memory": "Memory",
+  "lumio.menu.sub.general": "Colours, size, cards and sounds",
+  "lumio.menu.sub.hud": "What you see in the game and where",
+  "lumio.menu.sub.wheel": "Your fields in the radial menu",
+  "lumio.menu.sub.chat": "Mentions and your own words",
+  "lumio.menu.sub.about": "Version, server and what Lumio shares",
+  "lumio.size.compact": "Compact",
+  "lumio.size.normal": "Normal",
+  "lumio.size.large": "Large",
+  "lumio.size.xlarge": "Very large"
 }

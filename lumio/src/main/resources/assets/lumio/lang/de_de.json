@@ -99,7 +99,7 @@
   "lumio.menu.chat.text": "Nachrichten mit deinem Namen oder einem Stichwort leuchten im Chat in der Theme-Farbe auf und bekommen einen farbigen Balken. Dein eigener Name vor deinen eigenen Nachrichten zählt nicht.",
   "lumio.chat.mention": "Lumio: erwähnt dich",
   "lumio.chat.keyword": "Lumio: Stichwort „%s“",
-  "lumio.menu.size": "Lumio-Größe (Menü, HUD, Karten)",
+  "lumio.menu.size": "Größe von Lumio",
   "lumio.hud.editor.size": "Größe",
   "lumio.hud.editor.snap": "Einrasten",
   "lumio.hud.editor.element-size": "Größe",
@@ -126,5 +126,14 @@
   "lumio.hud.day": "Tag & Ingame-Uhr",
   "lumio.hud.day.label": "TAG",
   "lumio.hud.day.value": "%s  ·  %s",
-  "lumio.hud.memory": "Arbeitsspeicher"
+  "lumio.hud.memory": "Arbeitsspeicher",
+  "lumio.menu.sub.general": "Farben, Größe, Karten und Töne",
+  "lumio.menu.sub.hud": "Was du im Spiel siehst und wo es steht",
+  "lumio.menu.sub.wheel": "Deine Felder im Kreismenü",
+  "lumio.menu.sub.chat": "Erwähnungen und eigene Stichwörter",
+  "lumio.menu.sub.about": "Version, Server und was Lumio teilt",
+  "lumio.size.compact": "Kompakt",
+  "lumio.size.normal": "Normal",
+  "lumio.size.large": "Groß",
+  "lumio.size.xlarge": "Sehr groß"
 }

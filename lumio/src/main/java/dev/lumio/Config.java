@@ -22,6 +22,8 @@ public final class Config {
     // ---- look
     /** Lumio's own size, the same on every GUI scale: 1.0 looks like GUI scale 2; smaller by default. */
     public double uiSize = 0.8;
+    /** Lumio's size as screen pixels per unit: 1.5, 2 (normal), 2.5 or 3; whole and half pixels stay sharp. */
+    public float uiPx = 2f;
     /** HUD elements snap to edges, the middle and each other while being moved. */
     public boolean snap = true;
     /** how HUD panels look: "glass" (see-through with a light edge), "solid" or "minimal" (no panel) */

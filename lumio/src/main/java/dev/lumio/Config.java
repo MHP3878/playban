@@ -41,6 +41,22 @@ public final class Config {
     /** where cards appear: "right" or "left" */
     public String cardSide = "right";
 
+    // ---- extras
+    /** zoom while the zoom key (C) is held; the mouse wheel zooms further */
+    public boolean zoom = true;
+    /** a card when a tool or a piece of armour is nearly broken */
+    public boolean durabilityWarning = true;
+    /** where you died last (per server or world), for the HUD element; null when there is none */
+    public DeathSpot death;
+
+    /** The place of the last death. */
+    public static final class DeathSpot {
+        public String where = "";
+        public String dim = "";
+        public double x, y, z;
+        public long at;
+    }
+
     // ---- HUD: position and settings of each element, by name
     public Map<String, HudSlot> hud = new LinkedHashMap<>();
 

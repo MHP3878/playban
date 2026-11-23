@@ -17,7 +17,7 @@ public final class Hud {
     public static final List<HudElement> ALL = List.of(new Elements.Watermark(), new Elements.Coords(), new Elements.Fps(), new Elements.Ping(),
             new Elements.Clock(), new Elements.Armor(), new Elements.Effects(), new Elements.Keys(), new Elements.Counter(),
             new Elements.Server(), MUSIC, new Elements.Compass(), new Elements.Speed(), new Elements.Biome(),
-            new Elements.Playtime(), new Elements.Day(), new Elements.Memory());
+            new Elements.Playtime(), new Elements.Day(), new Elements.Memory(), new Elements.Death());
     public static final int MARGIN = 4;
 
     private Hud() {}

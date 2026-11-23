@@ -40,7 +40,7 @@
   "lumio.menu.sounds": "Töne bei Karten",
   "lumio.menu.demo": "Karten ansehen",
   "lumio.menu.keys": "Tasten",
-  "lumio.menu.keys.text": "Annehmen: %s · Ablehnen: %s · Menü: %s · Kreismenü: %s. Ändern unter Optionen → Steuerung → Lumio.",
+  "lumio.menu.keys.text": "Annehmen: %s · Ablehnen: %s · Menü: %s · Kreismenü: %s · Zoom: %s. Ändern unter Optionen → Steuerung → Lumio.",
   "lumio.menu.hud.edit": "HUD bearbeiten",
   "lumio.menu.hud.text": "Zieh die Anzeigen mit der Maus an ihren Platz, schalte sie mit Rechtsklick an oder aus und ändere die Größe mit dem Mausrad.",
   "lumio.menu.about.version": "Version %s",
@@ -135,5 +135,18 @@
   "lumio.size.compact": "Kompakt",
   "lumio.size.normal": "Normal",
   "lumio.size.large": "Groß",
-  "lumio.size.xlarge": "Sehr groß"
+  "lumio.size.xlarge": "Sehr groß",
+  "key.lumio.zoom": "Zoom (halten)",
+  "lumio.menu.zoom": "Zoom: Taste halten, Mausrad zoomt weiter",
+  "lumio.menu.durability": "Warnung, wenn Werkzeug oder Rüstung fast kaputt ist",
+  "lumio.hud.death": "Todespunkt",
+  "lumio.hud.death.label": "TOD",
+  "lumio.dim.overworld": "in der Oberwelt",
+  "lumio.dim.nether": "im Nether",
+  "lumio.dim.end": "im End",
+  "lumio.dim.other": "in einer anderen Welt",
+  "lumio.death.reached.title": "Todespunkt erreicht",
+  "lumio.death.reached.text": "Hier bist du gestorben – deine Sachen sollten in der Nähe liegen.",
+  "lumio.durability.title": "Gleich kaputt!",
+  "lumio.durability.text": "%s: nur noch %s von %s Haltbarkeit."
 }

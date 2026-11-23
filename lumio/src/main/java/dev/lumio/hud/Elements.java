@@ -785,4 +785,39 @@ public final class Elements {
             g.fill(PAD_X, PAD_Y + 12, PAD_X + Math.round(bw * p / 100f), PAD_Y + 13, Draw.fade(color, a));
         }
     }
+
+    // ---------------------------------------------------------------- where you died last
+
+    public static final class Death extends HudElement {
+        public Death() {
+            super("death", true, 0.0, 200);
+        }
+
+        @Override
+        public boolean active(Minecraft mc) {
+            return dev.lumio.extra.DeathPoint.current(mc) != null;
+        }
+
+        private Component value(Minecraft mc, boolean preview) {
+            dev.lumio.Config.DeathSpot d = dev.lumio.extra.DeathPoint.current(mc);
+            if (d == null) return Component.literal("↗ 42 m · 312 64 -88");
+            return dev.lumio.extra.DeathPoint.line(mc, d);
+        }
+
+        @Override
+        public int width(Minecraft mc, boolean preview) {
+            return labelledWidth(Component.translatable("lumio.hud.death.label"), value(mc, preview)) + PAD_X * 2;
+        }
+
+        @Override
+        public int height(Minecraft mc, boolean preview) {
+            return 9 + PAD_Y * 2;
+        }
+
+        @Override
+        public void render(GuiGraphics g, Minecraft mc, boolean preview, float a) {
+            back(g, width(mc, preview), height(mc, preview), a);
+            labelled(g, Component.translatable("lumio.hud.death.label"), value(mc, preview), PAD_X, PAD_Y + 1, a);
+        }
+    }
 }

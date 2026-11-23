@@ -50,6 +50,17 @@ server. The reader only runs while the element is on.
 runs a command, writes a chat message, or opens a next page. In the menu's radial menu tab you make your
 own: name, picture (an item), what it does; a server can suggest one, which you can take over and change.
 
+**Zoom (hold C).** The view narrows smoothly to four times; the mouse wheel zooms further in or out
+(up to 50×, the hotbar stays where it is) and a small "6.3×" shows how far; the mouse turns slower to
+match, so aiming stays calm. Letting go glides back. Can be switched off in the menu (General).
+
+**Death point.** Where you died last, per server or world: an HUD element with an arrow, the distance and
+the coordinates (or which dimension it is in). Once you are back there, a card says so and it disappears.
+
+**Durability warning.** A card when a tool, weapon or piece of armour you wear has a tenth or less of its
+durability left ("Diamond Sword: only 61 of 1561 durability left"), each kind once every few minutes.
+Can be switched off in the menu (General).
+
 **Chat.** Messages that name you light up in the theme colour, get a coloured bar with a hint on hover
 and a soft sound. Your own words (event, shop, ...) work the same way. Your own messages and messages
 about you ("... joined the game") are left alone.

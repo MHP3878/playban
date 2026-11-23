@@ -40,7 +40,7 @@
   "lumio.menu.sounds": "Sounds for cards",
   "lumio.menu.demo": "Show cards",
   "lumio.menu.keys": "Keys",
-  "lumio.menu.keys.text": "Accept: %s · Deny: %s · Menu: %s · Radial menu: %s. Change them under Options → Controls → Lumio.",
+  "lumio.menu.keys.text": "Accept: %s · Deny: %s · Menu: %s · Radial menu: %s · Zoom: %s. Change them under Options → Controls → Lumio.",
   "lumio.menu.hud.edit": "Edit HUD",
   "lumio.menu.hud.text": "Drag the elements to their place with the mouse, turn them on or off with a right click and change their size with the mouse wheel.",
   "lumio.menu.about.version": "Version %s",
@@ -135,5 +135,18 @@
   "lumio.size.compact": "Compact",
   "lumio.size.normal": "Normal",
   "lumio.size.large": "Large",
-  "lumio.size.xlarge": "Very large"
+  "lumio.size.xlarge": "Very large",
+  "key.lumio.zoom": "Zoom (hold)",
+  "lumio.menu.zoom": "Zoom: hold the key, the mouse wheel zooms further",
+  "lumio.menu.durability": "Warn when a tool or armour is nearly broken",
+  "lumio.hud.death": "Death point",
+  "lumio.hud.death.label": "DEATH",
+  "lumio.dim.overworld": "in the Overworld",
+  "lumio.dim.nether": "in the Nether",
+  "lumio.dim.end": "in the End",
+  "lumio.dim.other": "in another world",
+  "lumio.death.reached.title": "Death point reached",
+  "lumio.death.reached.text": "You died here – your things should be close by.",
+  "lumio.durability.title": "Nearly broken!",
+  "lumio.durability.text": "%s: only %s of %s durability left."
 }

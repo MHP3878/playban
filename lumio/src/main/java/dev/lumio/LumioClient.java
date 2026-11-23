@@ -33,6 +33,7 @@ public final class LumioClient implements ClientModInitializer {
     private static KeyMapping deny;
     private static KeyMapping menu;
     private static KeyMapping wheel;
+    private static KeyMapping zoom;
     private static KeyMapping mediaToggle;
     private static KeyMapping mediaNext;
     private static KeyMapping mediaPrevious;
@@ -59,6 +60,10 @@ public final class LumioClient implements ClientModInitializer {
         return wheel.getTranslatedKeyMessage();
     }
 
+    public static Component zoomKeyName() {
+        return zoom.getTranslatedKeyMessage();
+    }
+
     public static boolean isMenuKey(int key, int scancode) {
         return Compat.matches(menu, key, scancode);
     }
@@ -77,7 +82,15 @@ public final class LumioClient implements ClientModInitializer {
 
     /** Whether the radial menu key is held right now (asked from the window: a screen is open meanwhile). */
     public static boolean wheelHeld() {
-        var key = KeyBindingHelper.getBoundKeyOf(wheel);
+        return held(wheel);
+    }
+
+    /**
+     * Whether the key of a mapping is held, asked from the window itself: before 1.21.9 only one
+     * mapping hears a key that two share (C is also "save hotbar"), this works either way.
+     */
+    private static boolean held(KeyMapping mapping) {
+        var key = KeyBindingHelper.getBoundKeyOf(mapping);
         long window = Compat.window();
         if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE)
             return GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
@@ -124,6 +137,7 @@ public final class LumioClient implements ClientModInitializer {
         deny = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.deny", GLFW.GLFW_KEY_N));
         menu = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.menu", GLFW.GLFW_KEY_RIGHT_SHIFT));
         wheel = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.wheel", GLFW.GLFW_KEY_G));
+        zoom = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.zoom", GLFW.GLFW_KEY_C));
         // music: no key by default, players choose their own (the keyboard's media keys work anyway)
         mediaToggle = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.media.toggle", GLFW.GLFW_KEY_UNKNOWN));
         mediaNext = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.media.next", GLFW.GLFW_KEY_UNKNOWN));
@@ -146,10 +160,14 @@ public final class LumioClient implements ClientModInitializer {
                 openNextTick = null;
                 r.run();
             }
+            dev.lumio.extra.Zoom.setHeld(mc.screen == null && mc.player != null && (zoom.isDown() || held(zoom)));
+            dev.lumio.extra.DeathPoint.tick(mc);
+            dev.lumio.extra.Durability.tick(mc);
             Cards.tick();
         });
         HudRenderCallback.EVENT.register((graphics, delta) -> {
             dev.lumio.hud.Hud.render(graphics);
+            dev.lumio.extra.Zoom.render(graphics);
             Cards.render(graphics);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, mc) -> {
@@ -158,6 +176,7 @@ public final class LumioClient implements ClientModInitializer {
             dev.lumio.hud.HudData.clear();
             dev.lumio.guard.Integrity.reset();
             dev.lumio.wheel.Wheel.setServer(null);
+            dev.lumio.extra.Durability.reset();
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(ClientCommandManager.literal("lumio")

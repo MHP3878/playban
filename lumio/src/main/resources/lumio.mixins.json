@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "dev.lumio.mixin",
   "compatibilityLevel": "JAVA_21",
-  "client": ["ChatComponentMixin", "OnlineServerEntryMixin"],
+  "client": ["ChatComponentMixin", "OnlineServerEntryMixin", "GameRendererMixin", "MouseHandlerMixin"],
   "injectors": {
     "defaultRequire": 1
   }

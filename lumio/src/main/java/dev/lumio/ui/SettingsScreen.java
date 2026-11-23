@@ -306,7 +306,7 @@ public class SettingsScreen extends BaseScreen {
         Config c = Config.get();
         // the look: colours, size, where cards appear, sounds
         int rowH = 24;
-        card(g, x, y, w, rowH * 4 + 4, a);
+        card(g, x, y, w, rowH * 6 + 4, a);
         int ry = y + 2;
         rowLabel(g, mx, my, x, ry, w, rowH, "lumio.menu.theme", a);
         int sxw = x + w - 10 - Theme.ALL.size() * 20;
@@ -341,12 +341,26 @@ public class SettingsScreen extends BaseScreen {
             c.sounds = !c.sounds;
             c.save();
         });
+        ry += rowH;
+        line(g, x, ry, w, a);
+        rowLabel(g, mx, my, x, ry, w, rowH, "lumio.menu.zoom", a);
+        toggle(g, mx, my, x + w - 36, ry + 6, c.zoom, "zoom", a, () -> {
+            c.zoom = !c.zoom;
+            c.save();
+        });
+        ry += rowH;
+        line(g, x, ry, w, a);
+        rowLabel(g, mx, my, x, ry, w, rowH, "lumio.menu.durability", a);
+        toggle(g, mx, my, x + w - 36, ry + 6, c.durabilityWarning, "durability", a, () -> {
+            c.durabilityWarning = !c.durabilityWarning;
+            c.save();
+        });
         // the keys, and trying the cards out
-        int ky = y + rowH * 4 + 12;
+        int ky = y + rowH * 6 + 12;
         card(g, x, ky, w, 64, a);
         Draw.text(g, Draw.bold(Component.translatable("lumio.menu.keys")), x + 10, ky + 8, Draw.fade(Draw.TEXT, a));
         paragraph(g, Component.translatable("lumio.menu.keys.text", LumioClient.acceptKeyName(), LumioClient.denyKeyName(),
-                LumioClient.menuKeyName(), LumioClient.wheelKeyName()), x + 10, ky + 21, w - 140, a);
+                LumioClient.menuKeyName(), LumioClient.wheelKeyName(), LumioClient.zoomKeyName()), x + 10, ky + 21, w - 140, a);
         button(g, mx, my, x + w - 120, ky + 22, 110, Component.translatable("lumio.menu.demo"), false, a, () -> {
             onClose();
             LumioClient.demo();

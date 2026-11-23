@@ -1,5 +1,5 @@
 plugins {
-    id "fabric-loom" version "1.14.10" apply false
+    id "fabric-loom" version "1.16.3" apply false
 }
 
 subprojects {
@@ -20,6 +20,10 @@ subprojects {
         mappings loom.officialMojangMappings()
         modImplementation "net.fabricmc:fabric-loader:${rootProject.property('loader_version')}"
         modImplementation "net.fabricmc.fabric-api:fabric-api:${project.property('fabric_api_version')}"
+        // for tests only: ./gradlew :<v>:runClient -PtestMods=<folder> -PtestVersion=<v> puts other mods next to Lumio
+        if (rootProject.hasProperty("testMods") && project.name == rootProject.findProperty("testVersion")) {
+            modLocalRuntime fileTree(dir: rootProject.property("testMods"), include: "*.jar")
+        }
     }
 
     // shared code and texts, plus what this version needs of its own

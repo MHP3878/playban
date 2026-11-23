@@ -13,6 +13,7 @@ See which client and mods players use, block mods just by their name, and let th
 | `/modcheck unban <player>` | Lift a ModCheck ban | `modcheck.unban` |
 | `/modcheck reset <player>` | Clear a player's warnings | `modcheck.unban` |
 | `/modcheck reload` | Reload config and texts | `modcheck.reload` |
+| `/modcheck lumio [off\|optional\|required]` | Whether players need the Lumio client mod (also `aus`, `freiwillig`, `pflicht`); without an argument it says what the current mode means. Not required means ModCheck does not know every mod, and it says so | `modcheck.settings` |
 
 `modcheck.notify` gets the alerts, `modcheck.bypass` is never checked, `modcheck.admin` has everything.
 

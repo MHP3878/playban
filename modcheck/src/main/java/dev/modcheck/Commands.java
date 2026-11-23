@@ -101,6 +101,24 @@ public final class Commands implements TabExecutor {
                 lang().send(sender, "reloaded");
                 return;
             }
+            case "lumio" -> {
+                // whether players need the Lumio client mod: only for admins
+                if (!sender.hasPermission("modcheck.settings")) {
+                    lang().send(sender, "no-permission");
+                    return;
+                }
+                if (args.length > 1) {
+                    String mode = Lumio.parseMode(args[1]);
+                    if (mode == null) {
+                        lang().send(sender, "lumio.usage");
+                        return;
+                    }
+                    plugin.lumio().setMode(mode);
+                    guard().log(sender.getName(), "lumio mode", null, mode);
+                }
+                plugin.lumio().explain(sender);
+                return;
+            }
             case "unban" -> {
                 if (!sender.hasPermission("modcheck.unban") || args.length < 2) {
                     lang().send(sender, args.length < 2 ? "check.usage" : "no-permission");
@@ -151,8 +169,10 @@ public final class Commands implements TabExecutor {
             }
             default -> {
                 if (args.length == 1) {
-                    for (String s : List.of("unban", "reset", "reload")) if (s.startsWith(typed)) out.add(s);
+                    for (String s : List.of("unban", "reset", "reload", "lumio")) if (s.startsWith(typed)) out.add(s);
                     for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase(Locale.ROOT).startsWith(typed)) out.add(p.getName());
+                } else if (args.length == 2 && args[0].equalsIgnoreCase("lumio")) {
+                    for (String s : List.of("aus", "freiwillig", "pflicht", "off", "optional", "required")) if (s.startsWith(typed)) out.add(s);
                 } else if (args.length == 2 && args[0].equalsIgnoreCase("unban")) {
                     for (Guard.Ban b : guard().bans()) if (b.name().toLowerCase(Locale.ROOT).startsWith(typed)) out.add(b.name());
                 } else if (args.length == 2) {

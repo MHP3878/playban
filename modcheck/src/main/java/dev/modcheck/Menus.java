@@ -455,6 +455,19 @@ public final class Menus {
         m.set(41, Menu.item(repeatOn ? Material.WRITTEN_BOOK : Material.BOOK, lang().msg("menu.settings.repeat-rule.name"),
                 lang().lore(repeatOn ? "menu.settings.repeat-rule.on" : "menu.settings.repeat-rule.off", "window", windowText, "times", times,
                         "punish", punishText)), null);
+        // Lumio: required or not, and what "not" costs
+        String lumioMode = plugin.lumio().mode();
+        List<Component> lumioLore = new ArrayList<>(lang().lore("menu.settings.lumio.lore", "value", lang().raw("lumio.mode-name." + lumioMode)));
+        lumioLore.addAll(lang().lore(lumioMode.equals("required") ? "menu.settings.lumio.required" : "menu.settings.lumio.incomplete"));
+        lumioLore.add(Component.empty());
+        lumioLore.add(lang().msg("menu.settings.lumio.click"));
+        m.set(43, Menu.item(lumioMode.equals("required") ? Material.AMETHYST_CLUSTER : Material.AMETHYST_SHARD, lang().msg("menu.settings.lumio.name"), lumioLore), e -> {
+            String nextMode = next(Lumio.MODES, lumioMode);
+            plugin.lumio().setMode(nextMode);
+            guard().log(p.getName(), "lumio mode", null, nextMode);
+            plugin.lumio().explain(p);
+            settings(p);
+        });
         m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
         m.fill().open(p);
     }

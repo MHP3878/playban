@@ -43,7 +43,19 @@ lumio:
   kick-outdated: "<white><bold>Please update Lumio</bold>\n\n<gray>This server needs Lumio <white>{min}</white> or newer.\n\n<white>{download}"
   ask-team: "Ask the team for the download link."
   line: "<gray>Lumio <white>{version}</white> · Minecraft <white>{minecraft}</white> · <white>{count}</white> mods reported"
-  none: "<gray>No Lumio"
+  none: "<gray>No Lumio <dark_gray>(mod list incomplete: only client name, channels and sign)"
+  usage: "<gray>Usage: <white>/modcheck lumio [off|optional|required]</white>"
+  status: "<gray>Lumio: <white>{mode}</white>"
+  mode-name:
+    "off": "off"
+    optional: "optional"
+    required: "required"
+  explain-off: "<gray>Lumio is off. ModCheck only checks the client name, mod channels and the hidden sign."
+  explain-optional: "<gray>Lumio is optional. Players who have it send their full mod list; everyone else is only checked by client name, channels and sign."
+  explain-required: "<gray>Lumio is required. Only players with Lumio can play, and the full mod list comes from everyone."
+  warn-incomplete: "<gold>⚠ <gray>Without Lumio being required, ModCheck does <white>not know every mod</white>. Mods without texts (e.g. Lithium, Baritone), Wurst and LiquidBounce, and clients that pretend to be vanilla (e.g. OpSec) stay invisible. Only safe: <white>/modcheck lumio required</white>"
+  warn-required: "<gold>⚠ <gray>Players without Lumio are refused from their next join (Bedrock players and modcheck.bypass excepted). Online without Lumio right now: <white>{count}</white>"
+  warn-no-download: "<gold>⚠ <gray>Add a download link (<white>lumio.download</white> in config.yml), or players do not know where to get Lumio."
 
 proof:
   title: "<white><bold>Proof</bold>"
@@ -77,7 +89,7 @@ discord:
   line: "⚠ {player} has {mods} → {action}"
 
 check:
-  usage: "<gray>Usage: <white>/modcheck [player]</white>, <white>/modcheck unban <player></white>, <white>/modcheck reset <player></white>, <white>/modcheck reload</white>"
+  usage: "<gray>Usage: <white>/modcheck [player]</white>, <white>/modcheck unban <player></white>, <white>/modcheck reset <player></white>, <white>/modcheck reload</white>, <white>/modcheck lumio [off|optional|required]</white>"
   reset: "<gray>The warnings of <white>{player}</white> are cleared."
   header: "<white>{player}</white><gray>: client <white>{client}</white>, warnings <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
@@ -263,6 +275,12 @@ menu:
     disguise:
       name: "<#4facfe><bold>Disguise"
       lore: ["<gray>Now: <white>{value}", "<gray>When a client lies about what", "<gray>it is: »vanilla« with mod channels", "<gray>or mod texts; a fake Lunar name.", "", "<#4facfe>Click to change"]
+    lumio:
+      name: "<#4facfe><bold>Lumio required"
+      lore: ["<gray>Now: <white>{value}", "<gray>Lumio sends the full mod", "<gray>list from the mod loader."]
+      incomplete: ["", "<gold>⚠ Not required: ModCheck does", "<gold>not know every mod: mods without", "<gold>texts, Wurst and disguised", "<gold>clients stay invisible."]
+      required: ["", "<green>Every player sends the", "<green>full mod list.", "<gray>Without Lumio: refused."]
+      click: "<#4facfe>Click: off → optional → required"
     repeat-window:
       name: "<#4facfe><bold>Coming back: within"
       lore: ["<gray>Now: <white>{value}", "", "<#4facfe>Click to change"]

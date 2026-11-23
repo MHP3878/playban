@@ -561,4 +561,44 @@ class ModCheckTest {
         assertTrue(g.hits(steve.getUniqueId()).stream().anyMatch(r -> r.id().equals("meteor")));
         assertTrue(g.reportLies(info).isEmpty());
     }
+
+    private List<String> messages(PlayerMock p) {
+        List<String> out = new ArrayList<>();
+        for (Component c; (c = p.nextComponentMessage()) != null; ) out.add(plain(c));
+        return out;
+    }
+
+    @Test
+    void theOwnerDecidesWhetherLumioIsRequired() {
+        messages(admin);
+        admin.performCommand("modcheck lumio");
+        List<String> said = messages(admin);
+        assertTrue(said.stream().anyMatch(l -> l.contains("optional")), "the current mode: " + said);
+        assertTrue(said.stream().anyMatch(l -> l.contains("not know every mod")), "not required: the owner is told what that costs");
+        admin.performCommand("modcheck lumio pflicht");
+        assertEquals("required", plugin.getConfig().getString("lumio.mode"));
+        said = messages(admin);
+        assertTrue(said.stream().anyMatch(l -> l.contains("refused")), "required: who will be refused");
+        assertTrue(said.stream().anyMatch(l -> l.contains("download link")), "and that a download link is missing");
+        assertFalse(said.stream().anyMatch(l -> l.contains("not know every mod")));
+        admin.performCommand("modcheck lumio off");
+        assertEquals("off", plugin.getConfig().getString("lumio.mode"));
+        admin.performCommand("modcheck lumio nonsense");
+        assertEquals("off", plugin.getConfig().getString("lumio.mode"), "an unknown word changes nothing");
+        // a moderator may not decide this
+        PlayerMock mod = server.addPlayer("Mod");
+        mod.addAttachment(plugin, "modcheck.check", true);
+        mod.performCommand("modcheck lumio required");
+        assertEquals("off", plugin.getConfig().getString("lumio.mode"));
+        // the button in the settings goes off -> optional -> required
+        plugin.menus().settings(admin);
+        admin.simulateInventoryClick(43);
+        assertEquals("optional", plugin.getConfig().getString("lumio.mode"));
+        plugin.lang().load("de");
+        plugin.menus().settings(admin);
+        assertNoMissingTexts("settings with Lumio");
+        messages(admin);
+        admin.performCommand("modcheck lumio");
+        assertTrue(messages(admin).stream().anyMatch(l -> l.contains("nicht alle Mods")));
+    }
 }

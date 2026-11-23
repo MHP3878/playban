@@ -30,6 +30,8 @@ public class ModCheckPlugin extends JavaPlugin {
         lumio = new Lumio(this);
         lumio.enable();
         getServer().getPluginManager().registerEvents(lumio, this);
+        // say once at start what a mode without Lumio costs
+        if (!lumio.mode().equals("required")) getServer().getConsoleSender().sendMessage(lang.prefixed("lumio.warn-incomplete"));
         getServer().getPluginManager().registerEvents(input, this);
         getServer().getPluginManager().registerEvents(new Menu.Clicks(), this);
         guard.registerVirtualSignListener();
@@ -90,4 +92,6 @@ public class ModCheckPlugin extends JavaPlugin {
     public Menus menus() { return menus; }
 
     public ChatInput input() { return input; }
+
+    public Lumio lumio() { return lumio; }
 }

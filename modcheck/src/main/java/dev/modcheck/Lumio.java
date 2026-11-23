@@ -79,9 +79,49 @@ public final class Lumio implements Listener, PluginMessageListener {
         messenger.registerIncomingPluginChannel(plugin, REPORT, this);
     }
 
-    private String mode() {
+    public static final List<String> MODES = List.of("off", "optional", "required");
+
+    public String mode() {
         String m = plugin.getConfig().getString("lumio.mode", "optional").toLowerCase(Locale.ROOT);
-        return List.of("off", "optional", "required").contains(m) ? m : "optional";
+        return MODES.contains(m) ? m : "optional";
+    }
+
+    /** "aus", "freiwillig", "pflicht" work as well as "off", "optional", "required"; null if unknown. */
+    public static String parseMode(String word) {
+        return switch (word.toLowerCase(Locale.ROOT)) {
+            case "off", "aus" -> "off";
+            case "optional", "freiwillig" -> "optional";
+            case "required", "pflicht", "on", "an" -> "required";
+            default -> null;
+        };
+    }
+
+    public void setMode(String mode) {
+        plugin.getConfig().set("lumio.mode", mode);
+        plugin.saveConfig();
+    }
+
+    /** How many players online have no Lumio (and are not exempt). */
+    public int onlineWithout() {
+        int n = 0;
+        for (Player p : Bukkit.getOnlinePlayers()) if (!p.getListeningPluginChannels().contains(HELLO) && !exempt(p)) n++;
+        return n;
+    }
+
+    /**
+     * Tells the owner what the current mode means, and what it costs: without Lumio being required,
+     * ModCheck cannot know every mod.
+     */
+    public void explain(org.bukkit.command.CommandSender to) {
+        String mode = mode();
+        plugin.lang().send(to, "lumio.status", "mode", plugin.lang().raw("lumio.mode-name." + mode));
+        to.sendMessage(plugin.lang().msg("lumio.explain-" + mode));
+        if (!mode.equals("required")) {
+            to.sendMessage(plugin.lang().msg("lumio.warn-incomplete"));
+        } else {
+            to.sendMessage(plugin.lang().msg("lumio.warn-required", "count", onlineWithout()));
+            if (plugin.getConfig().getString("lumio.download", "").isBlank()) to.sendMessage(plugin.lang().msg("lumio.warn-no-download"));
+        }
     }
 
     private Guard guard() {

@@ -49,6 +49,33 @@ public class SettingsScreen extends BaseScreen {
         ph = Math.min(280, height - 24);
         px = (width - pw) / 2;
         py = (height - ph) / 2;
+        rebuild();
+    }
+
+    /** The input fields of the current tab (only the radial menu editor has some). */
+    protected void rebuild() {
+        clearWidgets();
+        nameBox = null;
+        valueBox = null;
+        if (tab != Tab.WHEEL) return;
+        if (path.isEmpty()) {
+            path.push(dev.lumio.wheel.Wheel.makeOwn());
+            selected = path.peek().isEmpty() ? -1 : 0;
+        }
+        int[] f = form();
+        nameBox = box(f[0], f[1] + 12, f[2], Component.translatable("lumio.wheel.name"));
+        valueBox = box(f[0], f[1] + 82, f[2], Component.translatable("lumio.wheel.value"));
+        fillBoxes();
+    }
+
+    private net.minecraft.client.gui.components.EditBox box(int x, int y, int w, Component hint) {
+        var b = new net.minecraft.client.gui.components.EditBox(font, x + 5, y + 4, w - 10, 10, hint);
+        b.setBordered(false);
+        b.setMaxLength(120);
+        b.setTextColor(Draw.TEXT);
+        b.setHint(Draw.inter(hint).withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+        addRenderableWidget(b);
+        return b;
     }
 
     @Override
@@ -74,7 +101,17 @@ public class SettingsScreen extends BaseScreen {
 
     @Override
     public void render(GuiGraphics g, int mx, int my, float delta) {
+        // the menu itself is drawn as the background (below), so input fields stand on top of it
         super.render(g, mx, my, delta);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics g, int mx, int my, float delta) {
+        super.renderBackground(g, mx, my, delta);
+        drawMenu(g, mx, my);
+    }
+
+    private void drawMenu(GuiGraphics g, int mx, int my) {
         hits.clear();
         float a = Draw.easeOutCubic((System.currentTimeMillis() - opened) / 220f);
         Draw.panel(g, px, py, pw, ph, a);
@@ -133,11 +170,7 @@ public class SettingsScreen extends BaseScreen {
                     i++;
                 }
             }
-            case WHEEL -> {
-                heading(g, "lumio.menu.tab.wheel", x, y, a);
-                button(g, mx, my, x, y + 22, 150, Component.translatable("lumio.menu.wheel.edit"), true, a, LumioClient::openWheelEditor);
-                paragraph(g, Component.translatable("lumio.menu.wheel.text", LumioClient.wheelKeyName()), x, y + 48, w, a);
-            }
+            case WHEEL -> wheelEditor(g, mx, my, x, y, w, h, a);
             default -> {
             }
         }
@@ -145,6 +178,7 @@ public class SettingsScreen extends BaseScreen {
 
     protected void switchTo(Tab t) {
         tab = t;
+        rebuild();
     }
 
     private void general(GuiGraphics g, int mx, int my, int x, int y, int w, float a) {
@@ -249,6 +283,186 @@ public class SettingsScreen extends BaseScreen {
         }
     }
 
+    // ---------------------------------------------------------------- radial menu editor
+
+    /** The pages being edited: the main page at the bottom, an opened next page on top. */
+    private final java.util.Deque<List<Config.WheelEntry>> path = new java.util.ArrayDeque<>();
+    private int selected = -1;
+    private net.minecraft.client.gui.components.EditBox nameBox;
+    private net.minecraft.client.gui.components.EditBox valueBox;
+    private boolean filling;
+
+    /** Where the form stands: x, y, width (the list is left of it). */
+    private int[] form() {
+        int sx = px + 8, sw = 118;
+        int x = sx + sw + 14, w = px + pw - x - 14;
+        return new int[]{x + 142, py + 14 + 34, w - 142};
+    }
+
+    private Config.WheelEntry current() {
+        List<Config.WheelEntry> page = path.peek();
+        return page == null || selected < 0 || selected >= page.size() ? null : page.get(selected);
+    }
+
+    private void fillBoxes() {
+        Config.WheelEntry e = current();
+        filling = true;
+        if (nameBox != null) {
+            nameBox.setValue(e == null ? "" : e.name);
+            nameBox.visible = e != null;
+            nameBox.setResponder(v -> {
+                if (filling || current() == null) return;
+                current().name = v;
+                Config.get().save();
+            });
+        }
+        if (valueBox != null) {
+            valueBox.setValue(e == null ? "" : e.value);
+            valueBox.visible = e != null && !"page".equals(e.type);
+            valueBox.setResponder(v -> {
+                if (filling || current() == null) return;
+                current().value = v;
+                Config.get().save();
+            });
+        }
+        filling = false;
+    }
+
+    private void select(int i) {
+        selected = i;
+        fillBoxes();
+    }
+
+    private void wheelEditor(GuiGraphics g, int mx, int my, int x, int y, int w, int h, float a) {
+        if (path.isEmpty()) return;
+        List<Config.WheelEntry> page = path.peek();
+        heading(g, "lumio.menu.tab.wheel", x, y, a);
+        Component keyHint = Draw.inter(Component.translatable("lumio.wheel.hold", LumioClient.wheelKeyName()));
+        Draw.text(g, keyHint, x + w - Draw.width(keyHint), y, Draw.fade(Draw.FAINT, a));
+        // where we are: main page, or main page › a next page
+        Component crumb = Component.translatable(path.size() > 1 ? "lumio.wheel.crumb.sub" : "lumio.wheel.crumb.main");
+        Draw.text(g, Draw.inter(crumb), x, y + 18, Draw.fade(Draw.MUTED, a));
+        if (path.size() > 1) {
+            Component back = Draw.bold(Component.translatable("lumio.wheel.back"));
+            int bw = Draw.width(back) + 10;
+            boolean hov = over(mx, my, x + w - bw, y + 15, bw, 14);
+            Draw.round(g, x + w - bw, y + 15, bw, 14, Draw.fade(hov ? Draw.BG_HOVER : Draw.BG_SOFT, a));
+            Draw.text(g, back, x + w - bw + 5, y + 18, Draw.fade(Draw.TEXT, a));
+            hit(x + w - bw, y + 15, bw, 14, () -> {
+                path.pop();
+                select(path.peek().isEmpty() ? -1 : 0);
+            });
+        }
+        // the list of fields
+        int lw = 132, ly = y + 34;
+        for (int i = 0; i < page.size() && i < dev.lumio.wheel.Wheel.MAX; i++) {
+            Config.WheelEntry e = page.get(i);
+            boolean sel = i == selected;
+            boolean hov = over(mx, my, x, ly, lw, 18);
+            float t = glide("row" + path.size() + ":" + i, sel || hov);
+            Draw.round(g, x, ly, lw, 18, Draw.fade(sel ? Draw.mix(Draw.BG_SOFT, Draw.accent(), 0.35f) : Draw.mix(0x00000000, Draw.BG_SOFT, t), a));
+            g.renderItem(new net.minecraft.world.item.ItemStack(dev.lumio.compat.Compat.item(e.icon)), x + 2, ly + 1);
+            String name = e.name.length() > 14 ? e.name.substring(0, 13) + "…" : e.name;
+            Draw.text(g, Draw.inter(name + ("page".equals(e.type) ? "  ›" : "")), x + 22, ly + 5, Draw.fade(Draw.TEXT, a));
+            int index = i;
+            if (hov || sel) {
+                // move up, move down, remove
+                rowButton(g, mx, my, x + lw - 36, ly + 3, "▲", a, () -> move(index, -1));
+                rowButton(g, mx, my, x + lw - 24, ly + 3, "▼", a, () -> move(index, 1));
+                rowButton(g, mx, my, x + lw - 12, ly + 3, "✕", a, () -> {
+                    page.remove(index);
+                    Config.get().save();
+                    select(Math.min(index, page.size() - 1));
+                });
+            }
+            hit(x, ly, lw - 38, 18, () -> select(index));
+            ly += 20;
+        }
+        if (page.size() < dev.lumio.wheel.Wheel.MAX) {
+            button(g, mx, my, x, ly + 2, lw, Component.translatable("lumio.wheel.add"), false, a, () -> {
+                page.add(new Config.WheelEntry(Component.translatable("lumio.wheel.new").getString(), "minecraft:compass", "command", ""));
+                Config.get().save();
+                select(page.size() - 1);
+            });
+        }
+        // the form for the chosen field
+        int[] f = form();
+        Config.WheelEntry e = current();
+        if (e == null) {
+            paragraph(g, Component.translatable("lumio.wheel.empty"), f[0], f[1] + 4, f[2], a);
+        } else {
+            label(g, "lumio.wheel.name", f[0], f[1], a);
+            Draw.round(g, f[0], f[1] + 12, f[2], 18, Draw.fade(Draw.BG_SOFT, a));
+            label(g, "lumio.wheel.action", f[0], f[1] + 36, a);
+            segmented(g, mx, my, f[0], f[1] + 48, f[2], List.of("command", "chat", "page"), e.type, v -> {
+                e.type = v;
+                Config.get().save();
+                fillBoxes();
+            }, "lumio.wheel.type.", a);
+            if ("page".equals(e.type)) {
+                button(g, mx, my, f[0], f[1] + 76, f[2], Component.translatable("lumio.wheel.open-page", e.page.size()), true, a, () -> {
+                    path.push(e.page);
+                    select(e.page.isEmpty() ? -1 : 0);
+                });
+            } else {
+                label(g, "chat".equals(e.type) ? "lumio.wheel.value.chat" : "lumio.wheel.value", f[0], f[1] + 70, a);
+                Draw.round(g, f[0], f[1] + 82, f[2], 18, Draw.fade(Draw.BG_SOFT, a));
+            }
+            // pictures to choose from
+            label(g, "lumio.wheel.icon", f[0], f[1] + 106, a);
+            int cols = Math.max(1, f[2] / 19);
+            List<String> icons = dev.lumio.wheel.Wheel.ICONS;
+            for (int i = 0; i < icons.size(); i++) {
+                int ix = f[0] + (i % cols) * 19, iy = f[1] + 118 + (i / cols) * 19;
+                if (iy > py + ph - 34) break;
+                boolean sel = icons.get(i).equals(e.icon);
+                boolean hov = over(mx, my, ix, iy, 18, 18);
+                if (sel || hov) Draw.round(g, ix, iy, 18, 18, Draw.fade(sel ? Draw.mix(Draw.BG_SOFT, Draw.accent(), 0.5f) : Draw.BG_HOVER, a));
+                g.renderItem(new net.minecraft.world.item.ItemStack(dev.lumio.compat.Compat.item(icons.get(i))), ix + 1, iy + 1);
+                String icon = icons.get(i);
+                hit(ix, iy, 18, 18, () -> {
+                    e.icon = icon;
+                    Config.get().save();
+                });
+            }
+        }
+        // start again: the server's suggestion, or Lumio's start set
+        int by = py + ph - 30;
+        if (!dev.lumio.wheel.Wheel.serverEntries().isEmpty()) {
+            button(g, mx, my, x, by, lw, Component.translatable("lumio.wheel.take-server"), false, a, () -> replaceWith(dev.lumio.wheel.Wheel.serverEntries()));
+        } else {
+            button(g, mx, my, x, by, lw, Component.translatable("lumio.wheel.reset"), false, a, () -> replaceWith(dev.lumio.wheel.Wheel.defaults()));
+        }
+    }
+
+    private void rowButton(GuiGraphics g, int mx, int my, int x, int y, String sign, float a, Runnable action) {
+        boolean hov = over(mx, my, x, y, 11, 12);
+        Draw.round(g, x, y, 11, 12, Draw.fade(hov ? Draw.BG_HOVER : 0x00000000, a));
+        Component c = Draw.inter(sign);
+        Draw.text(g, c, x + (11 - Draw.width(c)) / 2, y + 2, Draw.fade(hov ? Draw.TEXT : Draw.MUTED, a));
+        hit(x, y, 11, 12, action);
+    }
+
+    private void move(int index, int by) {
+        List<Config.WheelEntry> page = path.peek();
+        int to = index + by;
+        if (to < 0 || to >= page.size()) return;
+        Config.WheelEntry e = page.remove(index);
+        page.add(to, e);
+        Config.get().save();
+        select(to);
+    }
+
+    private void replaceWith(List<Config.WheelEntry> entries) {
+        List<Config.WheelEntry> own = Config.get().wheel;
+        own.clear();
+        for (Config.WheelEntry e : entries) own.add(dev.lumio.wheel.Wheel.copy(e));
+        Config.get().save();
+        path.clear();
+        path.push(own);
+        select(own.isEmpty() ? -1 : 0);
+    }
+
     @Override
     protected boolean click(double x, double y, int button) {
         if (button != 0) return false;
@@ -263,8 +477,8 @@ public class SettingsScreen extends BaseScreen {
 
     @Override
     protected boolean key(int key, int scancode, int modifiers) {
-        // the menu key closes the menu again
-        if (LumioClient.isMenuKey(key, scancode)) {
+        // the menu key closes the menu again (not while typing in a field)
+        if (!(getFocused() instanceof net.minecraft.client.gui.components.EditBox) && LumioClient.isMenuKey(key, scancode)) {
             onClose();
             return true;
         }

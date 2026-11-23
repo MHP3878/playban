@@ -53,4 +53,20 @@ public final class Compat {
     public static void pop(GuiGraphics g) {
         g.pose().popPose();
     }
+
+    /** The game window, for asking whether a key is held. */
+    public static long window() {
+        return net.minecraft.client.Minecraft.getInstance().getWindow().getWindow();
+    }
+
+    /** An item by its id ("minecraft:compass"); a compass when there is no such item. */
+    public static net.minecraft.world.item.Item item(String id) {
+        ResourceLocation key = ResourceLocation.tryParse(id == null ? "" : id);
+        if (key == null) return net.minecraft.world.item.Items.COMPASS;
+        net.minecraft.world.item.Item i = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(key);
+        return i == null || i == net.minecraft.world.item.Items.AIR ? net.minecraft.world.item.Items.COMPASS : i;
+    }
+
+    /** Whether Screen#render itself draws the background (up to 1.21.5) or Minecraft does it before (1.21.6+). */
+    public static final boolean BACKGROUND_IN_RENDER = true;
 }

@@ -206,6 +206,29 @@ public final class Protocol {
         }
     }
 
+    /** The server's suggested radial menu: {"entries":[{"name","icon","type":"command/chat/page","value","page":[...]}]}. */
+    public static void onWheel(String json) {
+        JsonObject o = parse(json);
+        if (o == null || !o.has("entries") || !o.get("entries").isJsonArray()) return;
+        dev.lumio.wheel.Wheel.setServer(entries(o.getAsJsonArray("entries"), 0));
+    }
+
+    private static java.util.List<dev.lumio.Config.WheelEntry> entries(com.google.gson.JsonArray arr, int depth) {
+        java.util.List<dev.lumio.Config.WheelEntry> out = new ArrayList<>();
+        for (JsonElement el : arr) {
+            if (!el.isJsonObject() || out.size() >= dev.lumio.wheel.Wheel.MAX) continue;
+            JsonObject e = el.getAsJsonObject();
+            String type = clean(str(e, "type", "command"), 10);
+            if (!type.equals("command") && !type.equals("chat") && !type.equals("page")) type = "command";
+            if (type.equals("page") && depth >= 2) continue;
+            dev.lumio.Config.WheelEntry w = new dev.lumio.Config.WheelEntry(clean(str(e, "name", "?"), 24),
+                    clean(str(e, "icon", "minecraft:compass"), 64), type, clean(str(e, "value", ""), 200));
+            if (type.equals("page") && e.has("page") && e.get("page").isJsonArray()) w.page.addAll(entries(e.getAsJsonArray("page"), depth + 1));
+            out.add(w);
+        }
+        return out;
+    }
+
     /** A request card was answered: run its command as the player, or tell the server. */
     public static void answer(Cards.Prompt p, boolean accepted) {
         Minecraft mc = Minecraft.getInstance();

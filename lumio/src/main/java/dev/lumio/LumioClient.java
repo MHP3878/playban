@@ -69,7 +69,16 @@ public final class LumioClient implements ClientModInitializer {
     }
 
     public static void openWheelEditor() {
-        Cards.toast(Component.translatable("lumio.soon.title"), Component.translatable("lumio.soon.text"), Draw.accent(), 5);
+        Minecraft.getInstance().setScreen(new SettingsScreen(SettingsScreen.Tab.WHEEL));
+    }
+
+    /** Whether the radial menu key is held right now (asked from the window: a screen is open meanwhile). */
+    public static boolean wheelHeld() {
+        var key = KeyBindingHelper.getBoundKeyOf(wheel);
+        long window = Compat.window();
+        if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE)
+            return GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
+        return key.getValue() >= 0 && GLFW.glfwGetKey(window, key.getValue()) == GLFW.GLFW_PRESS;
     }
 
     /** Shows what the cards look like, without a server. */
@@ -96,12 +105,14 @@ public final class LumioClient implements ClientModInitializer {
         PayloadTypeRegistry.playS2C().register(JsonPayload.PROMPT, JsonPayload.codec(JsonPayload.PROMPT));
         PayloadTypeRegistry.playS2C().register(JsonPayload.TOAST, JsonPayload.codec(JsonPayload.TOAST));
         PayloadTypeRegistry.playS2C().register(JsonPayload.HUD, JsonPayload.codec(JsonPayload.HUD));
+        PayloadTypeRegistry.playS2C().register(JsonPayload.WHEEL, JsonPayload.codec(JsonPayload.WHEEL));
         PayloadTypeRegistry.playC2S().register(JsonPayload.REPORT, JsonPayload.codec(JsonPayload.REPORT));
         PayloadTypeRegistry.playC2S().register(JsonPayload.ANSWER, JsonPayload.codec(JsonPayload.ANSWER));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HELLO, (p, ctx) -> Protocol.onHello(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.PROMPT, (p, ctx) -> Protocol.onPrompt(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.TOAST, (p, ctx) -> Protocol.onToast(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HUD, (p, ctx) -> Protocol.onHud(p.json()));
+        ClientPlayNetworking.registerGlobalReceiver(JsonPayload.WHEEL, (p, ctx) -> Protocol.onWheel(p.json()));
 
         accept = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.accept", GLFW.GLFW_KEY_Y));
         deny = KeyBindingHelper.registerKeyBinding(Compat.key("key.lumio.deny", GLFW.GLFW_KEY_N));
@@ -113,6 +124,7 @@ public final class LumioClient implements ClientModInitializer {
             while (accept.consumeClick()) Cards.answer(true);
             while (deny.consumeClick()) Cards.answer(false);
             while (menu.consumeClick()) if (mc.screen == null) openMenu();
+            while (wheel.consumeClick()) if (mc.screen == null && mc.player != null) mc.setScreen(new dev.lumio.wheel.WheelScreen());
             if (openNextTick != null && mc.screen == null) {
                 Runnable r = openNextTick;
                 openNextTick = null;
@@ -128,6 +140,7 @@ public final class LumioClient implements ClientModInitializer {
             Protocol.reset();
             Cards.clear();
             dev.lumio.hud.HudData.clear();
+            dev.lumio.wheel.Wheel.setServer(null);
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(ClientCommandManager.literal("lumio")

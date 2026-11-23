@@ -29,6 +29,8 @@ class ModCheckTest {
     void setUp() {
         server = MockBukkit.mock();
         plugin = MockBukkit.load(ModCheckPlugin.class);
+        // most tests are about the check itself; the check room has its own tests
+        plugin.getConfig().set("check-room.enabled", false);
         admin = server.addPlayer("Admin");
         admin.setOp(true);
         steve = server.addPlayer("Steve");
@@ -600,5 +602,222 @@ class ModCheckTest {
         messages(admin);
         admin.performCommand("modcheck lumio");
         assertTrue(messages(admin).stream().anyMatch(l -> l.contains("nicht alle Mods")));
+    }
+
+    // ---------------------------------------------------------------- check room
+
+    private long now = 1_000_000L;
+
+    private PlayerMock joinIntoRoom(String name) {
+        plugin.getConfig().set("check-room.enabled", true);
+        plugin.getConfig().set("sign-check", false);
+        plugin.room().clock = () -> now;
+        PlayerMock p = server.addPlayer(name);
+        return p;
+    }
+
+    @Test
+    void theCheckRoomHoldsPlayersUntilTheCheckIsDone() {
+        plugin.getConfig().set("lumio.mode", "optional");
+        var before = steve.getLocation().clone();
+        PlayerMock alex = joinIntoRoom("Alex");
+        var start = alex.getLocation().clone();
+        assertTrue(plugin.room().holds(alex));
+        var c = plugin.room().center();
+        assertEquals(c.getBlockY(), alex.getLocation().getBlockY(), "in the room");
+        assertEquals(org.bukkit.Material.BEDROCK, c.clone().add(0, -1, 0).getBlock().getType(), "a floor of bedrock");
+        assertEquals(org.bukkit.Material.BEDROCK, c.clone().add(0, 3, 0).getBlock().getType(), "a ceiling of bedrock");
+        assertEquals(org.bukkit.Material.BEDROCK, c.clone().add(3, 1, 0).getBlock().getType(), "walls of bedrock");
+        // nothing happens inside, and the team does not see who is being checked
+        assertFalse(steve.canSee(alex));
+        alex.performCommand("spawn");
+        assertTrue(plugin.room().holds(alex));
+        // too early: the client name is judged after three seconds
+        now += 1000;
+        plugin.room().tick();
+        assertTrue(plugin.room().holds(alex));
+        now += 4000;
+        plugin.room().tick();
+        assertFalse(plugin.room().holds(alex), "checked: out again");
+        server.getScheduler().performTicks(2);
+        assertEquals(start.getBlockX(), alex.getLocation().getBlockX());
+        assertNotEquals(c.getBlockY(), alex.getLocation().getBlockY(), "back where the player was");
+        assertTrue(steve.canSee(alex));
+        assertEquals(before, steve.getLocation(), "players who were there before are not touched");
+    }
+
+    @Test
+    void withoutLumioWhenRequiredThePlayerStaysWithAWindow() {
+        plugin.getConfig().set("lumio.mode", "required");
+        PlayerMock alex = joinIntoRoom("Alex");
+        now += 3000;
+        plugin.room().tick();
+        server.getScheduler().performTicks(60);
+        assertTrue(alex.isOnline(), "not kicked: a window instead");
+        assertEquals(CheckRoom.State.MISSING_LUMIO, plugin.room().stateOf(alex));
+        // commands and chat wait
+        alex.performCommand("spawn");
+        assertTrue(plugin.room().holds(alex));
+        // the window's leave button
+        alex.performCommand("mcroom leave");
+        assertFalse(alex.isOnline());
+
+        PlayerMock bob = joinIntoRoom("Bob");
+        now += 3000;
+        plugin.room().tick();
+        assertTrue(bob.isOnline());
+        now += 6 * 60_000L;
+        plugin.room().tick();
+        assertFalse(bob.isOnline(), "after the waiting time: out");
+
+        // set to kick: out at once with the Lumio screen
+        plugin.getConfig().set("check-room.missing-lumio", "kick");
+        PlayerMock carl = joinIntoRoom("Carl");
+        now += 3000;
+        plugin.room().tick();
+        assertFalse(carl.isOnline());
+    }
+
+    @Test
+    void aForbiddenModInTheRoomCanKeepThePlayerThere() {
+        plugin.getConfig().set("lumio.mode", "off");
+        assertTrue(admin.performCommand("modblock meteor kick"));
+        plugin.getConfig().set("check-room.forbidden", "stay");
+        PlayerMock alex = joinIntoRoom("Alex");
+        plugin.guard().info(alex.getUniqueId()).channels.add("meteor-client:main");
+        plugin.guard().judge(alex);
+        assertTrue(alex.isOnline(), "stays in the room");
+        assertEquals(CheckRoom.State.FORBIDDEN, plugin.room().stateOf(alex));
+        now += 10_000;
+        plugin.room().tick();
+        assertTrue(plugin.room().holds(alex), "not let out with a forbidden mod");
+        // with "kick": the kick says what it is and what to do
+        plugin.getConfig().set("check-room.forbidden", "kick");
+        PlayerMock bob = joinIntoRoom("Bob");
+        plugin.guard().info(bob.getUniqueId()).channels.add("meteor-client:main");
+        plugin.guard().judge(bob);
+        assertFalse(bob.isOnline());
+    }
+
+    @Test
+    void theRoomMenuIsSimpleAndComplete() {
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            plugin.menus().room(admin);
+            assertNoMissingTexts("room menu " + code);
+            plugin.menus().main(admin);
+            assertNoMissingTexts("main menu " + code);
+        }
+        plugin.menus().room(admin);
+        admin.simulateInventoryClick(10);
+        assertTrue(plugin.getConfig().getBoolean("check-room.enabled"), "switched on from the test default");
+        admin.simulateInventoryClick(12);
+        assertEquals("stay", plugin.getConfig().getString("check-room.forbidden"));
+        admin.simulateInventoryClick(21);
+        assertEquals("BAN", plugin.getConfig().getString("injection-action"));
+        assertTrue(admin.performCommand("modcheck raum"));
+        steve.performCommand("modcheck raum");
+        var top = steve.getOpenInventory().getTopInventory();
+        assertFalse(top != null && top.getHolder() instanceof Menu, "players cannot");
+    }
+
+    @Test
+    void windowsAreRealDialogsFrom1216() {
+        assertTrue(Popups.atLeast("1.21.6", 1, 21, 6));
+        assertTrue(Popups.atLeast("1.21.11", 1, 21, 6));
+        assertFalse(Popups.atLeast("1.21.4", 1, 21, 6));
+        assertTrue(Popups.atLeast("1.22", 1, 21, 6));
+        // the texts of every window exist in both languages
+        for (String code : new String[]{"en", "de"}) {
+            plugin.lang().load(code);
+            for (String k : new String[]{"window.missing.title", "window.missing.text", "window.noreport.text", "window.outdated.text",
+                    "window.forbidden.text", "window.guide-steps", "window.download", "window.guide", "window.leave", "window.back",
+                    "book.missing", "book.guide-steps", "kick.forbidden", "room.bar-checking", "lumio.kick-silent", "injection.kind.module"}) {
+                assertFalse(plugin.lang().raw(k).contains("missing text"), code + " " + k);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- injection
+
+    private String greet(PlayerMock p) {
+        plugin.lumio().hello(p);
+        java.lang.reflect.Field f;
+        try {
+            f = Lumio.class.getDeclaredField("nonces");
+            f.setAccessible(true);
+            @SuppressWarnings("unchecked") var map = (java.util.Map<java.util.UUID, String>) f.get(plugin.lumio());
+            return map.get(p.getUniqueId());
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    void injectedCodeFoundByLumioKicksWithItsName() {
+        plugin.getConfig().set("lumio.mode", "optional");
+        String nonce = greet(steve);
+        assertNotNull(nonce);
+        var o = com.google.gson.JsonParser.parseString("{\"v\":1,\"nonce\":\"" + nonce + "\",\"findings\":["
+                + "{\"kind\":\"module\",\"strong\":false,\"what\":\"odd.dll (Downloads)\"}]}").getAsJsonObject();
+        plugin.lumio().integrity(steve, o);
+        assertTrue(steve.isOnline(), "a weak sign only goes to the team");
+        assertTrue(plugin.guard().info(steve.getUniqueId()).integrity.get(0).contains("odd.dll"));
+        // a wrong word is not ours
+        var forged = com.google.gson.JsonParser.parseString("{\"nonce\":\"nope\",\"findings\":[{\"kind\":\"thread\",\"strong\":true,\"what\":\"x\"}]}").getAsJsonObject();
+        plugin.lumio().integrity(steve, forged);
+        assertTrue(steve.isOnline());
+        var strong = com.google.gson.JsonParser.parseString("{\"v\":1,\"nonce\":\"" + nonce + "\",\"findings\":["
+                + "{\"kind\":\"process\",\"strong\":true,\"name\":\"Vape\",\"what\":\"vape.exe\"},"
+                + "{\"kind\":\"thread\",\"strong\":true,\"what\":\"start 0x7ff6000 outside every module\"}]}").getAsJsonObject();
+        plugin.lumio().integrity(steve, strong);
+        assertFalse(steve.isOnline(), "out");
+    }
+
+    @Test
+    void aSilentLumioIsOutWhenRequired() {
+        plugin.getConfig().set("lumio.mode", "required");
+        Guard.Info info = plugin.guard().info(steve.getUniqueId());
+        info.lumio = new Lumio.Report();
+        info.lumio.lumio = "0.6.0";
+        info.lumio.complete = true;
+        info.lumioAt = System.currentTimeMillis() - 200_000L;
+        plugin.lumio().heartbeat();
+        assertFalse(steve.isOnline(), "no word from Lumio for too long");
+        // an older Lumio is too old once the injection check is on
+        Lumio.Report old = new Lumio.Report();
+        old.lumio = "0.5.0";
+        assertTrue(plugin.lumio().outdated(old));
+        plugin.getConfig().set("injection.enabled", false);
+        assertFalse(plugin.lumio().outdated(old));
+    }
+
+    @Test
+    void bedrockIsOnlyWhatFloodgateSays() {
+        // the old default let in anyone who called their client "geyser"
+        assertTrue(plugin.getConfig().getStringList("lumio.exempt-brands").isEmpty());
+        plugin.guard().info(steve.getUniqueId()).brand = "geyser";
+        assertFalse(plugin.lumio().exempt(steve));
+    }
+
+    @Test
+    void leavingTheRoomEarlyStillBringsThePlayerBackNextTime() {
+        plugin.getConfig().set("lumio.mode", "optional");
+        PlayerMock alex = joinIntoRoom("Alex");
+        var key = new org.bukkit.NamespacedKey(plugin, "check_room_back");
+        String note = alex.getPersistentDataContainer().get(key, org.bukkit.persistence.PersistentDataType.STRING);
+        assertNotNull(note, "where the player was is noted on entering");
+        // kicked or gone while inside: the note stays for the next join
+        alex.disconnect();
+        assertNotNull(alex.getPersistentDataContainer().get(key, org.bukkit.persistence.PersistentDataType.STRING));
+        // the next join goes into the room again and afterwards back to the noted place
+        var back = CheckRoom.read(note);
+        alex.reconnect();
+        assertTrue(plugin.room().holds(alex));
+        now += 10_000;
+        plugin.room().tick();
+        assertFalse(plugin.room().holds(alex));
+        assertEquals(back.getBlockY(), alex.getLocation().getBlockY());
+        assertNull(alex.getPersistentDataContainer().get(key, org.bukkit.persistence.PersistentDataType.STRING), "the note is gone once back");
     }
 }

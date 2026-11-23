@@ -46,7 +46,7 @@
   "lumio.menu.about.version": "Version %s",
   "lumio.menu.about.server": "Dieser Server: %s",
   "lumio.menu.about.fair": "Fair Play, offen gesagt",
-  "lumio.menu.about.fair.text": "Server, die Lumio unterstützen, bekommen beim Joinen die Liste deiner Mods (Name, Version und ein Fingerabdruck der Datei). Sonst liest Lumio nichts von deinem Computer und schickt nichts an andere.",
+  "lumio.menu.about.fair.text": "Ein Server mit Lumio bekommt die Liste deiner Mods (Name, Version, Fingerabdruck der Datei). Fragt er danach, sagt Lumio ihm auch, ob in dein Spiel Code von außen eingeschleust wurde (Java-Agents, fremde Bibliotheken und Threads, Klassen ohne Datei) und ob ein Programm läuft, das auf seiner Liste von Injectoren steht. Gesendet werden nur Dateinamen, nie Ordner. Sonst wird nichts auf deinem Computer gelesen.",
   "lumio.hud.coords": "Koordinaten",
   "lumio.hud.fps": "FPS",
   "lumio.hud.ping": "Ping",

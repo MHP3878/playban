@@ -62,6 +62,30 @@ disguise-action: ALERT
 # Client names only cheat clients send (regular expressions): LiquidBounce's and ThunderHack's fake Lunar names, CheatBreaker
 fake-brands: ['^lunarclient:v2\.21\.33-2612$', '^lunarclient:1\.20\.(4|1)$', '^CB$']
 
+# Code injected into the game from outside (Vape, Prestige and other injection clients), found by
+# Lumio 0.6 or newer: KICK ("You have ... on, please delete it"), BAN or ALERT (only tell the team).
+injection-action: KICK
+injection:
+  # check for it (players with Lumio; in required mode Lumio 0.6 or newer is then needed)
+  enabled: true
+  # names of programs (without .exe) of known injectors; one running next to the game counts as found
+  processes: [vape, vapelite, vape-lite, vapeloader, prestige, prestigeclient, prestige-client]
+
+# The check room: on joining, players wait a moment in a closed room of bedrock above (or under) the
+# spawn until the check is done; then they are back exactly where they were. /modcheck raum sets it up.
+check-room:
+  enabled: true
+  # top: just under the height limit above the spawn; bottom: in the bedrock floor under the spawn
+  place: top
+  # forbidden mod found: kick (with "please delete it") or stay (in the room, with a window)
+  forbidden: kick
+  # Lumio missing although required: stay (in the room, with a window: download and guide) or kick
+  missing-lumio: stay
+  # the longest a check may take before the player goes on anyway (the check goes on in the background)
+  max-seconds: 20
+  # how long a player may stay in the room with a window before the kick
+  stay-minutes: 5
+
 # Lumio, the client mod (Fabric). Players who have it send the list of their mods (from the mod loader
 # itself, so mod-hiding filters do not work against it) and get cards with keys instead of chat buttons.
 lumio:
@@ -72,13 +96,14 @@ lumio:
   # name shown to Lumio players for this server (optional)
   server-name: ""
   # Lumio players with an older version are told about the update
-  latest-version: "0.5.0"
+  latest-version: "0.6.0"
   # in required mode: older versions are refused
   min-version: "0.1.0"
   # in required mode: how long to wait for the mod list after joining
   wait-seconds: 15
-  # clients that cannot load mods and never need Lumio (Bedrock players via Geyser are always free)
-  exempt-brands: [geyser, floodgate]
+  # client names that never need Lumio. Careful: a client name can be faked. Bedrock players via
+  # Geyser/Floodgate are found by those plugins and are always free, they need no entry here.
+  exempt-brands: []
 
 # Discord webhook for alerts (optional). Empty = off.
 discord-webhook: ""

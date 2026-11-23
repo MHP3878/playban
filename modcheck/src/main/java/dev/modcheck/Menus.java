@@ -70,7 +70,10 @@ public final class Menus {
             m.set(13, item(Material.NETHER_STAR, "menu.main.add"), e -> addMod(p));
             m.set(14, item(Material.KNOWLEDGE_BOOK, "menu.main.suggestions"), e -> suggestions(p, 0));
         }
-        if (p.hasPermission("modcheck.settings")) m.set(16, item(Material.COMPARATOR, "menu.main.settings"), e -> settings(p));
+        if (p.hasPermission("modcheck.settings")) {
+            m.set(16, item(Material.COMPARATOR, "menu.main.settings"), e -> settings(p));
+            m.set(20, item(Material.BEDROCK, "roommenu.entry"), e -> room(p));
+        }
         if (p.hasPermission("modcheck.unban")) m.set(22, item(Material.IRON_BARS, "menu.main.bans", "count", guard().bans().size()), e -> bans(p, 0));
         m.fill().open(p);
     }
@@ -469,6 +472,83 @@ public final class Menus {
             settings(p);
         });
         m.set(49, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
+        m.fill().open(p);
+    }
+
+    // ---------------------------------------------------------------- check room, Lumio, injection
+
+    /**
+     * Everything about joining on one page: the check room, what happens without Lumio or with a
+     * forbidden mod, the download link, the injection check, and a button to see the window yourself.
+     */
+    public void room(Player p) {
+        if (!p.hasPermission("modcheck.settings")) {
+            p.closeInventory();
+            lang().send(p, "no-permission");
+            return;
+        }
+        var c = plugin.getConfig();
+        Menu m = new Menu(5, lang().msg("roommenu.title"));
+        boolean on = c.getBoolean("check-room.enabled", true);
+        m.set(10, item(on ? Material.BEDROCK : Material.GRAY_DYE, "roommenu.enabled", "value", lang().raw(on ? "word-on" : "word-off")), e -> {
+            setGlobal("check-room.enabled", !on);
+            room(p);
+        });
+        String place = "bottom".equalsIgnoreCase(c.getString("check-room.place", "top")) ? "bottom" : "top";
+        m.set(11, item(place.equals("top") ? Material.FEATHER : Material.DEEPSLATE, "roommenu.place", "value", lang().raw("roommenu.place-" + place)), e -> {
+            setGlobal("check-room.place", place.equals("top") ? "bottom" : "top");
+            room(p);
+        });
+        String forbidden = plugin.room().onForbidden();
+        m.set(12, item(Material.BARRIER, "roommenu.forbidden", "value", lang().raw("roommenu.choice-" + forbidden)), e -> {
+            setGlobal("check-room.forbidden", forbidden.equals("kick") ? "stay" : "kick");
+            room(p);
+        });
+        String missing = plugin.room().onMissingLumio();
+        m.set(13, item(Material.AMETHYST_SHARD, "roommenu.missing", "value", lang().raw("roommenu.choice-" + missing)), e -> {
+            setGlobal("check-room.missing-lumio", missing.equals("kick") ? "stay" : "kick");
+            room(p);
+        });
+        String lumioMode = plugin.lumio().mode();
+        m.set(14, item(lumioMode.equals("required") ? Material.AMETHYST_CLUSTER : Material.AMETHYST_BLOCK, "roommenu.lumio",
+                "value", lang().raw("lumio.mode-name." + lumioMode)), e -> {
+            String nextMode = next(Lumio.MODES, lumioMode);
+            plugin.lumio().setMode(nextMode);
+            guard().log(p.getName(), "lumio mode", null, nextMode);
+            room(p);
+        });
+        String link = c.getString("lumio.download", "");
+        m.set(15, item(Material.LEAD, "roommenu.download", "value", link.isBlank() ? lang().raw("roommenu.no-link") : link), e ->
+                plugin.input().ask(p, "input.download", text -> {
+                    String t = text.trim();
+                    if (!t.startsWith("https://") || t.length() > 200 || t.contains(" ")) lang().send(p, "input.bad-link");
+                    else {
+                        setGlobal("lumio.download", t);
+                        guard().log(p.getName(), "lumio download", null, t);
+                    }
+                    room(p);
+                }, () -> room(p)));
+        m.set(16, item(Material.ENDER_EYE, "roommenu.preview"), e -> {
+            p.closeInventory();
+            plugin.popups().lumio(p, "missing");
+        });
+        boolean inj = plugin.lumio().injectionCheck();
+        m.set(20, item(inj ? Material.OBSERVER : Material.GRAY_DYE, "roommenu.injection", "value", lang().raw(inj ? "word-on" : "word-off")), e -> {
+            setGlobal("injection.enabled", !inj);
+            room(p);
+        });
+        String injAction = c.getString("injection-action", "KICK").toUpperCase(Locale.ROOT);
+        List<String> injActions = List.of("KICK", "BAN", "ALERT");
+        m.set(21, item(Material.TNT, "roommenu.injection-action", "value", actionName(injActions.contains(injAction) ? injAction : "KICK")), e -> {
+            setGlobal("injection-action", next(injActions, injActions.contains(injAction) ? injAction : "KICK"));
+            room(p);
+        });
+        m.set(23, item(Material.WRITTEN_BOOK, "roommenu.how"), null);
+        m.set(24, item(Material.REDSTONE_TORCH, "roommenu.forbidden-preview"), e -> {
+            p.closeInventory();
+            plugin.popups().forbidden(p, "Vape Client");
+        });
+        m.set(40, item(Material.OAK_DOOR, "menu.back"), e -> main(p));
         m.fill().open(p);
     }
 

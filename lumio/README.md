@@ -65,6 +65,14 @@ A server that supports Lumio greets it with a random word. Lumio answers with it
 Fabric Loader loaded: id, name, version and a SHA-256 fingerprint of each jar. Nothing else on the
 computer is read. This is said in the mod's description too.
 
+When the server asks for it (ModCheck's injection check), Lumio also checks the running game for code
+put in from outside, at the start and every few seconds while playing: classes defined without a file,
+threads that start in memory belonging to no DLL (Windows), Java agents, foreign libraries, and
+programs whose names are on the server's list of injectors. It tells the server only what it found,
+by file name, never folders; nothing else on the computer is read. Only this game's own process is
+looked at, apart from the names of running programs, which are compared with that list on your
+computer (only a match is told).
+
 ModCheck on the server checks the list against what it saw itself (channels, the hidden sign): a mod
 seen there but missing in the list means the list was forged. The server owner decides with
 `/modcheck lumio off|optional|required` whether Lumio is needed (Bedrock players via Geyser and
@@ -76,12 +84,13 @@ All messages are UTF-8 JSON on plugin channels.
 
 | Channel | Direction | Content |
 |---|---|---|
-| `lumio:hello` | server → client | `{"v":1,"nonce":"…","server":"…","latest":"0.5.0","download":"https://…"}` |
+| `lumio:hello` | server → client | `{"v":1,"nonce":"…","server":"…","latest":"0.6.0","download":"https://…","integrity":true,"watch":["vape"]}` |
 | `lumio:report` | client → server | `{"v":1,"nonce":"…","part":1,"parts":1,"lumio":"…","minecraft":"…","loader":"…","mods":[{"id","name","version","sha256","in"}]}` (split into parts below 28 KB) |
 | `lumio:prompt` | server → client | `{"id":"…","title":"…","text":"…","accept_command":"tpaccept Max","deny_command":"tpdeny Max","seconds":60}` |
 | `lumio:answer` | client → server | `{"id":"…","accept":true}` (only when the card has no commands) |
 | `lumio:toast` | server → client | `{"title":"…","text":"…","kind":"info/success/warn/error","seconds":6}` |
 | `lumio:hud` | server → client | `{"clear":true,"lines":[{"id":"money","label":"Balance","value":"$100"}]}` (at most 8 lines) |
+| `lumio:integrity` | client → server | `{"v":1,"nonce":"…","seq":3,"checks":["agents","attach","native","processes","code"],"findings":[{"kind":"code","strong":true,"what":"gg.vape.Cheat","name":"Vape"}]}` (on start, on news, every 30 s) |
 | `lumio:wheel` | server → client | `{"entries":[{"name":"Home","icon":"minecraft:red_bed","type":"command","value":"home"},{"name":"More","type":"page","page":[…]}]}` |
 
 The multiplayer list reads a part of the server description whose `insertion` is

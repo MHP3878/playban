@@ -68,6 +68,11 @@ public final class Guard implements Listener {
         final List<String> oldNonces = new ArrayList<>();
         /** what Lumio reported, when the player has it */
         public Lumio.Report lumio;
+        /** when the list came, and when Lumio last said what it found in the game (0 = never) */
+        public long lumioAt;
+        public long integrityAt;
+        /** what Lumio found in the game (injected code and the like), for the team */
+        public final List<String> integrity = new ArrayList<>();
         int signsDone;
         /** rules and findings already dealt with in this session: no second alert for the same thing */
         public final Set<String> handled = new HashSet<>();
@@ -585,11 +590,13 @@ public final class Guard implements Listener {
         alertTeam(p, mods, lang().raw("action." + action.toLowerCase(Locale.ROOT)), client, rule, proof);
         if (rule == null || rule.discord()) discord(p.getName(), mods, action, proof);
         log("ModCheck", action.toLowerCase(Locale.ROOT), p.getName(), mods + proofForLog(proof));
+        // in the check room with "stay": a window instead of the kick
+        if (rule != null && (action.equals("KICK") || action.equals("WARN")) && plugin.room() != null && plugin.room().keepForbidden(p, mods)) return;
         switch (action) {
             case "ALERT" -> {
                 // the team knows, nothing else
             }
-            case "KICK" -> p.kick(lang().msg("kick.screen", "reason", reason));
+            case "KICK" -> p.kick(rule != null ? forbiddenScreen(rule, mods) : lang().msg("kick.screen", "reason", reason));
             case "BAN" -> banNow(p, rule, reason);
             case "COMMAND" -> runCommand(p, rule, reason, mods);
             default -> {
@@ -600,6 +607,63 @@ public final class Guard implements Listener {
                 else banNow(p, rule, reason);
             }
         }
+    }
+
+    /** "You have Vape Client on. Please delete it and join again." With the rule's own reason, if it has one. */
+    public Component forbiddenScreen(Rule rule, String mods) {
+        String own = rule == null || rule.reason().isBlank() ? "" : fill(rule.reason(), mods);
+        Component screen = lang().msg("kick.forbidden", "mods", mods);
+        if (!own.isBlank()) screen = screen.append(Component.newline()).append(Component.newline())
+                .append(Component.text(own, net.kyori.adventure.text.format.NamedTextColor.GRAY));
+        return screen;
+    }
+
+    /**
+     * Lumio found code injected into the game (Vape, Prestige and the like): the setting
+     * injection-action says what happens, by default out with "please delete it".
+     */
+    public void injection(Player p, String client, List<String> proof) {
+        if (!p.isOnline() || p.hasPermission("modcheck.bypass")) return;
+        Info info = info(p.getUniqueId());
+        if (!info.handled.add("__injection")) return;
+        info.suspicion.addAll(proof);
+        String action = cfg().getString("injection-action", "KICK").toUpperCase(Locale.ROOT);
+        if (!List.of("ALERT", "KICK", "BAN").contains(action)) action = "KICK";
+        alertTeam(p, client, lang().raw("action." + action.toLowerCase(Locale.ROOT)), true, null, proof);
+        discord(p.getName(), client, action, proof);
+        log("ModCheck", "injection " + action.toLowerCase(Locale.ROOT), p.getName(), client + proofForLog(proof));
+        switch (action) {
+            case "ALERT" -> {
+            }
+            case "BAN" -> banFor(p, fill(cfg().getString("default-reason", "{mods}"), client), cfg().getString("ban-duration", "7d"));
+            default -> {
+                if (plugin.room() != null && plugin.room().keepForbidden(p, client)) return;
+                p.kick(forbiddenScreen(null, client));
+            }
+        }
+    }
+
+    /**
+     * Weak signs (e.g. a DLL from an unusual folder): kept with the player for the team to look at, and
+     * the team is told once per session in one line; nothing else happens.
+     */
+    public void hints(Player p, List<String> lines) {
+        if (!p.isOnline() || p.hasPermission("modcheck.bypass")) return;
+        Info info = info(p.getUniqueId());
+        List<String> fresh = new ArrayList<>();
+        for (String l : lines) if (!info.suspicion.contains(l) && info.suspicion.size() < 64) {
+            info.suspicion.add(l);
+            fresh.add(l);
+        }
+        for (String l : fresh) log("ModCheck", "hint", p.getName(), l);
+        if (fresh.isEmpty() || !info.handled.add("__hints") || !cfg().getBoolean("notify-team", true)) return;
+        var hover = Component.text().append(lang().msg("proof.title"));
+        for (String l : lines) hover.append(Component.newline()).append(Component.text("- " + l, net.kyori.adventure.text.format.NamedTextColor.GRAY));
+        Component line = lang().prefixed("alert.hints", "player", p.getName(), "count", lines.size())
+                .clickEvent(ClickEvent.runCommand("/modcheck " + p.getName()))
+                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(hover.build()));
+        for (Player staff : Bukkit.getOnlinePlayers()) if (staff.hasPermission("modcheck.notify")) staff.sendMessage(line);
+        Bukkit.getConsoleSender().sendMessage(line);
     }
 
     private static String proofForLog(List<String> proof) {

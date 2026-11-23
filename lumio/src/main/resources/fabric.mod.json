@@ -3,7 +3,7 @@
   "id": "lumio",
   "version": "${version}",
   "name": "Lumio",
-  "description": "A clean, useful everyday client mod: a smooth HUD you place yourself, a radial menu you fill yourself, a music widget for Spotify and other players, chat mentions, request cards you answer with one key, and a nicer multiplayer list. What is playing is read on your computer only and never sent anywhere. Servers that support Lumio receive the list of installed mods (names, versions, file fingerprints) for fair play; nothing else on your computer is read.",
+  "description": "A clean, useful everyday client mod: a smooth HUD you place yourself, a radial menu you fill yourself, a music widget for Spotify and other players, chat mentions, request cards you answer with one key, and a nicer multiplayer list. What is playing is read on your computer only and never sent anywhere. Servers that support Lumio receive the list of installed mods (names, versions, file fingerprints) for fair play, and, when they ask for it, what Lumio finds in the game itself: code injected from outside (Java agents, foreign libraries, threads, classes without a file) and running programs whose names are on the server's list of injectors. Only file names are sent, never folders; nothing else on your computer is read.",
   "authors": [
     "Lumio"
   ],

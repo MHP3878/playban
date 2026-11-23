@@ -46,7 +46,7 @@
   "lumio.menu.about.version": "Version %s",
   "lumio.menu.about.server": "This server: %s",
   "lumio.menu.about.fair": "Fair play, openly",
-  "lumio.menu.about.fair.text": "Servers that support Lumio receive the list of your mods when you join (name, version and a fingerprint of the file). Apart from that Lumio reads nothing from your computer and sends nothing to anyone.",
+  "lumio.menu.about.fair.text": "A server with Lumio receives the list of your mods (name, version, fingerprint of the file). When it asks, Lumio also tells it whether code was put into your game from outside (Java agents, foreign libraries and threads, classes without a file) and whether a program on its list of injectors is running. Only file names are sent, never folders. Nothing else on your computer is read.",
   "lumio.hud.coords": "Coordinates",
   "lumio.hud.fps": "FPS",
   "lumio.hud.ping": "Ping",

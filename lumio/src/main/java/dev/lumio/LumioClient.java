@@ -111,6 +111,7 @@ public final class LumioClient implements ClientModInitializer {
         PayloadTypeRegistry.playS2C().register(JsonPayload.WHEEL, JsonPayload.codec(JsonPayload.WHEEL));
         PayloadTypeRegistry.playC2S().register(JsonPayload.REPORT, JsonPayload.codec(JsonPayload.REPORT));
         PayloadTypeRegistry.playC2S().register(JsonPayload.ANSWER, JsonPayload.codec(JsonPayload.ANSWER));
+        PayloadTypeRegistry.playC2S().register(JsonPayload.INTEGRITY, JsonPayload.codec(JsonPayload.INTEGRITY));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.HELLO, (p, ctx) -> Protocol.onHello(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.PROMPT, (p, ctx) -> Protocol.onPrompt(p.json()));
         ClientPlayNetworking.registerGlobalReceiver(JsonPayload.TOAST, (p, ctx) -> Protocol.onToast(p.json()));
@@ -153,6 +154,7 @@ public final class LumioClient implements ClientModInitializer {
             Protocol.reset();
             Cards.clear();
             dev.lumio.hud.HudData.clear();
+            dev.lumio.guard.Integrity.reset();
             dev.lumio.wheel.Wheel.setServer(null);
         });
 

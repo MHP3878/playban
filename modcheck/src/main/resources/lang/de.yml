@@ -17,6 +17,8 @@ mode:
   allowlist: "Erlaubt-Liste (nur erlaubte Clients)"
 
 input:
+  download: "<#4facfe>Schreib den Download-Link für Lumio (mit https://)."
+  bad-link: "<red>Das ist kein gültiger Link. Er muss mit <white>https://</white> anfangen."
   cancel-hint: "<dark_gray>Schreib <white>abbrechen</white>, um abzubrechen."
   reason: "<#4facfe>Schreib den Grund. <white>{mods}</white> wird zu den Mod-Namen, z. B. <white>Kein Cheaten mit {mods}!</white>"
   command: "<#4facfe>Schreib den Befehl ohne /. <white>{player} {reason} {duration} {mods}</white> werden eingesetzt, mehrere mit <white>;</white> trennen"
@@ -26,6 +28,7 @@ input:
   webhook-wrong: "<red>Das ist kein Discord-Webhook-Link. Er muss mit <white>https://discord.com/api/webhooks/</white> anfangen."
 
 kick:
+  forbidden: "<red><bold>Verbotene Mod</bold>\n\n<white>Du hast <red>{mods}</red> an.\n<gray>Bitte lösch das und verbinde dich neu."
   screen: "<red><bold>Gekickt</bold>\n\n<gray>{reason}"
   warn-screen: "<gold><bold>Bitte entfernen</bold>\n\n<gray>{reason}\n\n<white>Entferne die Mod und join neu.\n<red>Verwarnungen bis zum Bann: {left}"
 ban:
@@ -35,9 +38,11 @@ ban:
   not-banned: "<gray><white>{player}</white> ist nicht von ModCheck gebannt."
 
 alert:
+  hints: "<yellow>⚠</yellow> <white>{player}</white> <gray>hat {count} Auffälligkeit(en) im Spiel, nur zur Info. <#4facfe>Maus drauf: Details"
   mod: "<red>⚠ <white>{player}</white> <gray>hat <white>{mods}</white> → {action}. <dark_gray>Klick zum Prüfen"
   client: "<red>⚠ <white>{player}</white> <gray>nutzt den Client <white>{mods}</white>, nicht erlaubt → {action}."
 lumio:
+  kick-silent: "<white><bold>Lumio antwortet nicht mehr</bold>\n\n<gray>Lumio wurde abgeschaltet oder blockiert.\n<gray>Starte Minecraft neu und verbinde dich wieder."
   kick-missing: "<white><bold>Lumio wird benötigt</bold>\n\n<gray>Auf diesem Server spielst du mit dem Lumio-Client.\n<gray>Er ist kostenlos und macht das Spiel schöner.\n\n<white>{download}"
   kick-no-report: "<white><bold>Lumio hat nicht geantwortet</bold>\n\n<gray>Bitte verbinde dich neu. Hilft das nicht, aktualisiere Lumio:\n<white>{download}"
   kick-outdated: "<white><bold>Bitte Lumio aktualisieren</bold>\n\n<gray>Dieser Server braucht Lumio <white>{min}</white> oder neuer.\n\n<white>{download}"
@@ -312,3 +317,113 @@ repeat:
     1d: "1 Tag"
     7d: "7 Tage"
     30d: "30 Tage"
+
+roommenu:
+  title: "<gradient:#7c5cff:#4fc3f7><bold>Prüfraum & Lumio</bold></gradient>"
+  entry:
+    name: "<#7c5cff><bold>Prüfraum & Lumio"
+    lore: ["<gray>Was beim Joinen passiert: Prüfraum,", "<gray>Lumio und Inject-Clients."]
+  enabled:
+    name: "<#7c5cff><bold>Prüfraum: <white>{value}"
+    lore: ["<gray>Beim Joinen wartet man kurz in einem", "<gray>Raum aus Bedrock, bis die Prüfung", "<gray>fertig ist. Danach ist man wieder", "<gray>genau da, wo man war.", "", "<#4facfe>Klick: an oder aus"]
+  place:
+    name: "<#7c5cff><bold>Ort: <white>{value}"
+    lore: ["<gray>Wo der Raum steht.", "", "<#4facfe>Klick: wechseln"]
+  place-top: "oben über dem Spawn"
+  place-bottom: "unten im Bedrock"
+  forbidden:
+    name: "<#7c5cff><bold>Verbotene Mod: <white>{value}"
+    lore: ["<gray>Was passiert, wenn jemand eine", "<gray>verbotene Mod hat (Regeln mit", "<gray>Kicken oder Verwarnen).", "", "<#4facfe>Klick: wechseln"]
+  missing:
+    name: "<#7c5cff><bold>Ohne Lumio: <white>{value}"
+    lore: ["<gray>Nur wenn Lumio Pflicht ist. Im Raum", "<gray>bekommt der Spieler ein Fenster mit", "<gray>Download-Knopf und Anleitung.", "", "<#4facfe>Klick: wechseln"]
+  choice-kick: "kicken"
+  choice-stay: "im Raum bleiben, mit Fenster"
+  lumio:
+    name: "<#7c5cff><bold>Lumio: <white>{value}"
+    lore: ["<gray>Aus, freiwillig oder Pflicht. Nur mit", "<gray>Pflicht sieht ModCheck jede Mod und", "<gray>jeden Inject-Client.", "", "<#4facfe>Klick: wechseln"]
+  download:
+    name: "<#7c5cff><bold>Download-Link"
+    lore: ["<white>{value}", "<gray>Dahin führt der Download-Knopf im Fenster.", "", "<#4facfe>Klick: Link in den Chat schreiben"]
+  no-link: "noch keiner"
+  preview:
+    name: "<#7c5cff><bold>Fenster „Lumio fehlt“ ansehen"
+    lore: ["<gray>Zeigt dir das Fenster, das Spieler", "<gray>ohne Lumio bekommen."]
+  forbidden-preview:
+    name: "<#7c5cff><bold>Fenster „Verbotene Mod“ ansehen"
+    lore: ["<gray>So sieht es aus, wenn jemand mit einer", "<gray>verbotenen Mod im Raum bleibt."]
+  injection:
+    name: "<#7c5cff><bold>Inject-Clients erkennen: <white>{value}"
+    lore: ["<gray>Lumio prüft das Spiel auf Code, der von", "<gray>außen eingeschleust wurde (Vape, Prestige", "<gray>und ähnliche). Braucht Lumio 0.6 oder neuer.", "", "<#4facfe>Klick: an oder aus"]
+  injection-action:
+    name: "<#7c5cff><bold>Inject-Client gefunden: <white>{value}"
+    lore: ["<gray>Beim Kick steht: „Du hast ... an.", "<gray>Bitte lösch das.“", "", "<#4facfe>Klick: wechseln"]
+  how:
+    name: "<#7c5cff><bold>So läuft's"
+    lore: ["<white>1. <gray>Spieler joint und landet im Prüfraum", "<white>2. <gray>ModCheck prüft Client, Mods, das", "<gray>   versteckte Schild und Lumio", "<white>3. <gray>Alles gut: zurück, „✔ Geprüft“", "<white>4. <gray>Sonst: Kick oder Fenster im Raum"]
+
+room:
+  enter-title: "<gradient:#7c5cff:#4fc3f7><bold>Kurze Prüfung</bold></gradient>"
+  enter-subtitle: "<gray>Gleich geht's los …"
+  bar-checking: "<white>Prüfung läuft <dark_gray>·</dark_gray> <gray>noch {seconds} s"
+  bar-lumio: "<red>Lumio fehlt <dark_gray>·</dark_gray> <gray>siehe Fenster"
+  bar-forbidden: "<red>Verbotene Mod: {mods}"
+  done-title: "<green><bold>✔ Geprüft</bold>"
+  done-subtitle: "<gray>Viel Spaß!"
+  wait: "<gray>Warte kurz, die Prüfung läuft."
+  leave-screen: "<white><bold>Bis gleich!</bold>\n\n<gray>Installiere Lumio und verbinde dich neu."
+
+window:
+  missing:
+    title: "<gradient:#7c5cff:#4fc3f7><bold>Lumio wird benötigt</bold></gradient>"
+    text: "<white>Auf diesem Server spielst du mit <#b388ff>Lumio</#b388ff>, dem kostenlosen Client-Mod: glatte Schrift, eigenes HUD, Kreismenü, Musik-Anzeige und mehr.\n\n<gray>Installiere ihn einmal, danach kommst du direkt rein."
+  noreport:
+    title: "<gold><bold>Lumio hat nicht geantwortet</bold>"
+    text: "<white>Dein Lumio hat sich nicht gemeldet.\n\n<gray>Starte Minecraft neu. Hilft das nicht, lade Lumio neu herunter."
+  outdated:
+    title: "<gold><bold>Lumio ist zu alt</bold>"
+    text: "<white>Dein Lumio ist zu alt für diesen Server.\n\n<gray>Lade die neue Version herunter und ersetze die alte Datei im mods-Ordner."
+  forbidden:
+    title: "<red><bold>Verbotene Mod gefunden</bold>"
+    text: "<white>Du hast <red>{mods}</red> an.\n\n<gray>Bitte lösch das und verbinde dich danach neu."
+  no-link: "<gray>Frag das Team nach dem Download-Link."
+  download: "⬇ Lumio herunterladen"
+  download-tip: "Öffnet die Download-Seite"
+  guide: "Anleitung"
+  guide-tip: "Schritt für Schritt erklärt"
+  leave: "Server verlassen"
+  back: "Zurück"
+  guide-title: "<gradient:#7c5cff:#4fc3f7><bold>So installierst du Lumio</bold></gradient>"
+  guide-steps: "<white>1.</white> <gray>Lade den <white>Fabric Installer</white> und installiere Fabric für deine Minecraft-Version.\n<white>2.</white> <gray>Lade <white>Fabric API</white> herunter.\n<white>3.</white> <gray>Lade <white>Lumio</white> herunter (die Datei für deine Version).\n<white>4.</white> <gray>Lege Fabric API und Lumio in den Ordner <white>.minecraft/mods</white>.\n<white>5.</white> <gray>Starte Minecraft mit dem Fabric-Profil und verbinde dich neu."
+  fabric: "Fabric Installer"
+  fabric-api: "Fabric API"
+
+book:
+  missing: "<dark_purple><bold>Lumio wird benötigt</bold></dark_purple>\n<black>Installiere den kostenlosen Client-Mod einmal, danach kommst du direkt rein."
+  noreport: "<gold><bold>Lumio antwortet nicht</bold></gold>\n<black>Starte Minecraft neu oder lade Lumio neu herunter."
+  outdated: "<gold><bold>Lumio ist zu alt</bold></gold>\n<black>Lade die neue Version herunter."
+  download: "<dark_purple><bold>⬇ Herunterladen</bold>"
+  no-link: "<gray>Frag das Team nach dem Link."
+  guide: "<blue><bold>» Anleitung</bold>"
+  leave: "<red>Server verlassen"
+  guide-steps: "<black>1. Fabric installieren\n2. Fabric API laden\n3. Lumio laden\n4. Beides in .minecraft/mods\n5. Mit Fabric starten\n"
+  fabric: "<blue><u>Fabric Installer</u>"
+  fabric-api: "<blue><u>Fabric API</u>"
+  lumio: "<dark_purple><u>Lumio</u>"
+  forbidden: "<red><bold>Verbotene Mod</bold></red>\n<black>Du hast {mods} an. Bitte lösch das und verbinde dich neu."
+
+injection:
+  unknown: "einen Inject-Client"
+  hint: "Auffälligkeit im Spiel"
+  kind:
+    codefile: "Code aus unbekannter Datei: {what}"
+    codeloader: "Code aus fremdem Lader: {what}"
+    agent: "Java-Agent beim Start: {what}"
+    attach: "Nachträglich eingehängt: {what}"
+    code: "Code ohne Herkunft: {what}"
+    module: "Fremde DLL im Spiel: {what}"
+    thread: "Thread aus eingeschleustem Speicher: {what}"
+    library: "Fremde Bibliothek im Spiel: {what}"
+    preload: "Vorgeladene Bibliothek: {what}"
+    process: "Injector läuft: {what}"
+    debugger: "Debugger am Spiel: {what}"

@@ -94,6 +94,17 @@ public final class Protocol {
         serverName = clean(str(o, "server", ""), 40);
         String nonce = clean(str(o, "nonce", ""), 64);
         ModList.get().thenAccept(mods -> Minecraft.getInstance().execute(() -> sendReport(nonce, mods)));
+        // the server asks to check the game for injected code (and names programs that count as injectors)
+        boolean check = o.has("integrity") && o.get("integrity").isJsonPrimitive() && o.get("integrity").getAsBoolean();
+        java.util.List<String> watch = new ArrayList<>();
+        if (o.has("watch") && o.get("watch").isJsonArray()) {
+            for (JsonElement w : o.getAsJsonArray("watch")) {
+                if (!w.isJsonPrimitive() || watch.size() >= 64) continue;
+                String name = clean(w.getAsString(), 40).toLowerCase(java.util.Locale.ROOT);
+                if (name.matches("[a-z0-9 ._-]{2,40}")) watch.add(name);
+            }
+        }
+        dev.lumio.guard.Integrity.onHello(nonce, check, watch);
         String latest = clean(str(o, "latest", ""), 24);
         String download = clean(str(o, "download", ""), 300);
         if (!latest.isEmpty() && Versions.compare(LumioClient.version(), latest) < 0) {

@@ -17,6 +17,8 @@ commands:
     description: Allow a mod again
     aliases: [modentsperren, unblockmod]
     permission: modcheck.block
+  mcroom:
+    description: The buttons of the check room window (leave, guide)
 
 permissions:
   modcheck.admin:

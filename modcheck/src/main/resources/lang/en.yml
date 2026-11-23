@@ -17,6 +17,8 @@ mode:
   allowlist: "allow list (only allowed clients)"
 
 input:
+  download: "<#4facfe>Write the download link for Lumio (with https://)."
+  bad-link: "<red>That is not a valid link. It has to start with <white>https://</white>."
   cancel-hint: "<dark_gray>Type <white>cancel</white> to stop."
   reason: "<#4facfe>Type the reason. <white>{mods}</white> becomes the mod names, e.g. <white>No cheating with {mods}!</white>"
   command: "<#4facfe>Type the command, without /. <white>{player} {reason} {duration} {mods}</white> are filled in, several separated by <white>;</white>"
@@ -26,6 +28,7 @@ input:
   webhook-wrong: "<red>That is not a Discord webhook link. It must start with <white>https://discord.com/api/webhooks/</white>."
 
 kick:
+  forbidden: "<red><bold>Forbidden mod</bold>\n\n<white>You have <red>{mods}</red> on.\n<gray>Please delete it and join again."
   screen: "<red><bold>Kicked</bold>\n\n<gray>{reason}"
   warn-screen: "<gold><bold>Please remove it</bold>\n\n<gray>{reason}\n\n<white>Remove the mod and join again.\n<red>Warnings left before a ban: {left}"
 ban:
@@ -35,9 +38,11 @@ ban:
   not-banned: "<gray><white>{player}</white> is not banned by ModCheck."
 
 alert:
+  hints: "<yellow>⚠</yellow> <white>{player}</white> <gray>has {count} unusual thing(s) in the game, just so you know. <#4facfe>Hover: details"
   mod: "<red>⚠ <white>{player}</white> <gray>has <white>{mods}</white> → {action}. <dark_gray>Click to check"
   client: "<red>⚠ <white>{player}</white> <gray>uses the client <white>{mods}</white>, not on the allow list → {action}."
 lumio:
+  kick-silent: "<white><bold>Lumio stopped answering</bold>\n\n<gray>Lumio was switched off or blocked.\n<gray>Restart Minecraft and join again."
   kick-missing: "<white><bold>Lumio is needed</bold>\n\n<gray>On this server you play with the Lumio client.\n<gray>It is free and makes the game look better.\n\n<white>{download}"
   kick-no-report: "<white><bold>Lumio did not answer</bold>\n\n<gray>Please reconnect. If that does not help, update Lumio:\n<white>{download}"
   kick-outdated: "<white><bold>Please update Lumio</bold>\n\n<gray>This server needs Lumio <white>{min}</white> or newer.\n\n<white>{download}"
@@ -312,3 +317,113 @@ repeat:
     1d: "1 day"
     7d: "7 days"
     30d: "30 days"
+
+roommenu:
+  title: "<gradient:#7c5cff:#4fc3f7><bold>Check room & Lumio</bold></gradient>"
+  entry:
+    name: "<#7c5cff><bold>Check room & Lumio"
+    lore: ["<gray>What happens on joining: check room,", "<gray>Lumio and injection clients."]
+  enabled:
+    name: "<#7c5cff><bold>Check room: <white>{value}"
+    lore: ["<gray>On joining, players wait a moment in a", "<gray>room of bedrock until the check is done.", "<gray>Then they are back exactly where they were.", "", "<#4facfe>Click: on or off"]
+  place:
+    name: "<#7c5cff><bold>Place: <white>{value}"
+    lore: ["<gray>Where the room is.", "", "<#4facfe>Click: change"]
+  place-top: "high above the spawn"
+  place-bottom: "down in the bedrock"
+  forbidden:
+    name: "<#7c5cff><bold>Forbidden mod: <white>{value}"
+    lore: ["<gray>What happens when somebody has a", "<gray>forbidden mod (rules that kick or warn).", "", "<#4facfe>Click: change"]
+  missing:
+    name: "<#7c5cff><bold>Without Lumio: <white>{value}"
+    lore: ["<gray>Only when Lumio is required. In the room", "<gray>the player gets a window with a download", "<gray>button and a guide.", "", "<#4facfe>Click: change"]
+  choice-kick: "kick"
+  choice-stay: "stay in the room, with a window"
+  lumio:
+    name: "<#7c5cff><bold>Lumio: <white>{value}"
+    lore: ["<gray>Off, optional or required. Only when it is", "<gray>required does ModCheck see every mod and", "<gray>every injection client.", "", "<#4facfe>Click: change"]
+  download:
+    name: "<#7c5cff><bold>Download link"
+    lore: ["<white>{value}", "<gray>Where the download button in the window leads.", "", "<#4facfe>Click: write the link in chat"]
+  no-link: "none yet"
+  preview:
+    name: "<#7c5cff><bold>See the window \"Lumio missing\""
+    lore: ["<gray>Shows you the window players", "<gray>without Lumio get."]
+  forbidden-preview:
+    name: "<#7c5cff><bold>See the window \"Forbidden mod\""
+    lore: ["<gray>What it looks like when somebody with a", "<gray>forbidden mod stays in the room."]
+  injection:
+    name: "<#7c5cff><bold>Find injection clients: <white>{value}"
+    lore: ["<gray>Lumio checks the game for code put in from", "<gray>outside (Vape, Prestige and the like).", "<gray>Needs Lumio 0.6 or newer.", "", "<#4facfe>Click: on or off"]
+  injection-action:
+    name: "<#7c5cff><bold>Injection client found: <white>{value}"
+    lore: ["<gray>The kick says: \"You have ... on.", "<gray>Please delete it.\"", "", "<#4facfe>Click: change"]
+  how:
+    name: "<#7c5cff><bold>How it works"
+    lore: ["<white>1. <gray>A player joins and lands in the room", "<white>2. <gray>ModCheck checks client, mods, the", "<gray>   hidden sign and Lumio", "<white>3. <gray>All fine: back, \"✔ Checked\"", "<white>4. <gray>Else: kick or a window in the room"]
+
+room:
+  enter-title: "<gradient:#7c5cff:#4fc3f7><bold>Quick check</bold></gradient>"
+  enter-subtitle: "<gray>Just a moment …"
+  bar-checking: "<white>Checking <dark_gray>·</dark_gray> <gray>{seconds} s left"
+  bar-lumio: "<red>Lumio missing <dark_gray>·</dark_gray> <gray>see the window"
+  bar-forbidden: "<red>Forbidden mod: {mods}"
+  done-title: "<green><bold>✔ Checked</bold>"
+  done-subtitle: "<gray>Have fun!"
+  wait: "<gray>Wait a moment, the check is running."
+  leave-screen: "<white><bold>See you soon!</bold>\n\n<gray>Install Lumio and join again."
+
+window:
+  missing:
+    title: "<gradient:#7c5cff:#4fc3f7><bold>Lumio is needed</bold></gradient>"
+    text: "<white>On this server you play with <#b388ff>Lumio</#b388ff>, the free client mod: smooth text, your own HUD, a radial menu, a music widget and more.\n\n<gray>Install it once, then you are straight in."
+  noreport:
+    title: "<gold><bold>Lumio did not answer</bold>"
+    text: "<white>Your Lumio did not report.\n\n<gray>Restart Minecraft. If that does not help, download Lumio again."
+  outdated:
+    title: "<gold><bold>Lumio is too old</bold>"
+    text: "<white>Your Lumio is too old for this server.\n\n<gray>Download the new version and replace the old file in the mods folder."
+  forbidden:
+    title: "<red><bold>Forbidden mod found</bold>"
+    text: "<white>You have <red>{mods}</red> on.\n\n<gray>Please delete it and join again."
+  no-link: "<gray>Ask the team for the download link."
+  download: "⬇ Download Lumio"
+  download-tip: "Opens the download page"
+  guide: "Guide"
+  guide-tip: "Step by step"
+  leave: "Leave the server"
+  back: "Back"
+  guide-title: "<gradient:#7c5cff:#4fc3f7><bold>How to install Lumio</bold></gradient>"
+  guide-steps: "<white>1.</white> <gray>Get the <white>Fabric Installer</white> and install Fabric for your Minecraft version.\n<white>2.</white> <gray>Download <white>Fabric API</white>.\n<white>3.</white> <gray>Download <white>Lumio</white> (the file for your version).\n<white>4.</white> <gray>Put Fabric API and Lumio into the folder <white>.minecraft/mods</white>.\n<white>5.</white> <gray>Start Minecraft with the Fabric profile and join again."
+  fabric: "Fabric Installer"
+  fabric-api: "Fabric API"
+
+book:
+  missing: "<dark_purple><bold>Lumio is needed</bold></dark_purple>\n<black>Install the free client mod once, then you are straight in."
+  noreport: "<gold><bold>Lumio did not answer</bold></gold>\n<black>Restart Minecraft or download Lumio again."
+  outdated: "<gold><bold>Lumio is too old</bold></gold>\n<black>Download the new version."
+  download: "<dark_purple><bold>⬇ Download</bold>"
+  no-link: "<gray>Ask the team for the link."
+  guide: "<blue><bold>» Guide</bold>"
+  leave: "<red>Leave the server"
+  guide-steps: "<black>1. Install Fabric\n2. Get Fabric API\n3. Get Lumio\n4. Both into .minecraft/mods\n5. Start with Fabric\n"
+  fabric: "<blue><u>Fabric Installer</u>"
+  fabric-api: "<blue><u>Fabric API</u>"
+  lumio: "<dark_purple><u>Lumio</u>"
+  forbidden: "<red><bold>Forbidden mod</bold></red>\n<black>You have {mods} on. Please delete it and join again."
+
+injection:
+  unknown: "an injection client"
+  hint: "Something unusual in the game"
+  kind:
+    codefile: "Code from an unknown file: {what}"
+    codeloader: "Code from a foreign loader: {what}"
+    agent: "Java agent at start: {what}"
+    attach: "Attached later: {what}"
+    code: "Code without origin: {what}"
+    module: "Foreign DLL in the game: {what}"
+    thread: "Thread from injected memory: {what}"
+    library: "Foreign library in the game: {what}"
+    preload: "Preloaded library: {what}"
+    process: "Injector running: {what}"
+    debugger: "Debugger on the game: {what}"

@@ -13,6 +13,8 @@ See which client and mods players use, block mods just by their name, and let th
 | `/modcheck unban <player>` | Lift a ModCheck ban | `modcheck.unban` |
 | `/modcheck reset <player>` | Clear a player's warnings | `modcheck.unban` |
 | `/modcheck reload` | Reload config and texts | `modcheck.reload` |
+| `/modcheck raum` (`room`) | One simple page for joining: check room on/off, where, what happens with a forbidden mod or without Lumio, Lumio mode, the download link, injection clients, and buttons to see both windows yourself | `modcheck.settings` |
+| `/modcheck fenster` (`window`) | Shows you the window players without Lumio get | `modcheck.settings` |
 | `/modcheck lumio [off\|optional\|required]` | Whether players need the Lumio client mod (also `aus`, `freiwillig`, `pflicht`); without an argument it says what the current mode means. Not required means ModCheck does not know every mod, and it says so | `modcheck.settings` |
 
 `modcheck.notify` gets the alerts, `modcheck.bypass` is never checked, `modcheck.admin` has everything.
@@ -51,6 +53,17 @@ Everything a mod does not set itself comes from the general settings: default ac
 Everything suspicious about the client itself (blocks the check, a filter, no answer, disguise) is by default only told to the team; each can be set to kick, warn or ban in the settings.
 
 6. **Lumio** (the client mod, `lumio/` in this repository): players who have it send the mods Fabric Loader loaded, with a fingerprint of each jar. Translation filters cannot hide anything from that list; it is cross-checked against the channels and the sign, and a mod seen there but missing in the list marks the list as forged. `lumio.mode`: `off`, `optional` (default) or `required` (only players with Lumio may play; Bedrock players and `modcheck.bypass` are free). Lumio players also get cards with keys instead of chat buttons (StaffCore's TPA requests use them).
+
+7. **Injection clients** (Vape, Prestige and the like; Lumio 0.6 or newer): Lumio checks the running game itself, at the start and every few seconds while playing, and tells the server what it finds:
+   - **Code without a file**: classes defined straight into the game, the way injection clients put themselves in (strong).
+   - **Threads from injected memory** (Windows): a thread that starts in memory belonging to no DLL, the mark of code mapped in by hand (strong).
+   - **Java agents** on the command line (strong; `authlib-injector` of some launchers is no cheat), a debugger, or a tool attached later (only told to the team).
+   - **Injector programs** running next to the game, by name (`injection.processes`; strong).
+   - DLLs and libraries from unusual folders, code from unknown files (only told to the team, as one line per player).
+
+   Strong findings go to `injection-action`: by default a kick with "You have Vape on. Please delete it and join again." With the injection check on, `required` mode needs Lumio 0.6 or newer, and a Lumio that stops reporting for 100 seconds is out (it was switched off or blocked). Lumio sends only file names, never folders.
+
+8. **The check room** (`check-room`, on by default): on joining, a player waits a moment in a closed room of bedrock high above (or deep under) the spawn, with a title and a countdown bar, until the client, the mods, the hidden sign and Lumio are checked. Then "✔ Checked" and back exactly where they were. Inside nothing can be touched, nobody sees anybody, and nobody can be hurt. Without Lumio when it is required, the player stays in the room with a **window**: a download button, a guide (Fabric Installer, Fabric API, Lumio, which folder) and "leave the server" (on 1.21.6+ a real Minecraft dialog, before that a book). A forbidden mod either kicks with its name or keeps the player in the room with a window, whichever you choose. Bedrock players (found through Floodgate/Geyser, not by a client name that could be faked) and `modcheck.bypass` skip the room.
 
 **What no server plugin can see**: Wurst and LiquidBounce keep their texts outside the game's language, many hack clients and addons ship no language file, and mods without texts (Lithium, FerriteCore, Baritone) leave nothing to ask for. A client that hides every mod text *and* every mod channel *and* calls itself vanilla (OpSec's vanilla mode) looks exactly like vanilla. For a guarantee use the allow list, or a client mod every player must install.
 

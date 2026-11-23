@@ -14,6 +14,8 @@ public class ModCheckPlugin extends JavaPlugin {
     private Menus menus;
     private ChatInput input;
     private Lumio lumio;
+    private CheckRoom room;
+    private Popups popups;
 
     @Override
     public void onEnable() {
@@ -30,13 +32,17 @@ public class ModCheckPlugin extends JavaPlugin {
         lumio = new Lumio(this);
         lumio.enable();
         getServer().getPluginManager().registerEvents(lumio, this);
+        popups = new Popups(this);
+        room = new CheckRoom(this);
+        getServer().getPluginManager().registerEvents(room, this);
+        room.start();
         // say once at start what a mode without Lumio costs
         if (!lumio.mode().equals("required")) getServer().getConsoleSender().sendMessage(lang.prefixed("lumio.warn-incomplete"));
         getServer().getPluginManager().registerEvents(input, this);
         getServer().getPluginManager().registerEvents(new Menu.Clicks(), this);
         guard.registerVirtualSignListener();
         Commands commands = new Commands(this);
-        for (String name : new String[]{"modcheck", "modblock", "modunblock"}) {
+        for (String name : new String[]{"modcheck", "modblock", "modunblock", "mcroom"}) {
             PluginCommand c = getCommand(name);
             if (c != null) {
                 c.setExecutor(commands);
@@ -74,6 +80,8 @@ public class ModCheckPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // players in the check room go back to where they were before the server goes down
+        if (room != null) room.stop();
         // signs of the check on older servers: every block back before the server goes down
         if (guard != null) guard.putEverythingBack();
     }
@@ -94,4 +102,8 @@ public class ModCheckPlugin extends JavaPlugin {
     public ChatInput input() { return input; }
 
     public Lumio lumio() { return lumio; }
+
+    public CheckRoom room() { return room; }
+
+    public Popups popups() { return popups; }
 }

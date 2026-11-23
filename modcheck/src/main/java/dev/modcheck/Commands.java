@@ -32,6 +32,10 @@ public final class Commands implements TabExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         switch (command.getName().toLowerCase(Locale.ROOT)) {
             case "modblock" -> block(sender, args);
+            case "mcroom" -> {
+                // the buttons of the check room's window
+                if (sender instanceof Player p) plugin.room().command(p, args.length > 0 ? args[0] : "leave");
+            }
             case "modunblock" -> {
                 if (args.length == 0) lang().send(sender, "block.usage-unblock");
                 else {
@@ -101,6 +105,23 @@ public final class Commands implements TabExecutor {
                 lang().send(sender, "reloaded");
                 return;
             }
+            case "raum", "room", "pruefraum" -> {
+                if (!sender.hasPermission("modcheck.settings") || !(sender instanceof Player p)) {
+                    lang().send(sender, "no-permission");
+                    return;
+                }
+                plugin.menus().room(p);
+                return;
+            }
+            case "fenster", "window" -> {
+                // what a player without Lumio sees: the window, shown to yourself
+                if (!sender.hasPermission("modcheck.settings") || !(sender instanceof Player p)) {
+                    lang().send(sender, "no-permission");
+                    return;
+                }
+                plugin.popups().lumio(p, "missing");
+                return;
+            }
             case "lumio" -> {
                 // whether players need the Lumio client mod: only for admins
                 if (!sender.hasPermission("modcheck.settings")) {
@@ -164,12 +185,15 @@ public final class Commands implements TabExecutor {
             case "modblock" -> {
                 if (args.length == 1) for (KnownMods.Mod m : KnownMods.ALL) if (typed.isEmpty() || m.id().startsWith(KnownMods.normalize(typed))) out.add(m.id());
             }
+            case "mcroom" -> {
+                // nothing to suggest: the window's buttons use it
+            }
             case "modunblock" -> {
                 if (args.length == 1) for (Guard.Rule r : guard().rules()) if (r.id().startsWith(typed)) out.add(r.id());
             }
             default -> {
                 if (args.length == 1) {
-                    for (String s : List.of("unban", "reset", "reload", "lumio")) if (s.startsWith(typed)) out.add(s);
+                    for (String s : List.of("unban", "reset", "reload", "lumio", "raum", "fenster")) if (s.startsWith(typed)) out.add(s);
                     for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase(Locale.ROOT).startsWith(typed)) out.add(p.getName());
                 } else if (args.length == 2 && args[0].equalsIgnoreCase("lumio")) {
                     for (String s : List.of("aus", "freiwillig", "pflicht", "off", "optional", "required")) if (s.startsWith(typed)) out.add(s);

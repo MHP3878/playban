@@ -330,8 +330,22 @@ public final class AntiCheat implements Listener, TabExecutor {
     }
 
     /** Back to zero points. */
+    /** Everything the anti-cheat holds against a player: points, moments, votes, watching. */
     public void reset(UUID id) {
         points.remove(id);
+        movementCatches.remove(id);
+        consensus().forget(id);
+        State st = states.get(id);
+        if (st != null) {
+            st.findingTimes.clear();
+            st.grace.clear();
+        }
+        Suspect sus = suspects.get(id);
+        if (sus != null) {
+            watched.remove(id);
+            suspects.remove(id);
+            save();
+        }
     }
 
     /** Points a player has right now, all checks together. */
@@ -469,7 +483,11 @@ public final class AntiCheat implements Listener, TabExecutor {
         if (MAY_BE_INSTANT.contains(check) && plugin.getConfig().getStringList("anticheat.instant").contains(check)) amount = Math.max(amount, limit());
         if (watched.contains(p.getUniqueId())) amount *= plugin.getConfig().getDouble("anticheat.watch-multiplier", 1.5);
         Map<String, Double> account = points.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>());
-        account.merge(check, amount, Double::sum);
+        // never more than the limit: what comes on top says nothing new
+        double room = SOFT.contains(check) ? amount : Math.max(0, limit() - total(p.getUniqueId()));
+        account.merge(check, Math.min(amount, room), Double::sum);
+        account.values().removeIf(v -> v <= 0);
+        boolean voting = consensus().active();
         recent.computeIfAbsent(p.getUniqueId(), k -> new ArrayDeque<>());
         Deque<String> rec = recent.get(p.getUniqueId());
         rec.addFirst(new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date(now)) + " " + lang().raw("anticheat.check." + check)
@@ -479,8 +497,9 @@ public final class AntiCheat implements Listener, TabExecutor {
         String checkName = lang().raw("anticheat.check." + check);
 
         if (base >= 6) keep(p, checkName + String.format(Locale.ROOT, " +%.1f", amount));
-        if (base >= 10) {
-            st.grace.put(check, now + plugin.getConfig().getLong("anticheat.grace-seconds", 6) * 1000L);
+        if (base >= 10) st.grace.put(check, now + plugin.getConfig().getLong("anticheat.grace-seconds", 6) * 1000L);
+        // with Grim and Intave, one anti-cheat says nothing to the player: only the vote counts
+        if (base >= 10 && !voting) {
             p.showTitle(Title.title(lang().msg("anticheat.warn-title"), lang().msg("anticheat.warn-subtitle", "check", checkName),
                     Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(4), Duration.ofMillis(800))));
             p.sendMessage(lang().prefixed("anticheat.warn-chat", "check", checkName, "points", (int) Math.round(total), "limit", (int) limit()));
@@ -508,7 +527,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         }
         boolean isWatched = watched.contains(p.getUniqueId());
         long alertGap = isWatched ? 2000 : 12_000;
-        if (s != null && (now - st.lastAlert > alertGap || base >= 10)) {
+        if (s != null && !voting && (now - st.lastAlert > alertGap || base >= 10)) {
             st.lastAlert = now;
             alert(lang().prefixed(isWatched ? "anticheat.alert-watched" : "anticheat.alert", "player", p.getName(),
                     "check", checkName, "points", String.format(Locale.ROOT, "%.1f", amount), "total", (int) Math.round(total),
@@ -547,6 +566,15 @@ public final class AntiCheat implements Listener, TabExecutor {
             save();
             plugin.punish().caught(id, name, reason, "Anti-Cheat");
         });
+    }
+
+    /** Grim put the player back: the jump back is Grim's, not the player's. */
+    public void grimSetback(Player p) {
+        exemptFor(p, 1000);
+        State st = state(p);
+        st.airPackets = 0;
+        st.flyBuffer = 0;
+        st.lastH = 0;
     }
 
     /** Intave would kick or ban (its own verdict): one vote. */
@@ -1703,7 +1731,9 @@ public final class AntiCheat implements Listener, TabExecutor {
         return a;
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    // first of all plugins: Bastion judges what the client sent, before another plugin (another
+    // anti-cheat's setback, a region plugin) changes where the player goes
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
         Player p = e.getPlayer();
         State st = state(p);
@@ -2097,6 +2127,14 @@ public final class AntiCheat implements Listener, TabExecutor {
             if (handRaised(attacker)) {
                 flag(attacker, "aura", 5, lang().raw("anticheat.detail.autoblock"));
                 if (blockHits()) e.setCancelled(true);
+                return;
+            }
+            // animals and monsters: the server does not keep where they were a moment ago, and a mob
+            // that was just hit flies away faster than the attacker sees it. Only players are judged
+            // here (Grim judges every target as the attacker saw it)
+            if (!(target instanceof Player)) {
+                st.lastTarget = target.getUniqueId();
+                st.lastHit = now;
                 return;
             }
             BoundingBox box = target.getBoundingBox();
@@ -2542,6 +2580,16 @@ public final class AntiCheat implements Listener, TabExecutor {
                     : EvidenceReplay.View.FOLLOW);
             return true;
         }
+        if (args.length >= 2 && sub.equals("reset") && (args[1].equalsIgnoreCase("all") || args[1].equalsIgnoreCase("alle"))) {
+            // everybody back to zero (for example after testing)
+            java.util.Set<UUID> all = new java.util.HashSet<>(points.keySet());
+            all.addAll(suspects.keySet());
+            all.addAll(watched);
+            for (Player online : Bukkit.getOnlinePlayers()) all.add(online.getUniqueId());
+            for (UUID id : all) reset(id);
+            lang().send(sender, "anticheat.reset-all", "count", all.size());
+            return true;
+        }
         if (args.length >= 2 && List.of("clear", "watch", "unwatch", "points", "reset").contains(sub)) {
             UUID id = byName(args[1]);
             if (id == null) {
@@ -2562,7 +2610,7 @@ public final class AntiCheat implements Listener, TabExecutor {
                     lang().send(sender, "anticheat.not-watched", "player", args[1]);
                 }
                 case "reset" -> {
-                    points.remove(id);
+                    reset(id);
                     lang().send(sender, "anticheat.reset", "player", args[1]);
                 }
                 default -> {

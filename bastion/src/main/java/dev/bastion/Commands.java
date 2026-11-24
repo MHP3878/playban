@@ -407,6 +407,8 @@ public final class Commands implements TabExecutor {
                 if (op == null) lang().send(sender, "not-found", "player", args.length > 1 ? args[1] : "?");
                 else {
                     guard().resetWarnings(op.getUniqueId());
+                    // and everything the anti-cheat holds against the player: points, votes, watching
+                    plugin.antiCheat().reset(op.getUniqueId());
                     lang().send(sender, "check.reset", "player", args[1]);
                 }
                 return;

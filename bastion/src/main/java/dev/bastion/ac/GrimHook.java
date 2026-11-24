@@ -82,6 +82,22 @@ public final class GrimHook implements Listener {
                         String name = String.valueOf(n.invoke(c.invoke(event)));
                         double violations = vl == null ? 0 : ((Number) vl.invoke(event)).doubleValue();
                         hook.file(plugin, id, name, violations);
+                        // Grim puts the player back: Bastion must not take that jump for the player's own
+                        boolean setback = false;
+                        try {
+                            setback = Boolean.TRUE.equals(flag.getMethod("isSetback").invoke(event));
+                        } catch (ReflectiveOperationException | RuntimeException ignored) {
+                            // an older Grim: a little more care after each of its findings instead
+                            setback = true;
+                        }
+                        if (setback) {
+                            Runnable calm = () -> {
+                                Player p = Bukkit.getPlayer(id);
+                                if (p != null) plugin.antiCheat().grimSetback(p);
+                            };
+                            if (Bukkit.isPrimaryThread()) calm.run();
+                            else Bukkit.getScheduler().runTask(plugin, calm);
+                        }
                     } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
                         // another Grim version: its findings simply do not go into the files
                     }

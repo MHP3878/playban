@@ -1417,4 +1417,45 @@ class BastionTest {
         assertTrue(grim.isEnabled());
         assertTrue(worldedit.isEnabled(), "other plugins are not touched");
     }
+
+    @Test
+    void withThreeAntiCheatsOneSaysNothingToThePlayerAndPointsStopAtTheLimit() {
+        MockBukkit.createMockPlugin("GrimAC");
+        MockBukkit.createMockPlugin("Intave");
+        plugin.getConfig().set("anticheat.limit", 15);
+        var ac = plugin.antiCheat();
+        UUID id = steve.getUniqueId();
+        while (steve.nextComponentMessage() != null) { }
+        ac.flag(steve, "fly", 25, "test");
+        ac.flag(steve, "speed", 20, "test");
+        ac.flag(steve, "step", 18, "test");
+        assertNull(steve.nextComponentMessage(), "no \"fly is not allowed\" for what only one anti-cheat says");
+        assertTrue(ac.total(id) <= 15, "never more than the limit: " + ac.total(id));
+        // everybody back to zero: points, votes, watching
+        ac.setWatched(id, "Steve", true, "test");
+        ac.consensus().vote(steve, dev.bastion.ac.Consensus.GRIM, "Simulation");
+        assertTrue(server.dispatchCommand(server.getConsoleSender(), "bastion ac reset all"));
+        assertEquals(0.0, ac.total(id));
+        assertFalse(ac.watched(id));
+        assertTrue(ac.consensus().said(id).isEmpty());
+    }
+
+    @Test
+    void hittingAnAnimalThatFliesAwayIsNoReach() {
+        var ac = plugin.antiCheat();
+        steve.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        var sheep = steve.getWorld().spawn(steve.getLocation().clone().add(0, 0, 5.5), org.bukkit.entity.Sheep.class);
+        var hit = new org.bukkit.event.entity.EntityDamageByEntityEvent(steve, sheep, org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+                org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.PLAYER_ATTACK).build(), 1);
+        server.getPluginManager().callEvent(hit);
+        assertEquals(0.0, ac.points(steve.getUniqueId(), "reach"), "animals are judged by Grim, as the attacker saw them");
+        assertFalse(hit.isCancelled());
+    }
+
+    @Test
+    void anOldStaffCoreIsNamed() {
+        assertTrue(dev.bastion.ac.AcManager.olderThan("0.18.0", "0.23.0"));
+        assertFalse(dev.bastion.ac.AcManager.olderThan("0.25.0", "0.23.0"));
+        assertFalse(dev.bastion.ac.AcManager.olderThan("0.23.0", "0.23.0"));
+    }
 }

@@ -102,7 +102,7 @@ discord:
 
 check:
   usage: "<gray>Usage: <white>/bastion [player]</white>, <white>/bastion unban <player></white>, <white>/bastion reset <player></white>, <white>/bastion reload</white>, <white>/bastion lumio [off|optional|required]</white>"
-  reset: "<gray>The warnings of <white>{player}</white> are cleared."
+  reset: "<green>{player} is reset: warnings, anti-cheat points, votes and watching."
   header: "<white>{player}</white><gray>: client <white>{client}</white>, warnings <white>{warnings}</white>"
   mods: "<gray>Mods: <white>{mods}"
   channels: "<gray>Mod channels: <white>{channels}"
@@ -510,6 +510,7 @@ injectmenu:
     lore: ["<white>1. <gray>Lumio checks the running game for", "<gray>   code put in and for injectors", "<white>2. <gray>Known client: its own setting", "<white>3. <gray>Unknown but sure: 'block all'", "<white>4. <gray>Only signs: 'strict' or a team hint", "", "<dark_gray>Only players with Lumio are checked."]
 
 anticheat:
+  reset-all: "<green>Everybody reset: points, votes and watching of <white>{count}</white> players."
   caught-soft: "<gold>⚠ <white>{player}</white> <gray>was kicked: <white>{checks}</white>. Movement only, so no ban (<white>{n}/{of}</white> today; from {of} times on the ladder goes up)."
   antixray-state: "<gray>Paper anti-xray: <white>{state}</white>. <white>/bastion ac antixray on</white> or <white>off</white>."
   antixray-on: "<green>Paper anti-xray is switched on for the overworld and the nether (ores, ancient debris, spawners, chests). It works after the next restart. Backups: *.staffcore-backup"
@@ -531,7 +532,7 @@ anticheat:
   watched-join: "<gold>👁 <white>{player}</white> <gray>is on the watch list and just joined."
   now-watched: "<gold>👁 <white>{player}</white> <gray>is watched now: points count one and a half, every finding is reported."
   not-watched: "<gray><white>{player}</white> is no longer watched."
-  reset: "<gray>The points of <white>{player}</white> are back to 0."
+  reset: "<green>{player} is reset: anti-cheat points, votes and watching."
   points-header: "<gray><white>{player}</white>: <white>{total}</white>/<white>{limit}</white> points, watched: <white>{watched}</white>"
   points-line: "<gray> {check}: <white>{points}"
   header: "<gradient:#ff5f6d:#ffc371>Anti-cheat</gradient> <gray>({count} marked)"
@@ -814,6 +815,7 @@ consensus:
   lag-short: "lag, does not count"
 
 acmanager:
+  old-staffcore: "<red><bold>⚠ StaffCore {version} is too old!</bold></red> <gray>It still runs an old anti-cheat of its own next to Bastion: it puts players back and punishes by itself (e.g. \"fly\" when jumping down). <white>Please update StaffCore to 0.25.</white>"
   removed: "<gold>⚠ <gray>The anti-cheat <white>{name}</white> was switched off and removed (it would fight with Grim): <white>{where}</white>"
   move-failed: "could not move the file, please delete it by hand"
   installed: "<green>✔ <white>{names}</white> was installed (official file from Modrinth, checked). <gold>Restart the server once</gold>, then all anti-cheats vote together."

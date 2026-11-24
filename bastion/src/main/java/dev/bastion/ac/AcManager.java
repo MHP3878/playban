@@ -50,6 +50,43 @@ public final class AcManager {
         return plugin.getDataFolder().getParentFile();
     }
 
+    // ---------------------------------------------------------------- an old StaffCore
+
+    /**
+     * StaffCore before 0.23 has an anti-cheat of its own that does not step back for Bastion: it puts
+     * players back and punishes on its own. Bastion says so at the start and to every admin who joins.
+     */
+    public void warnOldStaffCore() {
+        Plugin sc = Bukkit.getPluginManager().getPlugin("StaffCore");
+        if (sc == null) return;
+        String v = sc.getPluginMeta().getVersion();
+        if (!older(v, "0.23.0")) return;
+        plugin.getLogger().warning("StaffCore " + v + " is old and runs an anti-cheat of its own next to Bastion (it puts players back and punishes"
+                + " by itself). Please update StaffCore to 0.25 or newer.");
+        Bukkit.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+                if (e.getPlayer().hasPermission("bastion.admin")) {
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.lang().send(e.getPlayer(), "acmanager.old-staffcore", "version", v), 60L);
+                }
+            }
+        }, plugin);
+    }
+
+    /** "0.18.0" against "0.23.0": true when a is older. */
+    public static boolean olderThan(String a, String b) {
+        return older(a, b);
+    }
+
+    static boolean older(String a, String b) {
+        String[] x = a.split("[^0-9]+"), y = b.split("[^0-9]+");
+        for (int i = 0; i < Math.max(x.length, y.length); i++) {
+            int p = i < x.length && !x[i].isEmpty() ? Integer.parseInt(x[i]) : 0, q = i < y.length && !y[i].isEmpty() ? Integer.parseInt(y[i]) : 0;
+            if (p != q) return p < q;
+        }
+        return false;
+    }
+
     // ---------------------------------------------------------------- other anti-cheats
 
     /** Switches other anti-cheats off and moves their files out of plugins/ (only names on the list). */

@@ -4,7 +4,7 @@ Anti-cheat, cheat clients, injectors, cheat resource packs and mods in one plugi
 
 ## Quick start
 
-1. Put `Bastion-2.1.0.jar` in `plugins/` and start the server. Bastion fetches the anti-cheats Grim and Intave itself; restart once more and all three work together (see below).
+1. Put `Bastion-2.1.1.jar` in `plugins/` and start the server. Bastion fetches the anti-cheats Grim and Intave itself; restart once more and all three work together (see below).
 2. `/setup` and choose how strict: **1 Mild**, **2 Strict** or **3 Hard** (or `/setup 3` at once).
 3. For full protection: `/bastion lumio pflicht` (every player needs Lumio).
 4. Put your Discord link in the setup menu: it is shown on every ban, kick and warning screen.
@@ -36,6 +36,7 @@ Bastion works with two free simulation anti-cheats that are used on large server
 - **Set up at once:** Grim's `punishments.yml` gets Bastion's thresholds (copy of the old file kept, Grim reloaded). Intave's `config.yml` is written before its first start: it only watches (`physics-mm: SILENT`, Grim puts players back), no rejoin block, no IP addresses to its cloud, and its kicks and bans become votes (`bastion vote intave ...`). Old files are kept as `*.before-bastion`.
 - **Other anti-cheats go:** Vulcan, Spartan, NoCheatPlus, Matrix, AAC and others on the list `anticheat.other-anticheats` would fight with Grim. Bastion switches them off and moves their file to `plugins/Bastion/entfernt/` (take it back from there; `anticheat.remove-others: false` leaves them).
 - **The vote:** Grim, Intave and Bastion's own checks each say on their own when they are sure a player cheats. **All three within ten minutes: the next step of the ladder** (with the level of `/setup`). **Two of three: the player is watched** and the team is told. **One: only noted** in the file and told to the team. With only two anti-cheats installed, both must agree, and one watches. A verdict while the server (below 17 TPS) or the player (above 350 ms) lags does not count. Every vote is in the player's file (`/akte`).
+- **Only the vote talks to players.** With Grim and Intave there, a finding of one anti-cheat gives the player no warning and no title, the points never go above the limit, and the team only gets the vote's messages (one/two/three of three). Reach and aim are judged by Bastion only against players: a hit animal flies away faster than the attacker sees it (Grim judges every target as the attacker saw it). When Grim puts a player back, Bastion does not take that jump for the player's own movement, and Bastion always judges the movement as the client sent it, before other plugins change it. An old StaffCore (before 0.23, with an anti-cheat of its own) is named at the start and to every admin who joins.
 - **Only Grim puts players back.** While Grim is there, Bastion's own checks still judge (and vote) but do not set back, cancel hits or block breaks: two anti-cheats pulling one player make honest players rubber-band.
 
 Tested on Paper 1.21.4 with the real client and all three anti-cheats: falls from 25 and 40 blocks, a jump into water, three creepers (one charged) and TNT right next to the player gave no vote at all.
@@ -75,6 +76,7 @@ The ranks that count on the server (from StaffCore or LuckPerms; without a rank 
 | `/setup [1\|2\|3]` | How strict Bastion is: everything at once | `bastion.settings` |
 | `/akte [player]` | A player's file, or all files | `bastion.akte` |
 | `/bastion ac [points\|watch\|unwatch\|reset\|clear\|replay] <player>` | The anti-cheat: points, watch list, replays of what was found | `bastion.check` |
+| `/bastion ac reset <player\|all>` | Back to zero: points, votes of the anti-cheats, watching (also in the file: the milk bucket; `/bastion reset <player>` also clears warnings) | `bastion.check` |
 | `/bastion alerts` | Anti-cheat alerts on or off for you | `bastion.check` |
 | `/bastion grim setup` | Writes Bastion's thresholds into Grim's `punishments.yml` again and reloads Grim | `bastion.admin` |
 | `/bastion grim <player> <check> [vl]` | Grim's verdict (Grim calls it from the console) | console or `bastion.admin` |

@@ -114,6 +114,7 @@ public class BastionPlugin extends JavaPlugin {
         getServer().getScheduler().runTask(this, () -> {
             dev.bastion.ac.AcManager manager = new dev.bastion.ac.AcManager(this);
             manager.removeOthers();
+            manager.warnOldStaffCore();
             dev.bastion.ac.GrimHook.register(this);
             dev.bastion.ac.IntaveHook.register(this);
             var consensus = antiCheat.consensus();

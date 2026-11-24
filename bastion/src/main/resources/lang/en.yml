@@ -571,6 +571,7 @@ anticheat:
     crystal: "Crystal macro"
     bot: "Bot"
   detail:
+    hitbox: "look misses the hitbox"
     no-elytra: "gliding without an elytra"
     ground: "claims ground in the air"
     dry: "riptide without water or rain"

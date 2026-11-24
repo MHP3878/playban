@@ -175,6 +175,10 @@ public final class AntiCheat implements Listener, TabExecutor {
         double prevSlip = 0.6;
         double kbAllow;
         long velocityUntil;
+        /** the boxes of this player over the last ticks, newest last */
+        final Deque<BoundingBox> boxes = new ArrayDeque<>();
+        /** a hit whose aim is judged once the next look direction is known */
+        Attack pending;
         /** the next teleport is our own setback */
         boolean ownTeleport;
         // the game's clock: moves faster than time passes (timer)
@@ -186,6 +190,9 @@ public final class AntiCheat implements Listener, TabExecutor {
         final Deque<double[]> liquid = new ArrayDeque<>();
         long eatStart;
     }
+
+    /** A hit to judge: where the eye was, where it looked, and every place the target could have been seen. */
+    record Attack(int tick, Vector eye, float yaw, float pitch, List<BoundingBox> boxes, double range, String target) {}
 
     /** One moment of the recording. event is null for plain movement. */
     public record Sample(long time, String world, double x, double y, double z, float yaw, float pitch, String event) {}
@@ -698,6 +705,10 @@ public final class AntiCheat implements Listener, TabExecutor {
         boolean laggy = ticks % 20 == 0 && laggy();
         for (Player p : Bukkit.getOnlinePlayers()) {
             State st = state(p);
+            // where this player was, tick by tick: others hit them where they saw them (their ping ago)
+            st.boxes.addLast(p.getBoundingBox());
+            while (st.boxes.size() > 30) st.boxes.removeFirst();
+            if (st.pending != null && ticks - st.pending.tick() >= 2) aimCheck(p, st);
             decay(p.getUniqueId(), st, now);
             autoTotem(p, st, now);
             Location loc = p.getLocation();
@@ -1331,8 +1342,9 @@ public final class AntiCheat implements Listener, TabExecutor {
         st.airPackets++;
         if (st.airPackets == 1) {
             // leaving the ground: a jump is at most 0.42 up (more with jump boost)
-            double maxJump = 0.42 + (jump >= 0 ? 0.1 * (jump + 1) : 0) + 0.05;
-            if (dy > maxJump + 0.2) {
+            double maxJump = 0.42 + (jump >= 0 ? 0.1 * (jump + 1) : 0);
+            // the game's jump is exact: anything higher goes back at once (high jump, step-up cheats)
+            if (dy > maxJump + 0.03 && now > st.velocityUntil) {
                 flag(p, "fly", 25, String.format(Locale.ROOT, "jump %.2f", dy));
                 setback(e, st);
                 return;
@@ -1552,6 +1564,71 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     // ---------------------------------------------------------------- fighting
 
+    /** Every place the attacker could have seen the target at: its last ticks (players), or now plus how far it could move. */
+    private List<BoundingBox> seenBoxes(Player attacker, Entity target) {
+        int back = Math.min(20, ping(attacker) / 50 + 4);
+        List<BoundingBox> out = new ArrayList<>();
+        if (target instanceof Player tp) {
+            List<BoundingBox> hist = new ArrayList<>(state(tp).boxes);
+            for (int i = Math.max(0, hist.size() - 1 - back); i < hist.size(); i++) out.add(hist.get(i).clone().expand(0.03));
+        }
+        Vector v = target.getVelocity();
+        double moved = Math.min(3.0, Math.hypot(v.getX(), v.getZ()) * back + 0.1);
+        out.add(target.getBoundingBox().clone().expand(moved, Math.min(1.5, Math.abs(v.getY()) * back + 0.1), moved));
+        return out;
+    }
+
+    private static double distanceTo(Vector eye, BoundingBox b) {
+        double x = Math.max(b.getMinX(), Math.min(eye.getX(), b.getMaxX()));
+        double y = Math.max(b.getMinY(), Math.min(eye.getY(), b.getMaxY()));
+        double z = Math.max(b.getMinZ(), Math.min(eye.getZ(), b.getMaxZ()));
+        return Math.sqrt((x - eye.getX()) * (x - eye.getX()) + (y - eye.getY()) * (y - eye.getY()) + (z - eye.getZ()) * (z - eye.getZ()));
+    }
+
+    /** How far off the look is from the box: 0 when the line of sight goes through it. */
+    private static double angleTo(Location eye, BoundingBox b) {
+        Vector dir = eye.getDirection();
+        if (b.rayTrace(eye.toVector(), dir, 8) != null) return 0;
+        Vector c = b.getCenter().subtract(eye.toVector());
+        double best = Math.toDegrees(dir.angle(c));
+        for (double fx : new double[]{0, 1}) for (double fy : new double[]{0, 1}) for (double fz : new double[]{0, 1}) {
+            Vector corner = new Vector(fx == 0 ? b.getMinX() : b.getMaxX(), fy == 0 ? b.getMinY() : b.getMaxY(), fz == 0 ? b.getMinZ() : b.getMaxZ());
+            best = Math.min(best, Math.toDegrees(dir.angle(corner.subtract(eye.toVector()))));
+        }
+        return best;
+    }
+
+    /**
+     * The hitbox check: a click hits what the crosshair is on. The look at the moment of the hit lies
+     * between the last look the server had and the next one; if no look in between goes through any
+     * place the target could have been, the hit was aimed by something else (kill aura).
+     */
+    private void aimCheck(Player p, State st) {
+        Attack a = st.pending;
+        st.pending = null;
+        Location now = p.getEyeLocation();
+        boolean hit = false;
+        double off = 180;
+        for (int i = 0; i <= 4 && !hit; i++) {
+            float t = i / 4f;
+            float yaw = a.yaw() + wrap(now.getYaw() - a.yaw()) * t;
+            float pitch = a.pitch() + (now.getPitch() - a.pitch()) * t;
+            Location look = new Location(p.getWorld(), a.eye().getX(), a.eye().getY(), a.eye().getZ(), yaw, pitch);
+            Vector dir = look.getDirection();
+            for (BoundingBox b : a.boxes()) {
+                BoundingBox wide = b.clone().expand(0.1);
+                if (wide.rayTrace(a.eye(), dir, a.range() + 1.5) != null) {
+                    hit = true;
+                    break;
+                }
+                off = Math.min(off, angleTo(look, wide));
+            }
+        }
+        if (!hit && off > 4) {
+            flag(p, "aura", severity(off, 4, 60, 6), String.format(Locale.ROOT, "%s %.0f° %s", lang().raw("anticheat.detail.hitbox"), off, a.target()));
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHit(EntityDamageByEntityEvent e) {
         if (e.getDamager() instanceof Player attacker && e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK && !exempt(attacker)) {
@@ -1567,25 +1644,28 @@ public final class AntiCheat implements Listener, TabExecutor {
             }
             BoundingBox box = target.getBoundingBox();
             Location eye = attacker.getEyeLocation();
-            Vector closest = new Vector(Math.max(box.getMinX(), Math.min(eye.getX(), box.getMaxX())),
-                    Math.max(box.getMinY(), Math.min(eye.getY(), box.getMaxY())),
-                    Math.max(box.getMinZ(), Math.min(eye.getZ(), box.getMaxZ())));
-            double distance = closest.distance(eye.toVector());
-            double limit = attribute(attacker, "entity_interaction_range", 3.0) + 0.6 + Math.min(1.2, ping(attacker) / 150.0);
-            double over = distance - limit;
             boolean block = plugin.getConfig().getBoolean("anticheat.block-hits", true);
+            // where the attacker could have seen the target: its places over their ping (plus the game's
+            // smoothing of movement); others move by at most their speed in that time
+            List<BoundingBox> seen = seenBoxes(attacker, target);
+            double distance = Double.MAX_VALUE;
+            for (BoundingBox b : seen) distance = Math.min(distance, distanceTo(eye.toVector(), b));
+            double range = attribute(attacker, "entity_interaction_range", 3.0);
+            double over = distance - range - 0.1;
             if (over > 0) {
-                flag(attacker, "reach", severity(distance, limit, limit + 2.5, 20), String.format(Locale.ROOT, "%.2f", distance));
-                if (block && over > 0.3) e.setCancelled(true);
-            }
-
-            Vector toTarget = box.getCenter().subtract(eye.toVector());
-            double angle = Math.toDegrees(eye.getDirection().angle(toTarget));
-            if (distance > 1.5 && angle > 100) {
-                flag(attacker, "aura", severity(angle, 100, 180, 16), String.format(Locale.ROOT, "%.0f°", angle));
+                flag(attacker, "reach", severity(over, 0, 1.5, 20), String.format(Locale.ROOT, "%.2f > %.2f", distance, range));
+                // a hit from further than the game allows does not count
                 if (block) e.setCancelled(true);
             }
-
+            // looking away from every place the target could be: no real click lands there
+            double angle = 180;
+            for (BoundingBox b : seen) angle = Math.min(angle, angleTo(eye, b));
+            if (distance > 1.2 && angle > 75) {
+                flag(attacker, "aura", severity(angle, 75, 180, 16), String.format(Locale.ROOT, "%.0f°", angle));
+                if (block) e.setCancelled(true);
+            }
+            // the fine check needs the look of the next tick too: judged a moment later
+            if (distance > 0.8) st.pending = new Attack(ticks, eye.toVector(), eye.getYaw(), eye.getPitch(), seen, range, target.getName());
             if (st.lastTarget != null && !st.lastTarget.equals(target.getUniqueId()) && now - st.lastHit < 40) {
                 flag(attacker, "aura", 1, lang().raw("anticheat.detail.multi"));
             }

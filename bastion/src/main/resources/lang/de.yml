@@ -571,6 +571,7 @@ anticheat:
     crystal: "Kristall-Makro"
     bot: "Bot"
   detail:
+    hitbox: "Blick verfehlt die Trefferbox"
     no-elytra: "gleitet ohne Elytra"
     ground: "behauptet Boden in der Luft"
     dry: "Riptide ohne Wasser oder Regen"

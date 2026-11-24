@@ -171,8 +171,16 @@ public final class AntiCheat implements Listener, TabExecutor {
         boolean lastGround = true;
         long lastMoveAt;
         double predictBuffer;
+        boolean prevStartGround = true;
+        double prevSlip = 0.6;
         double kbAllow;
         long velocityUntil;
+        /** the next teleport is our own setback */
+        boolean ownTeleport;
+        // the game's clock: moves faster than time passes (timer)
+        long lastPacketAt;
+        double timerBalance;
+        int timerCancels;
         // the surroundings: cobweb, ladders, liquids, slow blocks, hunger, ground claims
         int webStrikes, climbStrikes, slowStrikes, groundSpoof, hungerSprint;
         final Deque<double[]> liquid = new ArrayDeque<>();
@@ -544,6 +552,32 @@ public final class AntiCheat implements Listener, TabExecutor {
         return StaffCoreHook.exempt(p);
     }
 
+    /**
+     * The game moves once per tick, twenty times a second. A timer cheat speeds the game up and sends
+     * more: every move counts 50 ms, the time that really passed is taken off. Whoever is more than a
+     * few ticks ahead has the move thrown away (back to where they were), so the game runs at its own
+     * pace for them too. After lag a short burst is fine (up to a second of credit), and a client clock
+     * that runs a little fast (up to 2 %) is allowed for.
+     */
+    private boolean timerLimit(PlayerMoveEvent e, Player p, State st, long now) {
+        long gap = st.lastPacketAt == 0 ? 50 : now - st.lastPacketAt;
+        st.lastPacketAt = now;
+        if (!enabled() || exempt(p) || now < st.exemptUntil || p.isInsideVehicle() || laggy()) {
+            st.timerBalance = Math.min(st.timerBalance, 0);
+            return false;
+        }
+        st.timerBalance = Math.max(-1000, st.timerBalance + 50 - gap - 1);
+        if (st.timerBalance <= 200 || !plugin.getConfig().getBoolean("anticheat.setback", true)) return false;
+        st.timerBalance -= 50;
+        // too fast for the clock: this move does not happen
+        st.ownTeleport = true;
+        e.setTo(e.getFrom().clone());
+        if (++st.timerCancels % 20 == 1) {
+            flag(p, "timer", 4, String.format(Locale.ROOT, "%d ms ahead", (long) st.timerBalance + 50));
+        }
+        return true;
+    }
+
     /** Ends the grace after joining at once (the check room is over, or a test). */
     public void endGrace(Player p) {
         state(p).exemptUntil = 0;
@@ -711,7 +745,10 @@ public final class AntiCheat implements Listener, TabExecutor {
                 } else st.riseTicks = 0;
                 if (st.hoverTicks == 20 || (st.hoverTicks > 20 && st.hoverTicks % 40 == 0)) {
                     flag(p, "fly", 25, lang().raw("anticheat.detail.hover"));
-                    if (st.lastLegal != null && st.lastLegal.getWorld() == p.getWorld()) p.teleport(st.lastLegal);
+                    if (st.lastLegal != null && st.lastLegal.getWorld() == p.getWorld()) {
+                        st.ownTeleport = true;
+                        p.teleport(st.lastLegal);
+                    }
                 }
                 if (amplifier(p, PotionEffectType.JUMP_BOOST) < 0 && st.riseTicks > 14 && loc.getY() - st.riseStartY > 2.5) {
                     flag(p, "fly", 20, lang().raw("anticheat.detail.rise"));
@@ -734,7 +771,12 @@ public final class AntiCheat implements Listener, TabExecutor {
             // deep water under the feet, air at the body, moving flat: walking on the surface
             if (under.getType() == Material.WATER && under.getRelative(0, -1, 0).getType() == Material.WATER && body.getType().isAir()
                     && horizontal > 0.1 && !frostWalker(p) && Math.abs(dy) < 0.01 && !p.isSwimming()) {
-                if (++st.waterWalk == 40) flag(p, "jesus", 15, null);
+                // standing on water does not exist: pushed into it, and from the second second on it counts
+                if (++st.waterWalk % 10 == 0 && plugin.getConfig().getBoolean("anticheat.setback", true)) {
+                    st.ownTeleport = true;
+                    p.teleport(loc.clone().add(0, -0.6, 0), PlayerTeleportEvent.TeleportCause.PLUGIN);
+                }
+                if (st.waterWalk == 40) flag(p, "jesus", 15, null);
             } else if (st.waterWalk > 0) st.waterWalk--;
 
             // no fall
@@ -968,6 +1010,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         Location back = st.lastLegal.clone();
         back.setYaw(e.getTo().getYaw());
         back.setPitch(e.getTo().getPitch());
+        st.ownTeleport = true;
         e.setTo(back);
         st.lastSetback = System.currentTimeMillis();
         st.airPackets = 0;
@@ -980,6 +1023,36 @@ public final class AntiCheat implements Listener, TabExecutor {
      * sinks is elytra flying.
      */
     // ---------------------------------------------------------------- the game's physics, closely
+
+    /**
+     * On the ground the way the game means it: the feet exactly on the top of a block's collision
+     * shape (slabs, stairs, fences, snow included), under the middle or a corner of the player.
+     */
+    static boolean exactGround(Location l) {
+        double y = l.getY();
+        double[][] points = {{0, 0}, {-0.299, -0.299}, {-0.299, 0.299}, {0.299, -0.299}, {0.299, 0.299}};
+        try {
+            for (double[] pt : points) {
+                double px = l.getX() + pt[0], pz = l.getZ() + pt[1];
+                int bx = (int) Math.floor(px), bz = (int) Math.floor(pz);
+                int top = (int) Math.floor(y - 0.001);
+                for (int by = top; by >= top - 1; by--) {
+                    Block b = l.getWorld().getBlockAt(bx, by, bz);
+                    if (b.getType().isAir()) continue;
+                    for (BoundingBox box : b.getCollisionShape().getBoundingBoxes()) {
+                        double rx = px - bx, rz = pz - bz;
+                        if (rx < box.getMinX() - 0.001 || rx > box.getMaxX() + 0.001 || rz < box.getMinZ() - 0.001 || rz > box.getMaxZ() + 0.001) continue;
+                        if (Math.abs(by + box.getMaxY() - y) < 0.002) return true;
+                    }
+                }
+            }
+            return false;
+        } catch (RuntimeException | LinkageError e) {
+            // a server without collision shapes: a full block right under the feet
+            Block b = l.clone().add(0, -0.001, 0).getBlock();
+            return solid(b) && Math.abs(y - Math.floor(y)) < 0.002;
+        }
+    }
 
     /** How slippery a block is: the game's own numbers. */
     private static double slipperiness(Material m) {
@@ -1002,7 +1075,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         Location from = e.getFrom();
         boolean inLiquid = from.getBlock().isLiquid() || from.clone().add(0, 0.4, 0).getBlock().isLiquid();
         if (special || inLiquid || p.isSwimming()) {
-            st.lastH = horizontal / steps;
+            st.lastH = horizontal;
             st.predictBuffer = 0;
             return false;
         }
@@ -1011,22 +1084,28 @@ public final class AntiCheat implements Listener, TabExecutor {
         boolean canSprint = p.getFoodLevel() > 6 || p.getAllowFlight();
         if (!p.isSprinting() && canSprint) speed *= 1.3;
         double airPush = canSprint ? 0.026 : 0.02;
-        double slip = slipperiness(from.clone().add(0, -0.5001, 0).getBlock().getType());
-        boolean wasGround = st.lastGround;
+        // the game's order: friction slows the last step by the ground the player stood on when that
+        // step began; the keys push by the ground the player stands on now; a jump starts from it
+        boolean groundNow = exactGround(from);
+        double slipNow = slipperiness(from.clone().add(0, -0.5001, 0).getBlock().getType());
+        double friction = st.prevStartGround ? st.prevSlip * 0.91 : 0.91;
+        double groundPush = speed * (0.21600002 / (slipNow * slipNow * slipNow));
         double v = Math.max(st.lastH, st.kbAllow);
-        double allowed = 0;
-        for (int i = 0; i < steps; i++) {
-            double friction = (i == 0 ? wasGround : false) ? slip * 0.91 : 0.91;
-            double push = Math.max(wasGround || i > 0 ? speed * (0.21600002 / (slip * slip * slip)) : 0, airPush);
-            v = v * friction + push;
-            if (i == 0 && wasGround && dy > 0.2 && canSprint) v += 0.2;
-            allowed += v;
-        }
+        // each movement packet is one tick of the client (late or bunched packets are still one tick
+        // each); only moves too small to report (under 0.0625) can hide in a later one, a little each
+        v = v * friction + (groundNow ? groundPush : airPush);
+        if (groundNow && dy > 0.2 && canSprint) v += 0.2;
+        double allowed = v + Math.min(3, steps - 1) * 0.0625;
+        st.prevStartGround = groundNow;
+        st.prevSlip = slipNow;
         // other players and mobs push a little
         int crowd = 0;
         for (Entity near : p.getNearbyEntities(0.8, 1.0, 0.8)) if (near instanceof LivingEntity) crowd++;
         allowed += Math.min(0.2, crowd * 0.05);
-        double tolerance = 0.03 * steps + (now < st.velocityUntil ? 0.08 : 0);
+        if (Boolean.getBoolean("bastion.debug")) plugin.getLogger().info(String.format(Locale.ROOT,
+                "PH h=%.4f dy=%.4f fromY=%.4f toY=%.4f gN=%s pG=%s og=%s lastH=%.4f allowed=%.4f steps=%d", horizontal, dy, from.getY(),
+                e.getTo().getY(), groundNow, friction < 0.9, p.isOnGround(), st.lastH, allowed, steps));
+        double tolerance = 0.03 + (now < st.velocityUntil ? 0.08 : 0);
         double over = horizontal - allowed - tolerance;
         st.kbAllow *= Math.pow(0.91, steps);
         if (st.kbAllow < 0.05) st.kbAllow = 0;
@@ -1034,14 +1113,16 @@ public final class AntiCheat implements Listener, TabExecutor {
             st.predictBuffer += 1 + over * 10;
             // a clear jump forward goes back at once, small ones after a second time
             if (over > 0.12 || st.predictBuffer >= 2) {
-                flag(p, "speed", severity(over, 0, 0.6, 12), String.format(Locale.ROOT, "%.3f > %.3f", horizontal, allowed));
+                flag(p, "speed", severity(over, 0, 0.6, 12), String.format(Locale.ROOT, "%.3f > %.3f", horizontal, allowed)
+                        + (Boolean.getBoolean("bastion.debug") ? String.format(Locale.ROOT, " g=%s dy=%.3f lastH=%.3f steps=%d slip=%.2f spd=%.3f spr=%s og=%s",
+                        groundNow, dy, st.lastH, steps, slipNow, speed, p.isSprinting(), p.isOnGround()) : ""));
                 setback(e, st);
                 st.predictBuffer = 0;
-                st.lastH = 0;
+                // back where it was in order, moving as fast as it legally did
                 return true;
             }
         } else st.predictBuffer = Math.max(0, st.predictBuffer - 0.1);
-        st.lastH = horizontal / steps;
+        st.lastH = horizontal;
         return false;
     }
 
@@ -1268,7 +1349,8 @@ public final class AntiCheat implements Listener, TabExecutor {
         double off = dy - predicted;
         st.airDy = dy;
         if (off > 0.05) {
-            if (++st.flyBuffer >= 2) {
+            // clearly more up than gravity allows: back at once; a hair over it only the second time
+            if (off > 0.07 || ++st.flyBuffer >= 2) {
                 String how = dy > 0.02 ? lang().raw("anticheat.detail.rise") : lang().raw("anticheat.detail.hover");
                 flag(p, "fly", 25, String.format(Locale.ROOT, "%s %.3f/%.3f", how, dy, predicted));
                 setback(e, st);
@@ -1306,7 +1388,10 @@ public final class AntiCheat implements Listener, TabExecutor {
         flag(p, "trident", 25, lang().raw(riptideTrident ? "anticheat.detail.dry" : "anticheat.detail.no-riptide"));
         Bukkit.getScheduler().runTask(plugin, () -> {
             p.setVelocity(new Vector(0, 0, 0));
-            if (back != null && back.getWorld() == p.getWorld()) p.teleport(back);
+            if (back != null && back.getWorld() == p.getWorld()) {
+                state(p).ownTeleport = true;
+                p.teleport(back);
+            }
         });
     }
 
@@ -1332,6 +1417,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         Player p = e.getPlayer();
         State st = state(p);
         long now = System.currentTimeMillis();
+        if (timerLimit(e, p, st, now)) return;
         physics(e, p, st, now);
         if (e.getTo() != null) {
             st.lastGround = groundAt(e.getTo());
@@ -1414,7 +1500,17 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent e) {
-        exemptFor(e.getPlayer(), 3000);
+        State own = state(e.getPlayer());
+        if (own.ownTeleport) {
+            // our own setback: no reason to stop judging, the player is right where the rules allow
+            own.ownTeleport = false;
+            own.last = e.getTo();
+            own.airPackets = 0;
+            own.flyBuffer = 0;
+            return;
+        }
+        // somebody else moved the player (/spawn, a portal, a plugin): a moment to arrive
+        exemptFor(e.getPlayer(), 1500);
         state(e.getPlayer()).last = e.getTo();
         state(e.getPlayer()).lastLegal = e.getTo().clone();
         state(e.getPlayer()).movePackets.clear();

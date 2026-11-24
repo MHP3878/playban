@@ -536,6 +536,7 @@ anticheat:
   unknown: "<red>Ein Spieler namens <white>{player}</white> ist nicht bekannt."
   cleared: "<gray>Die Markierung von <white>{player}</white> ist weg."
   check:
+    boat: "Boot-Cheat"
     noweb: "Spinnennetz ignorieren"
     fastclimb: "Schnell klettern"
     sprint: "Sprinten ohne Hunger"
@@ -571,6 +572,8 @@ anticheat:
     crystal: "Kristall-Makro"
     bot: "Bot"
   detail:
+    boatfly: "Boot fliegt"
+    elytra-physics: "Gleitflug gegen die Physik"
     hitbox: "Blick verfehlt die Trefferbox"
     no-elytra: "gleitet ohne Elytra"
     ground: "behauptet Boden in der Luft"

@@ -79,7 +79,7 @@ public final class AntiCheat implements Listener, TabExecutor {
     public static final List<String> CHECKS = List.of("fly", "speed", "reach", "aura", "autoclick", "nofall", "velocity", "xray",
             "timer", "step", "jesus", "fastbreak", "nuker", "scaffold", "noslow", "badpackets", "autototem", "anchor", "crystal", "bot",
             "aim", "criticals", "invmove", "fastbow", "snap", "botmine", "xraybait", "elytra", "trident", "noweb", "fastclimb", "sprint",
-            "fasteat", "grim");
+            "fasteat", "grim", "boat");
     /** Checks that alone never catch anybody: they can only mark. */
     private static final Set<String> SOFT = Set.of("xray", "bot");
 
@@ -179,6 +179,14 @@ public final class AntiCheat implements Listener, TabExecutor {
         final Deque<BoundingBox> boxes = new ArrayDeque<>();
         /** a hit whose aim is judged once the next look direction is known */
         Attack pending;
+        /** a knockback the client has to take: where it began, which way, how strong, by when */
+        Knock knock;
+        /** the movement of the last step, for the elytra formula */
+        Vector prevDelta = new Vector();
+        int glideBuffer;
+        // boats
+        int boatAir, boatFast;
+        Location boatLegal;
         /** the next teleport is our own setback */
         boolean ownTeleport;
         // the game's clock: moves faster than time passes (timer)
@@ -190,6 +198,9 @@ public final class AntiCheat implements Listener, TabExecutor {
         final Deque<double[]> liquid = new ArrayDeque<>();
         long eatStart;
     }
+
+    /** A knockback to check: start, direction and strength, the tick it came, and how long the client may take. */
+    record Knock(int tick, Location start, double vx, double vz, int window) {}
 
     /** A hit to judge: where the eye was, where it looked, and every place the target could have been seen. */
     record Attack(int tick, Vector eye, float yaw, float pitch, List<BoundingBox> boxes, double range, String target) {}
@@ -709,6 +720,7 @@ public final class AntiCheat implements Listener, TabExecutor {
             st.boxes.addLast(p.getBoundingBox());
             while (st.boxes.size() > 30) st.boxes.removeFirst();
             if (st.pending != null && ticks - st.pending.tick() >= 2) aimCheck(p, st);
+            if (st.knock != null && ticks - st.knock.tick() >= st.knock.window()) knockCheck(p, st);
             decay(p.getUniqueId(), st, now);
             autoTotem(p, st, now);
             Location loc = p.getLocation();
@@ -1284,6 +1296,32 @@ public final class AntiCheat implements Listener, TabExecutor {
                 setback(e, st);
                 return;
             }
+            // the game's gliding, tick by tick: look direction, gravity, lift and drag. Elytra fly and
+            // boost cheats leave it at once; judged in open air (no block to bump into nearby)
+            Vector actual = to.toVector().subtract(from.toVector());
+            if (boosted) {
+                if (actual.length() > 3.2) {
+                    flag(p, "elytra", severity(actual.length(), 3.2, 6, 25), String.format(Locale.ROOT, "%.2f b/t", actual.length()));
+                    setback(e, st);
+                    return;
+                }
+            } else if (amplifier(p, PotionEffectType.SLOW_FALLING) < 0 && openAir(to, actual.length() + 1) && openAir(from, 1)) {
+                Vector predicted = glide(st.prevDelta, to.getYaw(), to.getPitch());
+                double err = actual.clone().subtract(predicted).length();
+                double tolerance = 0.06 + 0.03 * predicted.length();
+                if (err > tolerance) {
+                    if (err > 0.25 || ++st.glideBuffer >= 2) {
+                        flag(p, "elytra", severity(err, tolerance, 1.5, 25), String.format(Locale.ROOT, "%s %.2f/%.2f",
+                                lang().raw("anticheat.detail.elytra-physics"), actual.length(), predicted.length()));
+                        setback(e, st);
+                        st.glideBuffer = 0;
+                        return;
+                    }
+                } else {
+                    st.glideBuffer = Math.max(0, st.glideBuffer - 1);
+                    st.lastLegal = to.clone();
+                }
+            }
             st.glideFlat = !boosted && dy >= -0.005 ? st.glideFlat + 1 : Math.max(0, st.glideFlat - 2);
             if (st.glideFlat > 80) {
                 flag(p, "elytra", 25, lang().raw("anticheat.detail.glide"));
@@ -1432,6 +1470,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         if (timerLimit(e, p, st, now)) return;
         physics(e, p, st, now);
         if (e.getTo() != null) {
+            st.prevDelta = e.getTo().toVector().subtract(e.getFrom().toVector());
             st.lastGround = groundAt(e.getTo());
             if (st.lastSetback == now) st.lastH = 0;
         }
@@ -1517,6 +1556,7 @@ public final class AntiCheat implements Listener, TabExecutor {
             // our own setback: no reason to stop judging, the player is right where the rules allow
             own.ownTeleport = false;
             own.last = e.getTo();
+            own.prevDelta = new Vector();
             own.airPackets = 0;
             own.flyBuffer = 0;
             return;
@@ -1542,6 +1582,9 @@ public final class AntiCheat implements Listener, TabExecutor {
         st.airDy = v.getY() / 0.98 + 0.08;
         st.airPackets = Math.max(st.airPackets, 1);
         if (h > 1.2 || v.getY() > 1.0) exemptFor(e.getPlayer(), 1500);
+        else if (h > 0.15 && !exempt(e.getPlayer()) && !e.getPlayer().isInsideVehicle() && !e.getPlayer().isGliding()) {
+            st.knock = new Knock(ticks, e.getPlayer().getLocation().clone(), v.getX(), v.getZ(), 3 + Math.min(8, ping(e.getPlayer()) / 50));
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -1563,6 +1606,132 @@ public final class AntiCheat implements Listener, TabExecutor {
     }
 
     // ---------------------------------------------------------------- fighting
+
+    // ---------------------------------------------------------------- knockback, elytra, boats
+
+    /**
+     * The knockback a hit gave must show in the player's movement: at least what two ticks of it
+     * carry, minus the most a player can push back with the keys. A client that ignores it (anti
+     * knockback, velocity cheats) is moved there by the server, unless a wall is in the way.
+     */
+    private void knockCheck(Player p, State st) {
+        Knock k = st.knock;
+        st.knock = null;
+        if (!p.isOnline() || exempt(p) || p.isInsideVehicle() || p.getWorld() != k.start().getWorld() || special(p)) return;
+        Location now = p.getLocation();
+        double vh = Math.hypot(k.vx(), k.vz());
+        double ux = k.vx() / vh, uz = k.vz() / vh;
+        double along = (now.getX() - k.start().getX()) * ux + (now.getZ() - k.start().getZ()) * uz;
+        double expected = vh * (1 + 0.91) - 2 * 0.13;
+        if (expected < 0.15 || along >= expected * 0.4) return;
+        if (k.start().getBlock().isLiquid()) return;
+        // a wall in the way stops a knockback for everybody
+        Location eyeStart = k.start().clone().add(0, 0.6, 0);
+        Vector dir = new Vector(ux, 0, uz);
+        if (p.getWorld().rayTraceBlocks(eyeStart, dir, expected + 0.4) != null
+                || p.getWorld().rayTraceBlocks(k.start().clone().add(0, 0.1, 0), dir, expected + 0.4) != null) return;
+        flag(p, "velocity", severity(expected - along, 0, expected, 10), String.format(Locale.ROOT, "%.2f/%.2f", Math.max(0, along), expected));
+        if (plugin.getConfig().getBoolean("anticheat.setback", true)) {
+            Location pushed = k.start().clone().add(ux * expected * 0.8, 0, uz * expected * 0.8);
+            pushed.setYaw(now.getYaw());
+            pushed.setPitch(now.getPitch());
+            st.ownTeleport = true;
+            p.teleport(pushed);
+        }
+    }
+
+    /** One tick of gliding as the game computes it, from the movement of the tick before and the look. */
+    static Vector glide(Vector prev, float yawDeg, float pitchDeg) {
+        double pitch = Math.toRadians(pitchDeg), yaw = Math.toRadians(yawDeg);
+        double lx = -Math.sin(yaw) * Math.cos(pitch), ly = -Math.sin(pitch), lz = Math.cos(yaw) * Math.cos(pitch);
+        double hl = Math.sqrt(lx * lx + lz * lz);
+        double hv = Math.sqrt(prev.getX() * prev.getX() + prev.getZ() * prev.getZ());
+        double len = Math.sqrt(lx * lx + ly * ly + lz * lz);
+        double c = Math.cos(pitch);
+        c = c * c * Math.min(1.0, len / 0.4);
+        double x = prev.getX(), y = prev.getY() + 0.08 * (-1.0 + c * 0.75), z = prev.getZ();
+        if (y < 0 && hl > 0) {
+            double d = y * -0.1 * c;
+            x += lx * d / hl;
+            y += d;
+            z += lz * d / hl;
+        }
+        if (pitch < 0 && hl > 0) {
+            double d = hv * -Math.sin(pitch) * 0.04;
+            x += -lx * d / hl;
+            y += d * 3.2;
+            z += -lz * d / hl;
+        }
+        if (hl > 0) {
+            x += (lx / hl * hv - x) * 0.1;
+            z += (lz / hl * hv - z) * 0.1;
+        }
+        return new Vector(x * 0.99, y * 0.98, z * 0.99);
+    }
+
+    /** No solid block within this distance of the place: nothing to bump into. */
+    private static boolean openAir(Location l, double r) {
+        int rr = (int) Math.ceil(Math.min(3, r));
+        for (int dx = -rr; dx <= rr; dx++) for (int dy = -rr; dy <= rr + 1; dy++) for (int dz = -rr; dz <= rr; dz++) {
+            Block b = l.getWorld().getBlockAt(l.getBlockX() + dx, l.getBlockY() + dy, l.getBlockZ() + dz);
+            if (!b.getType().isAir()) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Boats: in the air they only fall (BoatFly cheats rise or hang), and they have fixed top speeds on
+     * water, on land and on ice. Whatever goes beyond is put back, boat and driver together.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onVehicleMove(org.bukkit.event.vehicle.VehicleMoveEvent e) {
+        var vehicle = e.getVehicle();
+        String type = vehicle.getType().name();
+        if (!(type.contains("BOAT") || type.contains("RAFT")) || vehicle.getPassengers().isEmpty()
+                || !(vehicle.getPassengers().get(0) instanceof Player p) || !enabled() || exempt(p)) return;
+        State st = state(p);
+        Location from = e.getFrom(), to = e.getTo();
+        if (from.getWorld() != to.getWorld()) return;
+        double dy = to.getY() - from.getY();
+        double h = Math.hypot(to.getX() - from.getX(), to.getZ() - from.getZ());
+        Block at = to.getBlock(), below = to.clone().add(0, -0.3, 0).getBlock();
+        boolean water = at.isLiquid() || below.isLiquid() || at.getType() == Material.BUBBLE_COLUMN || below.getType() == Material.BUBBLE_COLUMN;
+        boolean ground = !below.getType().isAir() && !below.isLiquid();
+        String bad = null;
+        double amount = 0;
+        if (!water && !ground && dy > -0.03) {
+            if (++st.boatAir >= 3) {
+                bad = lang().raw("anticheat.detail.boatfly");
+                amount = 25;
+            }
+        } else st.boatAir = 0;
+        Material floor = to.clone().add(0, -0.6, 0).getBlock().getType();
+        boolean ice = floor == Material.ICE || floor == Material.PACKED_ICE || floor == Material.BLUE_ICE || floor == Material.FROSTED_ICE;
+        double limit = ice ? 4.2 : water ? 0.7 : 0.5;
+        if (bad == null && h > limit) {
+            if (++st.boatFast >= 3) {
+                bad = String.format(Locale.ROOT, "%.2f > %.2f b/t", h, limit);
+                amount = severity(h, limit, limit * 2, 20);
+            }
+        } else if (h <= limit) st.boatFast = Math.max(0, st.boatFast - 1);
+        if (bad == null) {
+            if (water || ground) st.boatLegal = to.clone();
+            return;
+        }
+        st.boatAir = 0;
+        st.boatFast = 0;
+        flag(p, "boat", amount, bad);
+        if (plugin.getConfig().getBoolean("anticheat.setback", true)) {
+            Location back = st.boatLegal != null && st.boatLegal.getWorld() == to.getWorld() ? st.boatLegal : from;
+            vehicle.setVelocity(new Vector());
+            try {
+                vehicle.teleport(back, io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            } catch (Throwable t) {
+                vehicle.eject();
+                vehicle.teleport(back);
+            }
+        }
+    }
 
     /** Every place the attacker could have seen the target at: its last ticks (players), or now plus how far it could move. */
     private List<BoundingBox> seenBoxes(Player attacker, Entity target) {
@@ -1693,23 +1862,6 @@ public final class AntiCheat implements Listener, TabExecutor {
             }
             st.lastTarget = target.getUniqueId();
             st.lastHit = now;
-        }
-        if (e.getEntity() instanceof Player victim && e.getDamager() instanceof LivingEntity && !exempt(victim)
-                && !victim.isBlocking() && attribute(victim, "knockback_resistance", 0) < 0.3 && ping(victim) < 250 && !victim.isInsideVehicle()) {
-            Location start = victim.getLocation();
-            Vector push = start.toVector().subtract(e.getDamager().getLocation().toVector()).setY(0);
-            if (push.lengthSquared() < 0.01) return;
-            push.normalize();
-            Block ahead = start.clone().add(push.clone().multiply(0.8)).getBlock();
-            if (solid(ahead) || solid(ahead.getRelative(0, 1, 0)) || special(victim)) return;
-            State st = state(victim);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!victim.isOnline() || victim.getWorld() != start.getWorld()) return;
-                double moved = Math.hypot(victim.getLocation().getX() - start.getX(), victim.getLocation().getZ() - start.getZ());
-                if (moved < 0.1) {
-                    if (++st.kbLow >= 4) flag(victim, "velocity", severity(0.1 - moved, 0, 0.1, 12), String.format(Locale.ROOT, "%.2f", moved));
-                } else st.kbLow = 0;
-            }, 6L);
         }
     }
 

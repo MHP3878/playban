@@ -536,6 +536,7 @@ anticheat:
   unknown: "<red>No player called <white>{player}</white> is known."
   cleared: "<gray>The mark of <white>{player}</white> is gone."
   check:
+    boat: "Boat cheat"
     noweb: "Ignoring cobwebs"
     fastclimb: "Fast climbing"
     sprint: "Sprinting while starving"
@@ -571,6 +572,8 @@ anticheat:
     crystal: "Crystal macro"
     bot: "Bot"
   detail:
+    boatfly: "boat flies"
+    elytra-physics: "gliding against physics"
     hitbox: "look misses the hitbox"
     no-elytra: "gliding without an elytra"
     ground: "claims ground in the air"

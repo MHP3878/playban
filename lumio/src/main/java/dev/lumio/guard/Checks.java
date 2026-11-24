@@ -139,7 +139,11 @@ final class Checks {
                 Class<?> c = Class.forName(name, false, game);
                 ClassLoader l = c.getClassLoader();
                 CodeSource cs = c.getProtectionDomain() == null ? null : c.getProtectionDomain().getCodeSource();
-                if (l == null || l == ClassLoader.getPlatformClassLoader()) o = Origin.FINE;
+                if (l == null) {
+                    // Java's own classes always belong to a named module (java.base ...); code pushed
+                    // into the bootstrap loader by an injector does not
+                    o = c.getModule().isNamed() || name.startsWith("moe.yushi.authlibinjector.") ? Origin.FINE : Origin.NONE;
+                } else if (l == ClassLoader.getPlatformClassLoader()) o = Origin.FINE;
                 else if (cs == null || cs.getLocation() == null) o = c.isHidden() || c.isSynthetic() ? Origin.FINE : Origin.NONE;
                 else o = fromKnownPlace(cs.getLocation(), name) ? Origin.FINE : Origin.UNKNOWN_FILE;
             } catch (ClassNotFoundException | LinkageError | SecurityException e) {
@@ -189,6 +193,73 @@ final class Checks {
             }
         }
         return new ArrayList<>(out.values());
+    }
+
+    /** Class names the sampler saw on the game's own thread (Render thread), with their loader and module. */
+    static final Map<String, String> SAMPLED = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile Thread sampler;
+
+    /**
+     * A cheat put into the game has to run on the game's own thread to aim, hit or draw, but only for
+     * a moment each tick. So the game's thread is looked at twenty times a second; every class seen
+     * there is judged once, like the others.
+     */
+    static synchronized void startSampler() {
+        if (sampler != null) return;
+        Thread t = new Thread(() -> {
+            Thread render = null;
+            while (true) {
+                try {
+                    if (render == null || !render.isAlive()) {
+                        render = null;
+                        for (Thread th : Thread.getAllStackTraces().keySet()) if (th.getName().equals("Render thread")) render = th;
+                    }
+                    if (render != null) {
+                        for (StackTraceElement f : render.getStackTrace()) {
+                            if (SAMPLED.size() >= 20_000) break;
+                            SAMPLED.putIfAbsent(f.getClassName(), String.valueOf(f.getClassLoaderName()) + "|" + f.getModuleName());
+                        }
+                    }
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    return;
+                } catch (Throwable ignored) {
+                    // a moment later again
+                }
+            }
+        }, "Lumio sampler");
+        t.setDaemon(true);
+        t.setPriority(Thread.MIN_PRIORITY);
+        t.start();
+        sampler = t;
+    }
+
+    private static final Set<String> JUDGED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * What the sampler saw on the game's thread. Code without a file is strong as everywhere; code from
+     * a class loader nobody of the game knows, outside any Java module, is reported by name ("hook").
+     */
+    static List<Finding> sampled() {
+        ClassLoader game = LumioClient.class.getClassLoader();
+        List<Finding> out = new ArrayList<>();
+        for (Map.Entry<String, String> e : SAMPLED.entrySet()) {
+            String cls = e.getKey();
+            if (!JUDGED.add(cls)) continue;
+            Origin o = origin(cls, game);
+            String shown = cls.length() > 80 ? cls.substring(0, 80) : cls;
+            switch (o) {
+                case NONE -> out.add(new Finding("code", true, shown, guessName(cls)));
+                case UNKNOWN_FILE -> out.add(new Finding("codefile", false, shown + " (" + UNKNOWN.getOrDefault(cls, "?") + ")", ""));
+                case NOT_FOUND -> {
+                    // not one of Java's modules, and none of the game's class loaders knows it
+                    if (e.getValue().endsWith("|null")) out.add(new Finding("hook", false, shown, guessName(cls)));
+                }
+                default -> { }
+            }
+            if (out.size() >= 16) break;
+        }
+        return out;
     }
 
     /** A client name from a package name, when it gives itself away (e.g. "gg.vape..." gives "Vape"). */

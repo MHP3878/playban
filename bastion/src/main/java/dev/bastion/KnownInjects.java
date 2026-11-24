@@ -57,7 +57,7 @@ public final class KnownInjects {
             for (Client c : ALL) if (c.processes().contains(file)) return c;
             return null;
         }
-        if (kind.equals("code") || kind.equals("codefile") || kind.equals("codeloader")) {
+        if (kind.equals("code") || kind.equals("codefile") || kind.equals("codeloader") || kind.equals("hook")) {
             String cls = w.split(" ", 2)[0];
             Client best = null;
             int bestLen = 0;

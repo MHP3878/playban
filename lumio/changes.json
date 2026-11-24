@@ -1,4 +1,4 @@
 {
-  "de": "Weniger Fehlalarme: harmlose Programme wie Overlays, Treiber und Antivirus werden nicht mehr als Spuren gemeldet.",
-  "en": "Fewer false alarms: harmless programs such as overlays, drivers and antivirus are no longer reported as signs."
+  "de": "Bessere Erkennung von Inject-Clients: Lumio schaut dem Spiel 20-mal pro Sekunde über die Schulter und erkennt auch Code, der in Javas Kern geschleust wurde.",
+  "en": "Better detection of injection clients: Lumio looks at the game twenty times a second and also finds code pushed into Java's core."
 }

@@ -105,6 +105,8 @@ public final class Integrity {
                 if (fresh || now - lastCode >= CODE_EVERY) {
                     lastCode = now;
                     changed |= add(checks, "code", Checks::code);
+                    Checks.startSampler();
+                    changed |= add(checks, "sampled", Checks::sampled);
                 }
                 if (fresh || changed || now - lastSent >= HEARTBEAT) {
                     lastSent = now;

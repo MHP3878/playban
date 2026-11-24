@@ -436,6 +436,7 @@ injection:
   signs: "Spuren einer Injection"
   hint: "Auffälligkeit im Spiel"
   kind:
+    hook: "Fremder Code im Spiel-Thread: {what}"
     codefile: "Code aus unbekannter Datei: {what}"
     codeloader: "Code aus fremdem Lader: {what}"
     agent: "Java-Agent beim Start: {what}"

@@ -427,7 +427,7 @@ public final class Lumio implements Listener, PluginMessageListener {
      * with "strict" small signs too. The rest only goes to the team.
      */
     /** The kinds of small signs strict mode acts on (with a kick, never a ban). */
-    static final java.util.Set<String> STRICT_KINDS = java.util.Set.of("attach", "codefile", "codeloader", "agent");
+    static final java.util.Set<String> STRICT_KINDS = java.util.Set.of("attach", "codefile", "codeloader", "agent", "hook");
 
     void decide(Player p, Map<KnownInjects.Client, List<String>> named, List<String> strong, List<String> weak, List<String> weakStrict, String unnamed) {
         String general = plugin.getConfig().getString("injection-action", "KICK");

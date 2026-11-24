@@ -213,8 +213,12 @@ final class Checks {
         for (WindowsNative.Module m : mods) {
             String p = norm(m.path());
             if (p.startsWith(sysRoot) || p.startsWith(javaHome) || p.contains("/program files") || p.contains("/programdata/")
-                    || p.startsWith(gameDir) || nativesOfTheGame(p)) continue;
-            out.add(new Finding("module", false, fileName(m.path()) + " (" + place(m.path()) + ")", ""));
+                    || p.startsWith(gameDir) || nativesOfTheGame(p) || harmless(p)) continue;
+            // only where injectors drop their DLLs: Temp, Downloads, the desktop. Everything else
+            // (AppData, other drives, the user's own folders) is full of overlays and tools.
+            String where = place(m.path());
+            if (!where.equals("Temp") && !where.equals("Downloads") && !where.equals("Desktop")) continue;
+            out.add(new Finding("module", false, fileName(m.path()) + " (" + where + ")", ""));
             if (out.size() >= 8) break;
         }
         List<Long> outside = new ArrayList<>();
@@ -224,13 +228,29 @@ final class Checks {
             List<WindowsNative.Module> again = WindowsNative.modules();
             outside.removeIf(start -> inAny(start, again));
         }
-        if (!outside.isEmpty()) out.add(new Finding("thread", true, outside.size() + "x", ""));
+        // only a sign for now: not every program that starts a thread this way is a cheat
+        if (!outside.isEmpty()) out.add(new Finding("thread", false, outside.size() + "x", ""));
         return out;
     }
 
     private static boolean inAny(long start, List<WindowsNative.Module> mods) {
         for (WindowsNative.Module m : mods) {
             if (Long.compareUnsigned(start, m.base()) >= 0 && Long.compareUnsigned(start, m.base() + m.size()) < 0) return true;
+        }
+        return false;
+    }
+
+    /**
+     * DLLs that overlays, recorders, drivers and antivirus programs put into every game: Discord,
+     * Steam, NVIDIA, AMD, OBS, RivaTuner/MSI Afterburner, Overwolf, Medal, Razer, Logitech and others.
+     */
+    static boolean harmless(String p) {
+        String n = fileName(p).toLowerCase(Locale.ROOT);
+        for (String h : List.of("discordhook", "discord_", "gameoverlayrenderer", "steamclient", "graphics-hook", "obs-", "rtsshooks", "rtsscore",
+                "overwolf", "owclient", "medal", "nvspcap", "nvcamera", "nvapi", "nvd3d", "nvoglv", "nvwgf", "amdxx", "atiu", "atio", "igd", "igc",
+                "razer", "rzchroma", "logi", "lghub", "aswhook", "avghook", "bdhkm", "atcuf", "klhk", "sbiedll", "mbae", "epp", "fraps", "action_x64",
+                "bandicam", "plays", "outplayed", "shadowplay", "geforce", "radeon", "xboxgamebar", "gamebar", "mirillis", "nahimic", "sonic", "dragon")) {
+            if (n.startsWith(h)) return true;
         }
         return false;
     }

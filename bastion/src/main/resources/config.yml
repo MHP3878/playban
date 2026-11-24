@@ -218,6 +218,10 @@ anticheat:
   fade-seconds: 60
   # caught at once by these, no warning: clear cheats
   instant: [fly, jesus, badpackets, elytra, trident]
+  # a punishment needs at least this many separate findings within two minutes, so one odd moment
+  # (lag, an odd block) never punishes anybody. Impossible head angles and riptide without water or
+  # trident count at once. Setbacks happen anyway, at every finding.
+  min-findings: 3
   # set the player back to the last place that was in order when a movement breaks the rules
   setback: true
   # hits with too much reach, behind the back or through walls do no damage

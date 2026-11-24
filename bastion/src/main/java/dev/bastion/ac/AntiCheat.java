@@ -80,6 +80,8 @@ public final class AntiCheat implements Listener, TabExecutor {
             "timer", "step", "jesus", "fastbreak", "nuker", "scaffold", "noslow", "badpackets", "autototem", "anchor", "crystal", "bot",
             "aim", "criticals", "invmove", "fastbow", "snap", "botmine", "xraybait", "elytra", "trident", "noweb", "fastclimb", "sprint",
             "fasteat", "grim", "boat");
+    /** What no real client can send: impossible head angles, a riptide boost without water or trident. */
+    private static final Set<String> SURE = Set.of("badpackets", "trident");
     /** Checks that alone never catch anybody: they can only mark. */
     private static final Set<String> SOFT = Set.of("xray", "bot");
 
@@ -187,6 +189,8 @@ public final class AntiCheat implements Listener, TabExecutor {
         // boats
         int boatAir, boatFast;
         Location boatLegal;
+        /** when findings came, for the rule "several findings before a punishment" */
+        final Deque<Long> findingTimes = new ArrayDeque<>();
         /** the next teleport is our own setback */
         boolean ownTeleport;
         // the game's clock: moves faster than time passes (timer)
@@ -467,7 +471,12 @@ public final class AntiCheat implements Listener, TabExecutor {
             save();
         }
         plugin.guard().log("AntiCheat", check, p.getName(), String.format(Locale.ROOT, "+%.1f = %.0f %s", amount, total, detail == null ? "" : detail));
-        if (total >= limit() && plugin.getConfig().getBoolean("anticheat.auto-punish", true)) caught(p);
+        // a punishment needs several separate findings: one odd moment (lag, an odd block) never
+        // punishes anybody; only what no real client can send counts at once
+        st.findingTimes.addLast(now);
+        while (!st.findingTimes.isEmpty() && now - st.findingTimes.peekFirst() > 120_000) st.findingTimes.removeFirst();
+        boolean enough = SURE.contains(check) || st.findingTimes.size() >= plugin.getConfig().getInt("anticheat.min-findings", 3);
+        if (total >= limit() && enough && plugin.getConfig().getBoolean("anticheat.auto-punish", true)) caught(p);
     }
 
     /** Anti-cheat alerts go to the team, except to those who switched them off with /alerts. */
@@ -1322,6 +1331,9 @@ public final class AntiCheat implements Listener, TabExecutor {
                     st.lastLegal = to.clone();
                 }
             }
+            // the speed of the flight carries on when landing: the walking rule starts from it
+            st.lastH = horizontal;
+            st.prevStartGround = false;
             st.glideFlat = !boosted && dy >= -0.005 ? st.glideFlat + 1 : Math.max(0, st.glideFlat - 2);
             if (st.glideFlat > 80) {
                 flag(p, "elytra", 25, lang().raw("anticheat.detail.glide"));
@@ -1607,6 +1619,34 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     // ---------------------------------------------------------------- fighting
 
+    // ---------------------------------------------------------------- explosions
+
+    /**
+     * TNT, creepers, end crystals, respawn anchors, beds and wind charges throw players about; the game
+     * does that on the player's side, the server is not told. Players close by get a moment.
+     */
+    private void blast(Location at, double radius) {
+        if (at == null || at.getWorld() == null) return;
+        for (Player p : at.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(at) <= radius * radius) exemptFor(p, 2000);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityExplode(org.bukkit.event.entity.EntityExplodeEvent e) {
+        blast(e.getLocation(), 10);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockExplode(org.bukkit.event.block.BlockExplodeEvent e) {
+        blast(e.getBlock().getLocation(), 10);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onWindCharge(org.bukkit.event.entity.ProjectileHitEvent e) {
+        if (e.getEntity().getType().name().contains("WIND_CHARGE")) blast(e.getEntity().getLocation(), 5);
+    }
+
     // ---------------------------------------------------------------- knockback, elytra, boats
 
     /**
@@ -1617,7 +1657,7 @@ public final class AntiCheat implements Listener, TabExecutor {
     private void knockCheck(Player p, State st) {
         Knock k = st.knock;
         st.knock = null;
-        if (!p.isOnline() || exempt(p) || p.isInsideVehicle() || p.getWorld() != k.start().getWorld() || special(p)) return;
+        if (!p.isOnline() || exempt(p) || p.isInsideVehicle() || p.getWorld() != k.start().getWorld() || special(p) || ping(p) > 250) return;
         Location now = p.getLocation();
         double vh = Math.hypot(k.vx(), k.vz());
         double ux = k.vx() / vh, uz = k.vz() / vh;
@@ -1829,8 +1869,10 @@ public final class AntiCheat implements Listener, TabExecutor {
             // looking away from every place the target could be: no real click lands there
             double angle = 180;
             for (BoundingBox b : seen) angle = Math.min(angle, angleTo(eye, b));
-            if (distance > 1.2 && angle > 75) {
-                flag(attacker, "aura", severity(angle, 75, 180, 16), String.format(Locale.ROOT, "%.0f°", angle));
+            // a fast flick can turn a lot within one tick; the fine check (a moment later) judges
+            // every hit, only what no flick explains is not counted at once
+            if (distance > 1.2 && angle > 120) {
+                flag(attacker, "aura", severity(angle, 120, 180, 10), String.format(Locale.ROOT, "%.0f°", angle));
                 if (block) e.setCancelled(true);
             }
             // the fine check needs the look of the next tick too: judged a moment later

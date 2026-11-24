@@ -52,11 +52,13 @@ public final class Packs {
         if (name.length() > 64) name = name.substring(0, 64);
         String why = "";
         int hidden = 0;
+        boolean core = false;
         try (PackResources res = p.open()) {
             for (String block : FILLER) {
                 String reason = invisible(res, block);
                 if (reason != null) {
                     hidden++;
+                    if (block.equals("stone") || block.equals("deepslate")) core = true;
                     if (why.isEmpty()) why = block + " " + reason;
                 }
             }
@@ -64,7 +66,8 @@ public final class Packs {
             return new Info(p.getId(), name, false, "");
         }
         // one changed texture can be style; stone and its kind gone in several is for seeing ores
-        boolean xray = hidden >= 2;
+        // x-ray means: stone or deepslate gone (where ores hide), and at least one more filler block
+        boolean xray = core && hidden >= 2;
         return new Info(p.getId(), name, xray, xray ? hidden + "x, " + why : "");
     }
 

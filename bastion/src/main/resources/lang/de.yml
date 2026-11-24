@@ -30,6 +30,7 @@ input:
 
 default-reason: "Du hast {mods} an. Bitte lösch das."
 kick:
+  signs: "<yellow><bold>Spuren eines Injectors</bold></yellow>\n\n<white>Lumio hat im Spiel Spuren eines eingeschleusten Programms gefunden:\n<gray>{what}\n\n<white>Starte Minecraft ohne Zusatzprogramme neu und komm wieder."
   forbidden: "<red><bold>Verbotene Mod</bold>\n\n<white>Du hast <red>{mods}</red> an.\n<gray>Bitte lösch das und verbinde dich neu."
   screen: "<red><bold>Gekickt</bold>\n\n<gray>{reason}"
   warn-screen: "<gold><bold>Bitte entfernen</bold>\n\n<gray>{reason}\n\n<white>Entferne die Mod und join neu.\n<red>Verwarnungen bis zum Bann: {left}"
@@ -651,6 +652,7 @@ akte:
   console: "<white>{player}<gray>: Kicks {kicks}, Warns {warns}, Banns {bans}, Anti-Cheat {caught}x, Clients: {clients}, {mods} Mods"
   console-line: "<dark_gray> • <gray>{type}: <white>{text} <dark_gray>({by})"
   type:
+    sign: "Spur (nur Info)"
     kick: "Kick"
     warn: "Verwarnung"
     ban: "Bann"

@@ -370,6 +370,10 @@ public final class Lumio implements Listener, PluginMessageListener {
         if (f == null || !f.isJsonArray()) return;
         List<String> strong = new ArrayList<>();
         List<String> weak = new ArrayList<>();
+        // the small signs that strict mode may act on: something attached to the running game, or Java
+        // code from an unknown file. DLLs and libraries in odd folders never: overlays, drivers and
+        // antivirus programs put them into every game
+        List<String> weakStrict = new ArrayList<>();
         Map<KnownInjects.Client, List<String>> named = new java.util.LinkedHashMap<>();
         List<Guard.PackSeen> packsNow = new ArrayList<>();
         String client = "";
@@ -389,7 +393,11 @@ public final class Lumio implements Listener, PluginMessageListener {
             }
             String template = plugin.lang().raw("injection.kind." + kind);
             String line = template.contains("missing text") ? kind + ": " + what : template.replace("{what}", what);
-            if (info.integrity.size() < 64 && !info.integrity.contains(line)) info.integrity.add(line);
+            if (info.integrity.size() < 64 && !info.integrity.contains(line)) {
+                info.integrity.add(line);
+                // in the player's file: what Lumio saw, sure findings and small signs alike
+                plugin.akte().event(p.getUniqueId(), isStrong ? "inject" : "sign", line, "Lumio");
+            }
             // a known injection client, by its program or the beginning of its class names
             KnownInjects.Client c = KnownInjects.match(kind, what);
             if (c == null && !name.isEmpty()) c = KnownInjects.find(name);
@@ -400,6 +408,7 @@ public final class Lumio implements Listener, PluginMessageListener {
                 if (client.isEmpty() && !name.isEmpty()) client = name;
             } else {
                 weak.add(line);
+                if (STRICT_KINDS.contains(kind)) weakStrict.add(line);
             }
         }
         if (!packsNow.isEmpty()) {
@@ -409,7 +418,7 @@ public final class Lumio implements Listener, PluginMessageListener {
             guard().packs(p, packsNow);
             if (!p.isOnline()) return;
         }
-        decide(p, named, strong, weak, client);
+        decide(p, named, strong, weak, weakStrict, client);
     }
 
     /**
@@ -417,7 +426,10 @@ public final class Lumio implements Listener, PluginMessageListener {
      * with "block all" every sure finding is out, known client or not (a known client counts as sure);
      * with "strict" small signs too. The rest only goes to the team.
      */
-    void decide(Player p, Map<KnownInjects.Client, List<String>> named, List<String> strong, List<String> weak, String unnamed) {
+    /** The kinds of small signs strict mode acts on (with a kick, never a ban). */
+    static final java.util.Set<String> STRICT_KINDS = java.util.Set.of("attach", "codefile", "codeloader", "agent");
+
+    void decide(Player p, Map<KnownInjects.Client, List<String>> named, List<String> strong, List<String> weak, List<String> weakStrict, String unnamed) {
         String general = plugin.getConfig().getString("injection-action", "KICK");
         boolean all = blockAll(), strict = strict();
         List<String> onlyHints = new ArrayList<>();
@@ -433,13 +445,17 @@ public final class Lumio implements Listener, PluginMessageListener {
             if (!p.isOnline()) return;
         }
         if (!strong.isEmpty()) {
-            if (all) guard().injection(p, unnamed.isEmpty() ? plugin.lang().raw("injection.unknown") : unnamed, strong, general);
+            // code from somewhere unknown: no known client was recognised, so no proof; at most a kick
+            if (all) guard().injection(p, unnamed.isEmpty() ? plugin.lang().raw("injection.unknown") : unnamed, strong, general, false);
             else onlyHints.addAll(strong);
             if (!p.isOnline()) return;
         }
         if (!weak.isEmpty()) {
-            if (strict) guard().injection(p, plugin.lang().raw("injection.signs"), weak, general);
-            else onlyHints.addAll(weak);
+            // signs are no proof: at most a kick (never a ban, never counted towards the repeat ban)
+            if (strict && !weakStrict.isEmpty()) guard().injectionSigns(p, weakStrict);
+            List<String> rest = new ArrayList<>(weak);
+            if (strict) rest.removeAll(weakStrict);
+            onlyHints.addAll(rest);
             if (!p.isOnline()) return;
         }
         if (!onlyHints.isEmpty()) guard().hints(p, onlyHints);

@@ -164,7 +164,12 @@ public final class Guard implements Listener {
 
     public void resetWarnings(UUID id) {
         strikes.remove(id);
+        // the times counted for the repeat ban go too
+        data.set("offenses." + id, null);
         save();
+        Akte.Entry a = plugin.akte().of(id);
+        a.caught = 0;
+        plugin.akte().changed(id);
     }
 
     public boolean passed(UUID id, String mod) {
@@ -686,15 +691,25 @@ public final class Guard implements Listener {
 
     /** The same with the action of this client (from /inject), or the general one. */
     public void injection(Player p, String client, List<String> proof, String chosen) {
+        injection(p, client, proof, chosen, true);
+    }
+
+    /**
+     * sure: a known injection client was recognised (its program, its DLL or its code). Not sure: code
+     * that came from somewhere unknown; that is at most a kick, never a ban and never counted for the
+     * repeat ban, because it is no proof that it was a cheat.
+     */
+    public void injection(Player p, String client, List<String> proof, String chosen, boolean sure) {
         if (!p.isOnline() || p.hasPermission("bastion.bypass")) return;
         Info info = info(p.getUniqueId());
         if (!info.handled.add("__injection")) return;
         info.suspicion.addAll(proof);
         String action = chosen == null ? "KICK" : chosen.toUpperCase(Locale.ROOT);
         if (!List.of("ALERT", "KICK", "BAN").contains(action)) action = "KICK";
+        if (!sure && action.equals("BAN")) action = "KICK";
         plugin.akte().event(p.getUniqueId(), "inject", client + proofForLog(proof), "Bastion");
         // came back with it within the repeat window (/setup 3: a day): the repeat punishment instead
-        String again = action.equals("ALERT") ? null : repeat(p.getUniqueId());
+        String again = action.equals("ALERT") || !sure ? null : repeat(p.getUniqueId());
         if (again != null && again.toUpperCase(Locale.ROOT).startsWith("BAN")) {
             String[] parts = again.trim().split("\\s+", 2);
             log("Bastion", "repeat ban", p.getName(), client + proofForLog(proof));
@@ -730,6 +745,23 @@ public final class Guard implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (p.isOnline()) p.kick(screen);
         }, Math.max(1, (3000 - since) / 50));
+    }
+
+    /**
+     * Strict mode: small signs of an injector (a tool attached to the running game, Java code from an
+     * unknown file). They are no proof, so only a kick with the reason; no ban, not counted for the
+     * repeat ban, and the team sees what it was.
+     */
+    public void injectionSigns(Player p, List<String> proof) {
+        if (!p.isOnline() || p.hasPermission("bastion.bypass")) return;
+        Info info = info(p.getUniqueId());
+        if (!info.handled.add("__signs")) return;
+        info.suspicion.addAll(proof);
+        String what = String.join(", ", proof.subList(0, Math.min(2, proof.size())));
+        alertTeam(p, lang().raw("injection.signs"), lang().raw("action.kick"), true, null, proof);
+        log("Bastion", "injection signs kick", p.getName(), proofForLog(proof));
+        plugin.akte().event(p.getUniqueId(), "kick", lang().raw("injection.signs") + ": " + what, "Bastion");
+        later(p, lang().msg("kick.signs", "what", what));
     }
 
     /** A resource pack Lumio saw switched on: its name, whether it makes stone see-through (x-ray), why. */

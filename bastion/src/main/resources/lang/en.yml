@@ -30,6 +30,7 @@ input:
 
 default-reason: "You have {mods} on. Please delete it."
 kick:
+  signs: "<yellow><bold>Signs of an injector</bold></yellow>\n\n<white>Lumio found signs of a program put into the game:\n<gray>{what}\n\n<white>Restart Minecraft without extra programs and join again."
   forbidden: "<red><bold>Forbidden mod</bold>\n\n<white>You have <red>{mods}</red> on.\n<gray>Please delete it and join again."
   screen: "<red><bold>Kicked</bold>\n\n<gray>{reason}"
   warn-screen: "<gold><bold>Please remove it</bold>\n\n<gray>{reason}\n\n<white>Remove the mod and join again.\n<red>Warnings left before a ban: {left}"
@@ -650,6 +651,7 @@ akte:
   console: "<white>{player}<gray>: kicks {kicks}, warnings {warns}, bans {bans}, anti-cheat {caught}x, clients: {clients}, {mods} mods"
   console-line: "<dark_gray> • <gray>{type}: <white>{text} <dark_gray>({by})"
   type:
+    sign: "Sign (info only)"
     kick: "Kick"
     warn: "Warning"
     ban: "Ban"

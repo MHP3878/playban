@@ -1,25 +1,25 @@
 {
-    "version": "0.11.0",
+    "version": "0.11.1",
     "changes": {
-        "de": "Lumio aktualisiert sich jetzt selbst: beim Start fragt ein kleines Fenster, ob die neue Version kommen soll.",
-        "en": "Lumio now updates itself: when the game starts, a small window asks whether to get the new version."
+        "de": "Weniger Fehlalarme: harmlose Programme wie Overlays, Treiber und Antivirus werden nicht mehr als Spuren gemeldet.",
+        "en": "Fewer false alarms: harmless programs such as overlays, drivers and antivirus are no longer reported as signs."
     },
     "files": {
         "1.21.10": {
-            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.0+1.21.10.jar",
-            "sha256": "2bb27dac75786cf28e11a3780da17a06a910b6e3fb46a3cf62c801437f4c5a2c"
+            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.1+1.21.10.jar",
+            "sha256": "c8480b48b02cfece1557c7c530031aa5e835aac2d3e61b394ad51c3021d01049"
         },
         "1.21.11": {
-            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.0+1.21.11.jar",
-            "sha256": "b1156d9a3eb9b82c927bbb4c09074440f4998f9faae5f678bc52fdd78277967e"
+            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.1+1.21.11.jar",
+            "sha256": "ebe2499a9d2223642f706dd6ad72c724677c63304ca1d6595771fc2e8f808dc7"
         },
         "1.21.4": {
-            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.0+1.21.4.jar",
-            "sha256": "88346eadb63c9cc71f296cb31cea4d5e10f22fce7aafdba6fd5700d803b7e1e4"
+            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.1+1.21.4.jar",
+            "sha256": "096dee714fbc33f4aefc8a71f641a68b87af86ab7737a1d04f56616f9fee70ee"
         },
         "1.21.8": {
-            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.0+1.21.8.jar",
-            "sha256": "6cb4fb9b8b6fbac126b1bdbbc6f2741f1ad5447cf3e6e72464045010f5c18af0"
+            "url": "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-0.11.1+1.21.8.jar",
+            "sha256": "b553e1374f13ff91c68abb1396491a220ef91e54fa0f2f74e736f853774308f5"
         }
     }
 }

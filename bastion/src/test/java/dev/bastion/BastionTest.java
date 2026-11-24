@@ -848,9 +848,18 @@ class BastionTest {
         assertTrue(e.isOnline());
         admin.performCommand("inject streng an");
         assertTrue(plugin.lumio().strict());
+        // a DLL in an odd folder is never enough (overlays, drivers, antivirus put them into every game)
         PlayerMock f = server.addPlayer("F1");
         findings(f, sign);
-        assertFalse(f.isOnline(), "strict: a sign is enough");
+        server.getScheduler().performTicks(80);
+        assertTrue(f.isOnline(), "strict: a DLL alone is no reason");
+        // something attached to the running game is: a kick, never a ban
+        PlayerMock g = server.addPlayer("G1");
+        findings(g, "{\"kind\":\"attach\",\"strong\":false,\"what\":\"Attach Listener\"}");
+        server.getScheduler().performTicks(80);
+        assertFalse(g.isOnline(), "strict: an attached tool");
+        assertNull(plugin.punish().caseOf(g.getUniqueId()), "only a kick");
+        assertTrue(plugin.akte().of(g.getUniqueId()).events.stream().anyMatch(ev -> ev.type().equals("sign")), "in the file");
         // players without the right cannot change it
         steve.performCommand("inject streng aus");
         assertTrue(plugin.lumio().strict());

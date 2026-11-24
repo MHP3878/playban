@@ -84,6 +84,20 @@ public final class AntiCheat implements Listener, TabExecutor {
     private static final Set<String> SURE = Set.of("badpackets", "trident");
     /** Checks that alone never catch anybody: they can only mark. */
     private static final Set<String> SOFT = Set.of("xray", "bot");
+    /** The only checks that may catch at once ("instant"): what no real client can send. */
+    private static final Set<String> MAY_BE_INSTANT = Set.of("badpackets", "trident");
+    /**
+     * Movement: a landing on an odd block, lag, an explosion can look like it. Findings of these alone
+     * only ever kick, and count towards the ladder only when it keeps happening (movement-ban-after
+     * times in a day).
+     */
+    static final Set<String> MOVEMENT = Set.of("fly", "speed", "step", "nofall", "timer", "jesus", "noweb", "fastclimb", "noslow",
+            "sprint", "invmove", "velocity", "elytra", "boat");
+    /** What Grim checks better: with Grim on the server, Bastion leaves these to it (no points, no setbacks of its own). */
+    static final Set<String> GRIM_COVERS = Set.of("fly", "speed", "step", "nofall", "timer", "jesus", "noweb", "fastclimb", "noslow",
+            "sprint", "invmove", "velocity", "elytra", "boat", "badpackets", "reach", "aura", "aim", "criticals", "fastbreak", "scaffold", "snap");
+    /** When movement alone caught a player: a ban needs it several times a day. */
+    private final Map<UUID, Deque<Long>> movementCatches = new java.util.concurrent.ConcurrentHashMap<>();
 
     public static final class Suspect {
         public UUID id;
@@ -193,6 +207,8 @@ public final class AntiCheat implements Listener, TabExecutor {
         final Deque<Long> findingTimes = new ArrayDeque<>();
         /** the next teleport is our own setback */
         boolean ownTeleport;
+        /** thrown by an explosion or a big push: not judged until landed (at the latest by then) */
+        long landBy;
         // the game's clock: moves faster than time passes (timer)
         long lastPacketAt;
         double timerBalance;
@@ -386,6 +402,16 @@ public final class AntiCheat implements Listener, TabExecutor {
         return plugin.getConfig().getBoolean("anticheat.checks." + check + ".enabled", true);
     }
 
+    /**
+     * Grim is on the server (and not switched off for Bastion): movement and fights are Grim's, it
+     * predicts them better. Bastion keeps what Grim does not look at (x-ray mining, clicks, totems,
+     * mods, injections, packs) and punishes when Grim is sure (/bastion grim, from Grim's punishments).
+     */
+    public boolean grimReplaces() {
+        return plugin.getConfig().getBoolean("anticheat.grim.enabled", true) && plugin.getConfig().getBoolean("anticheat.grim.replace-own", true)
+                && Bukkit.getPluginManager().isPluginEnabled("GrimAC");
+    }
+
     private boolean laggy() {
         try {
             return Bukkit.getTPS()[0] < plugin.getConfig().getDouble("anticheat.min-tps", 18);
@@ -414,13 +440,17 @@ public final class AntiCheat implements Listener, TabExecutor {
     public void flag(Player p, String check, double base, String detail) {
         if (!enabled() || !checkOn(check) || exempt(p) || laggy() || base <= 0) return;
         if (catching.contains(p.getUniqueId())) return;
+        if (GRIM_COVERS.contains(check) && grimReplaces()) return;
         State st = state(p);
         long now = System.currentTimeMillis();
         Long graceUntil = st.grace.get(check);
         if (graceUntil != null && now < graceUntil) return;
+        // right after our own setback the client still carries the old movement for a moment: what
+        // follows from it is no new finding
+        if (MOVEMENT.contains(check) && st.lastSetback > 0 && now - st.lastSetback < 1000) return;
         double amount = base * plugin.getConfig().getDouble("anticheat.checks." + check + ".weight", 1.0);
-        // the clear ones catch at once: no warning, no second try
-        if (plugin.getConfig().getStringList("anticheat.instant").contains(check)) amount = Math.max(amount, limit());
+        // only what no real client can send catches at once (older settings may list more: ignored)
+        if (MAY_BE_INSTANT.contains(check) && plugin.getConfig().getStringList("anticheat.instant").contains(check)) amount = Math.max(amount, limit());
         if (watched.contains(p.getUniqueId())) amount *= plugin.getConfig().getDouble("anticheat.watch-multiplier", 1.5);
         Map<String, Double> account = points.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>());
         account.merge(check, amount, Double::sum);
@@ -473,7 +503,9 @@ public final class AntiCheat implements Listener, TabExecutor {
         plugin.guard().log("AntiCheat", check, p.getName(), String.format(Locale.ROOT, "+%.1f = %.0f %s", amount, total, detail == null ? "" : detail));
         // a punishment needs several separate findings: one odd moment (lag, an odd block) never
         // punishes anybody; only what no real client can send counts at once
-        st.findingTimes.addLast(now);
+        // separate moments: what comes within three seconds is the same moment (one odd landing, one lag
+        // spike and what follows from it)
+        if (st.findingTimes.isEmpty() || now - st.findingTimes.peekLast() >= 3000) st.findingTimes.addLast(now);
         while (!st.findingTimes.isEmpty() && now - st.findingTimes.peekFirst() > 120_000) st.findingTimes.removeFirst();
         boolean enough = SURE.contains(check) || st.findingTimes.size() >= plugin.getConfig().getInt("anticheat.min-findings", 3);
         if (total >= limit() && enough && plugin.getConfig().getBoolean("anticheat.auto-punish", true)) caught(p);
@@ -523,9 +555,12 @@ public final class AntiCheat implements Listener, TabExecutor {
             why.append(lang().raw("anticheat.check." + sorted.get(i).getKey()));
         }
         String reason = lang().raw("anticheat.reason").replace("{checks}", why.toString());
-        int n = caughtCount.merge(p.getUniqueId(), 1, Integer::sum);
         UUID id = p.getUniqueId();
         String name = p.getName();
+        boolean movementOnly = !account.isEmpty() && account.entrySet().stream().filter(en -> en.getValue() >= 1)
+                .allMatch(en -> MOVEMENT.contains(en.getKey()));
+        if (movementOnly && softCatch(p, reason, why.toString(), account)) return;
+        int n = caughtCount.merge(p.getUniqueId(), 1, Integer::sum);
         // the step of the ladder of the chosen level (/setup): kick, warning, ban ...
         String step = plugin.punish().stepName(plugin.punish().step(plugin.akte().of(id).caught + 1));
         saveClip(id, keep(p, reason));
@@ -544,6 +579,62 @@ public final class AntiCheat implements Listener, TabExecutor {
             plugin.punish().caught(id, name, reason, "Anti-Cheat");
         };
         animation.play(p, punish);
+    }
+
+    /**
+     * Movement alone (or what Grim finds besides fights): a kick, no step up the ladder, unless it is
+     * the movement-ban-after-th time within a day. Returns false when the ladder takes over.
+     */
+    private boolean softCatch(Player p, String reason, String why, Map<String, Double> account) {
+        UUID id = p.getUniqueId();
+        long now = System.currentTimeMillis();
+        Deque<Long> times = movementCatches.computeIfAbsent(id, k -> new ArrayDeque<>());
+        synchronized (times) {
+            while (!times.isEmpty() && now - times.peekFirst() > 86_400_000L) times.removeFirst();
+            times.addLast(now);
+            int needed = Math.max(1, plugin.getConfig().getInt("anticheat.movement-ban-after", 3));
+            if (times.size() >= needed) return false;
+            String name = p.getName();
+            saveClip(id, keep(p, reason));
+            if (account != null) plugin.akte().cheat(id, account);
+            plugin.akte().event(id, "cheat", why, "Anti-Cheat");
+            plugin.notifyTeam(lang().prefixed("anticheat.caught-soft", "player", name, "checks", why, "n", times.size(), "of", needed));
+            points.remove(id);
+            catching.remove(id);
+            save();
+            String next = plugin.punish().stepName(plugin.punish().step(plugin.akte().of(id).caught + 1));
+            plugin.punish().apply(id, name, "KICK", reason, next, "Anti-Cheat");
+            return true;
+        }
+    }
+
+    /** Grim's checks that are about fights: they go up the ladder; all else of Grim kicks only (like movement). */
+    private static final Set<String> GRIM_FIGHT = Set.of("reach", "hitboxes", "aim", "killaura", "autoclicker", "interact");
+
+    /**
+     * Grim is sure (its punishments.yml calls /bastion grim): the player is caught with Bastion's
+     * screens, file and ladder. Fights (reach, hitboxes, aim) take the next step; movement and the rest
+     * only kick unless it keeps happening.
+     */
+    public void grimCatch(Player p, String check, String vl) {
+        if (!enabled() || exempt(p) || !catching.add(p.getUniqueId())) return;
+        String clean = check.replaceAll("[^A-Za-z0-9 _-]", "");
+        String why = "Grim: " + clean + (vl == null || vl.isBlank() ? "" : " (" + vl.replaceAll("[^0-9.]", "") + ")");
+        String reason = lang().raw("anticheat.reason").replace("{checks}", why);
+        String base = clean.toLowerCase(Locale.ROOT).replaceAll("[^a-z]", "");
+        boolean fight = GRIM_FIGHT.stream().anyMatch(base::startsWith);
+        if (!fight && softCatch(p, reason, why, null)) return;
+        UUID id = p.getUniqueId();
+        String name = p.getName();
+        plugin.akte().event(id, "cheat", why, "Grim");
+        String step = plugin.punish().stepName(plugin.punish().step(plugin.akte().of(id).caught + 1));
+        saveClip(id, keep(p, reason));
+        plugin.notifyTeam(lang().prefixed("anticheat.caught", "player", name, "checks", why, "step", step));
+        animation.play(p, () -> {
+            catching.remove(id);
+            points.remove(id);
+            plugin.punish().caught(id, name, reason, "Grim");
+        });
     }
 
     /** Catches a player for something found outside the point account (a forbidden mod, a test): animation, then this step. */
@@ -658,6 +749,41 @@ public final class AntiCheat implements Listener, TabExecutor {
         return false;
     }
 
+    /** Nothing to stand on within this depth under the player's feet (corners and middle). */
+    private static boolean airBelow(Location l, double depth) {
+        for (double dx : new double[]{-0.3, 0, 0.3}) {
+            for (double dz : new double[]{-0.3, 0, 0.3}) {
+                for (double d = 0.05; d <= depth; d += 0.25) {
+                    Block b = l.getWorld().getBlockAt((int) Math.floor(l.getX() + dx), (int) Math.floor(l.getY() - d), (int) Math.floor(l.getZ() + dz));
+                    if (solid(b) || climbable(b.getType())) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /** In water, on a ladder, in cobweb or powder snow: in the game the fall starts again from here. */
+    private static boolean softSpot(Location l) {
+        for (double dy : new double[]{0.1, 1.0}) {
+            Block b = l.clone().add(0, dy, 0).getBlock();
+            if (b.isLiquid() || climbable(b.getType()) || b.getBlockData() instanceof org.bukkit.block.data.Waterlogged w && w.isWaterlogged()) return true;
+        }
+        return false;
+    }
+
+    /** Landed where the game gives no (or hardly any) fall damage: water, slime, hay, beds, honey, powder snow ... */
+    private static boolean softLanding(Location l) {
+        for (double dy : new double[]{0.1, -0.2, -0.6}) {
+            Block b = l.clone().add(0, dy, 0).getBlock();
+            Material m = b.getType();
+            String n = m.name();
+            if (b.isLiquid() || climbable(m) || m == Material.SLIME_BLOCK || m == Material.HAY_BLOCK || n.endsWith("_BED") || m == Material.HONEY_BLOCK
+                    || m == Material.POWDER_SNOW || m == Material.COBWEB || m == Material.SCAFFOLDING || m == Material.SWEET_BERRY_BUSH
+                    || m == Material.BUBBLE_COLUMN || b.getBlockData() instanceof org.bukkit.block.data.Waterlogged w && w.isWaterlogged()) return true;
+        }
+        return false;
+    }
+
     private static boolean climbable(Material m) {
         String n = m.name();
         return m == Material.LADDER || m == Material.VINE || m == Material.SCAFFOLDING || m == Material.COBWEB
@@ -728,8 +854,15 @@ public final class AntiCheat implements Listener, TabExecutor {
             // where this player was, tick by tick: others hit them where they saw them (their ping ago)
             st.boxes.addLast(p.getBoundingBox());
             while (st.boxes.size() > 30) st.boxes.removeFirst();
-            if (st.pending != null && ticks - st.pending.tick() >= 2) aimCheck(p, st);
-            if (st.knock != null && ticks - st.knock.tick() >= st.knock.window()) knockCheck(p, st);
+            boolean grim = grimReplaces();
+            if (st.pending != null && ticks - st.pending.tick() >= 2) {
+                if (grim) st.pending = null;
+                else aimCheck(p, st);
+            }
+            if (st.knock != null && ticks - st.knock.tick() >= st.knock.window()) {
+                if (grim) st.knock = null;
+                else knockCheck(p, st);
+            }
             decay(p.getUniqueId(), st, now);
             autoTotem(p, st, now);
             Location loc = p.getLocation();
@@ -741,8 +874,8 @@ public final class AntiCheat implements Listener, TabExecutor {
                 while (st.yawSteps.size() > 4) st.yawSteps.removeFirst();
             }
             if (last == null || last.getWorld() != loc.getWorld()) continue;
-            boolean skip = exempt(p) || now < st.exemptUntil || p.isFlying() || p.getAllowFlight() || p.isGliding() || p.isRiptiding()
-                    || p.isInsideVehicle() || p.isDead() || ping(p) > plugin.getConfig().getInt("anticheat.max-ping", 300) || laggy;
+            boolean skip = grim || exempt(p) || now < st.exemptUntil || now < st.landBy || p.isFlying() || p.getAllowFlight() || p.isGliding()
+                    || p.isRiptiding() || p.isInsideVehicle() || p.isDead() || ping(p) > plugin.getConfig().getInt("anticheat.max-ping", 300) || laggy;
             if (skip) {
                 st.hoverTicks = 0;
                 st.riseTicks = 0;
@@ -770,12 +903,14 @@ public final class AntiCheat implements Listener, TabExecutor {
 
             // flying
             if (!ground && !special && amplifier(p, PotionEffectType.LEVITATION) < 0 && amplifier(p, PotionEffectType.SLOW_FALLING) < 0) {
-                st.hoverTicks = Math.abs(dy) < 0.03 ? st.hoverTicks + 1 : 0;
+                // standing still in the air: only where nothing at all is under the feet (a block edge,
+                // a fence, a boat, a mob to stand on are no hovering)
+                st.hoverTicks = Math.abs(dy) < 0.03 && airBelow(loc, 1.2) && !entityGround(p) ? st.hoverTicks + 1 : 0;
                 if (dy > 0.01) {
                     if (st.riseTicks == 0) st.riseStartY = last.getY();
                     st.riseTicks++;
                 } else st.riseTicks = 0;
-                if (st.hoverTicks == 20 || (st.hoverTicks > 20 && st.hoverTicks % 40 == 0)) {
+                if (st.hoverTicks == 40 || (st.hoverTicks > 40 && st.hoverTicks % 40 == 0)) {
                     flag(p, "fly", 25, lang().raw("anticheat.detail.hover"));
                     if (st.lastLegal != null && st.lastLegal.getWorld() == p.getWorld()) {
                         st.ownTeleport = true;
@@ -813,11 +948,17 @@ public final class AntiCheat implements Listener, TabExecutor {
 
             // no fall
             if (!ground) {
-                if (Double.isNaN(st.fallStartY) || loc.getY() > st.fallStartY) st.fallStartY = loc.getY();
+                // water, ladders, cobweb, powder snow on the way down end the fall, as in the game
+                if (Double.isNaN(st.fallStartY) || loc.getY() > st.fallStartY || softSpot(loc)) st.fallStartY = loc.getY();
             } else if (!st.wasOnGround && !Double.isNaN(st.fallStartY)) {
                 double fell = st.fallStartY - loc.getY();
                 Boolean fallDamage = loc.getWorld().getGameRuleValue(org.bukkit.GameRule.FALL_DAMAGE);
-                if (fell > 6 && !special && amplifier(p, PotionEffectType.SLOW_FALLING) < 0 && !Boolean.FALSE.equals(fallDamage)) {
+                int jumpBoost = amplifier(p, PotionEffectType.JUMP_BOOST);
+                // the game's own numbers: no damage up to the safe fall distance (3, more with jump boost)
+                double safe = attribute(p, "safe_fall_distance", 3.0) + (jumpBoost >= 0 ? jumpBoost + 1 : 0);
+                boolean noDamageAnyway = attribute(p, "fall_damage_multiplier", 1.0) <= 0 || softLanding(loc);
+                if (fell > Math.max(6, safe + 3) && !noDamageAnyway && !special && amplifier(p, PotionEffectType.SLOW_FALLING) < 0
+                        && !Boolean.FALSE.equals(fallDamage)) {
                     st.landedAt = now;
                     st.fallDamaged = false;
                     double height = fell;
@@ -1034,6 +1175,25 @@ public final class AntiCheat implements Listener, TabExecutor {
             }
         }
         return false;
+    }
+
+    /**
+     * Thrown by an explosion, a wind charge or a big push: the flight is the game's, not the player's,
+     * until they land (or ten seconds at the latest).
+     */
+    private boolean thrown(State st, Location to, long now) {
+        if (st.landBy == 0) return false;
+        Block at = to.getBlock();
+        if (now > st.landBy || (now > st.exemptUntil && (groundAt(to) || at.isLiquid() || climbable(at.getType())))) {
+            st.landBy = 0;
+            return false;
+        }
+        return true;
+    }
+
+    private void throwOff(Player p, long ms) {
+        exemptFor(p, ms);
+        state(p).landBy = System.currentTimeMillis() + 10_000;
     }
 
     /** Back to the last place that was in order. The cheat does not get them anywhere. */
@@ -1273,12 +1433,16 @@ public final class AntiCheat implements Listener, TabExecutor {
         Location to = e.getTo();
         if (to == null || from.getWorld() != to.getWorld()) return;
         if (!enabled() || exempt(p) || p.isFlying() || p.getAllowFlight() || p.isInsideVehicle() || p.isRiptiding() || now < st.exemptUntil
-                || p.isDead() || laggy()) {
-            st.airPackets = 0;
+                || p.isDead() || laggy() || thrown(st, to, now)) {
+            // not judged, but followed: when judging starts again in the air, gravity goes on from the
+            // real movement, not from where it stood before
+            boolean g = groundAt(to);
+            st.airPackets = g ? 0 : 2;
+            st.airDy = to.getY() - from.getY();
             st.flyBuffer = 0;
-            st.lastLegal = to.clone();
+            if (g || st.lastLegal == null || st.lastLegal.getWorld() != to.getWorld() || st.lastLegal.distanceSquared(to) > 64) st.lastLegal = to.clone();
             st.lastH = Math.hypot(to.getX() - from.getX(), to.getZ() - from.getZ());
-            st.lastGround = groundAt(to);
+            st.lastGround = g;
             st.lastMoveAt = now;
             return;
         }
@@ -1479,6 +1643,8 @@ public final class AntiCheat implements Listener, TabExecutor {
         Player p = e.getPlayer();
         State st = state(p);
         long now = System.currentTimeMillis();
+        // with Grim, movement is Grim's: no setbacks or findings of Bastion's own
+        if (grimReplaces()) return;
         if (timerLimit(e, p, st, now)) return;
         physics(e, p, st, now);
         if (e.getTo() != null) {
@@ -1593,7 +1759,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         // the next step goes up by exactly this much: as if the step before had led there
         st.airDy = v.getY() / 0.98 + 0.08;
         st.airPackets = Math.max(st.airPackets, 1);
-        if (h > 1.2 || v.getY() > 1.0) exemptFor(e.getPlayer(), 1500);
+        if (h > 1.2 || v.getY() > 1.0) throwOff(e.getPlayer(), 1500);
         else if (h > 0.15 && !exempt(e.getPlayer()) && !e.getPlayer().isInsideVehicle() && !e.getPlayer().isGliding()) {
             st.knock = new Knock(ticks, e.getPlayer().getLocation().clone(), v.getX(), v.getZ(), 3 + Math.min(8, ping(e.getPlayer()) / 50));
         }
@@ -1621,6 +1787,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         if (!(e.getEntity() instanceof Player p)) return;
         State st = state(p);
         if (e.getCause() == EntityDamageEvent.DamageCause.FALL) st.fallDamaged = true;
+        else if (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION || e.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) throwOff(p, 2000);
         else if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK) exemptFor(p, 1500);
     }
 
@@ -1635,18 +1802,19 @@ public final class AntiCheat implements Listener, TabExecutor {
     private void blast(Location at, double radius) {
         if (at == null || at.getWorld() == null) return;
         for (Player p : at.getWorld().getPlayers()) {
-            if (p.getLocation().distanceSquared(at) <= radius * radius) exemptFor(p, 2000);
+            if (p.getLocation().distanceSquared(at) <= radius * radius) throwOff(p, 2000);
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityExplode(org.bukkit.event.entity.EntityExplodeEvent e) {
-        blast(e.getLocation(), 10);
+        // an end crystal throws up to 12 blocks, a charged creeper further than a normal one
+        blast(e.getLocation(), 14);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onBlockExplode(org.bukkit.event.block.BlockExplodeEvent e) {
-        blast(e.getBlock().getLocation(), 10);
+        blast(e.getBlock().getLocation(), 14);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -1745,7 +1913,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         var vehicle = e.getVehicle();
         String type = vehicle.getType().name();
         if (!(type.contains("BOAT") || type.contains("RAFT")) || vehicle.getPassengers().isEmpty()
-                || !(vehicle.getPassengers().get(0) instanceof Player p) || !enabled() || exempt(p)) return;
+                || !(vehicle.getPassengers().get(0) instanceof Player p) || !enabled() || exempt(p) || grimReplaces()) return;
         State st = state(p);
         Location from = e.getFrom(), to = e.getTo();
         if (from.getWorld() != to.getWorld()) return;
@@ -1857,6 +2025,8 @@ public final class AntiCheat implements Listener, TabExecutor {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onHit(EntityDamageByEntityEvent e) {
+        // with Grim, reach and hitboxes are Grim's (it knows where the target was on the attacker's screen)
+        if (grimReplaces()) return;
         if (e.getDamager() instanceof Player attacker && e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK && !exempt(attacker)) {
             Entity target = e.getEntity();
             State st = state(attacker);

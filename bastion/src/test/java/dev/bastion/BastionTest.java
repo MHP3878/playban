@@ -1229,4 +1229,96 @@ class BastionTest {
         assertTrue(ac.points(alive.getUniqueId(), "velocity") > 0, "alive and not pushed: anti-knockback");
         assertEquals(0.0, ac.points(dying.getUniqueId(), "velocity"), "the hit killed: the dead do not move");
     }
+
+    @Test
+    void oneOddMomentNeverPunishesAndFlyIsNeverInstant() {
+        var ac = plugin.antiCheat();
+        // an old settings file still lists movement checks as "at once"
+        plugin.getConfig().set("anticheat.instant", List.of("fly", "speed", "step", "badpackets"));
+        plugin.getConfig().set("anticheat.limit", 15);
+        ac.flag(steve, "fly", 25, "landing");
+        ac.flag(steve, "speed", 20, "after the setback");
+        ac.flag(steve, "step", 10, "after the setback");
+        server.getScheduler().performTicks(600);
+        assertTrue(steve.isOnline(), "one odd moment (and what follows from it) never punishes");
+        assertEquals(0, plugin.akte().of(steve.getUniqueId()).caught);
+    }
+
+    @Test
+    void movementAloneOnlyKicksUntilItKeepsHappening() {
+        var ac = plugin.antiCheat();
+        UUID id = steve.getUniqueId();
+        // a ladder that would ban at once
+        plugin.getConfig().set("punish.ladder", List.of("BAN 7d", "BAN perm"));
+        ac.grimCatch(steve, "Simulation", "320");
+        assertFalse(steve.isOnline(), "kicked");
+        assertEquals(0, plugin.akte().of(id).caught, "no step up the ladder");
+        assertNull(plugin.punish().caseOf(id), "no ban for movement alone");
+        steve.reconnect();
+        ac.grimCatch(steve, "GroundSpoof", "300");
+        assertNull(plugin.punish().caseOf(id));
+        steve.reconnect();
+        ac.grimCatch(steve, "Simulation", "310");
+        server.getScheduler().performTicks(600);
+        assertEquals(1, plugin.akte().of(id).caught, "the third time in a day: now the ladder");
+        assertNotNull(plugin.punish().caseOf(id));
+    }
+
+    @Test
+    void fightsFoundByGrimGoUpTheLadder() {
+        plugin.getConfig().set("punish.ladder", List.of("KICK", "BAN 7d"));
+        plugin.antiCheat().grimCatch(steve, "Reach", "12");
+        server.getScheduler().performTicks(600);
+        assertEquals(1, plugin.akte().of(steve.getUniqueId()).caught);
+        assertFalse(steve.isOnline());
+    }
+
+    @Test
+    void grimIsSetUpAndThenDoesMovementAndFights() throws Exception {
+        var grim = MockBukkit.createMockPlugin("GrimAC");
+        grim.getDataFolder().mkdirs();
+        java.nio.file.Files.writeString(new java.io.File(grim.getDataFolder(), "punishments.yml").toPath(), """
+                # Grim's own file (shortened)
+                Punishments:
+                  Simulation:
+                    remove-violations-after: 300
+                    checks:
+                      - "Simulation"
+                    commands:
+                      - "100:40 [alert]"
+                      - "1:1 [log]"
+                  Reach:
+                    remove-violations-after: 300
+                    checks:
+                      - "Reach"
+                    commands:
+                      - "1:1 [alert]"
+                  Autoclicker:
+                    remove-violations-after: 300
+                    checks:
+                      - "Autoclicker"
+                    commands:
+                      - "20:40 [alert]"
+                """);
+        plugin.getConfig().set("setup.level", 3);
+        assertEquals(2, dev.bastion.ac.GrimHook.configure(plugin, null), "Simulation and Reach; Autoclicker has no threshold");
+        var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(grim.getDataFolder(), "punishments.yml"));
+        assertEquals(List.of("100:40 [alert]", "1:1 [log]", "210:0 bastion grim %player% %check_name% %vl%"), y.getStringList("Punishments.Simulation.commands"),
+                "Grim's alerts stay, Bastion's line with the level 3 threshold (300 x 0.7)");
+        assertEquals(List.of("1:1 [alert]", "7:0 bastion grim %player% %check_name% %vl%"), y.getStringList("Punishments.Reach.commands"));
+        assertTrue(new java.io.File(grim.getDataFolder(), "punishments.yml.before-bastion").isFile(), "the old file is kept");
+        // again: no second line
+        dev.bastion.ac.GrimHook.configure(plugin, null);
+        y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(grim.getDataFolder(), "punishments.yml"));
+        assertEquals(1, y.getStringList("Punishments.Simulation.commands").stream().filter(c -> c.contains("bastion grim")).count());
+        // Bastion's own movement checks step aside
+        assertTrue(plugin.antiCheat().grimReplaces());
+        plugin.antiCheat().flag(steve, "fly", 25, "test");
+        assertEquals(0.0, plugin.antiCheat().points(steve.getUniqueId(), "fly"));
+        // and Grim's call works from the console
+        plugin.getConfig().set("punish.ladder", List.of("KICK", "BAN 7d"));
+        assertTrue(server.dispatchCommand(server.getConsoleSender(), "bastion grim Steve Reach 9"));
+        server.getScheduler().performTicks(600);
+        assertEquals(1, plugin.akte().of(steve.getUniqueId()).caught);
+    }
 }

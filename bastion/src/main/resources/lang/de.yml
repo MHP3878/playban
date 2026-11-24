@@ -510,6 +510,7 @@ injectmenu:
     lore: ["<white>1. <gray>Lumio prüft das laufende Spiel auf", "<gray>   eingeschleusten Code und Injectoren", "<white>2. <gray>Bekannter Client: seine Einstellung", "<white>3. <gray>Unbekannt, aber sicher: „Alle blocken“", "<white>4. <gray>Nur Spuren: „Streng“ oder Team-Hinweis", "", "<dark_gray>Geprüft werden nur Spieler mit Lumio."]
 
 anticheat:
+  caught-soft: "<gold>⚠ <white>{player}</white> <gray>wurde gekickt: <white>{checks}</white>. Nur Bewegung, deshalb kein Bann (<white>{n}/{of}</white> heute; ab {of}x geht es die Strafen-Leiter hoch)."
   antixray-state: "<gray>Paper-Anti-X-Ray: <white>{state}</white>. <white>/bastion ac antixray on</white> oder <white>off</white>."
   antixray-on: "<green>Paper-Anti-X-Ray ist für Oberwelt und Nether eingeschaltet (Erze, Antiker Schrott, Spawner, Kisten). Wirkt nach dem nächsten Neustart. Sicherungen: *.staffcore-backup"
   antixray-off: "<gray>Paper-Anti-X-Ray ist ausgeschaltet. Wirkt nach dem nächsten Neustart."
@@ -653,6 +654,7 @@ akte:
   console: "<white>{player}<gray>: Kicks {kicks}, Warns {warns}, Banns {bans}, Anti-Cheat {caught}x, Clients: {clients}, {mods} Mods"
   console-line: "<dark_gray> • <gray>{type}: <white>{text} <dark_gray>({by})"
   type:
+    grim: "Grim"
     sign: "Spur (nur Info)"
     kick: "Kick"
     warn: "Verwarnung"
@@ -729,7 +731,7 @@ setup:
   level3:
     short: "Hart"
     name: "<red><bold>③ Hart"
-    lore: ["<gray>Dazu Automatik-Mods (Tweakeroo, …)", "<gray>Keine zweite Chance:", "<white>Kick → Bann 7 Tage → 30 Tage → für immer", "<gray>Wieder da mit Client in 24 h:", "<white>7 Tage Bann, ohne Diskussion", "<gray>Anti-Cheat: 15 Punkte, sofort bei Fly,", "<gray>Speed, Reach, Aura …, Streng-Modus an"]
+    lore: ["<gray>Dazu Automatik-Mods (Tweakeroo, …)", "<gray>Keine zweite Chance:", "<white>Kick → Bann 7 Tage → 30 Tage → für immer", "<gray>Wieder da mit Client in 24 h:", "<white>7 Tage Bann, ohne Diskussion", "<gray>Anti-Cheat: 15 Punkte, Streng-Modus an", "<gray>Bewegung allein: nur Kick (Bann erst", "<gray>wenn es 3x am Tag passiert)"]
   lumio:
     name: "<#7c5cff><bold>Lumio: <white>{mode}"
     lore: ["<gray>Nur mit Lumio-Pflicht sieht Bastion", "<gray>jede Mod, jeden Inject und jedes", "<gray>Cheat-Resourcepack.", "", "<#4facfe>Klick: Pflicht an/aus"]
@@ -796,3 +798,9 @@ time:
   hours: "Stunden"
   minute: "Minute"
   minutes: "Minuten"
+
+grim:
+  usage: "<gray><white>/bastion grim setup</white> trägt Bastion in Grims punishments.yml ein. <white>/bastion grim <spieler> <check> <vl></white> ruft Grim selbst auf, wenn es sicher ist."
+  missing: "<gray>Grim ist nicht installiert: <white>modrinth.com/plugin/grimac</white>"
+  no-file: "<red>Grims punishments.yml ließ sich nicht lesen oder schreiben. Läuft Grim schon einmal gestartet auf dem Server?"
+  configured: "<green>Grim ist eingerichtet: in <white>{groups}</white> Gruppen straft Bastion, wenn Grim sicher ist. Die alte Datei liegt als <white>punishments.yml.before-bastion</white> daneben."

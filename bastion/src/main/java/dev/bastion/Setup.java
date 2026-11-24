@@ -78,7 +78,7 @@ public final class Setup {
                 c.set("anticheat.limit", 25);
                 c.set("anticheat.mark-at", 8);
                 c.set("anticheat.watch-multiplier", 1.5);
-                c.set("anticheat.instant", List.of("fly", "jesus", "badpackets", "elytra", "trident", "noweb"));
+                c.set("anticheat.instant", List.of("badpackets", "trident"));
                 c.set("injection.strict", false);
                 c.set("default-action", "WARN");
                 c.set("warnings", 2);
@@ -91,8 +91,8 @@ public final class Setup {
                 c.set("anticheat.limit", 15);
                 c.set("anticheat.mark-at", 5);
                 c.set("anticheat.watch-multiplier", 2.0);
-                c.set("anticheat.instant", List.of("fly", "speed", "jesus", "step", "badpackets", "elytra", "trident", "timer", "noweb",
-                        "fastclimb", "reach", "aura"));
+                // strict, but never at once for movement or fights: lag and odd blocks look like them
+                c.set("anticheat.instant", List.of("badpackets", "trident"));
                 c.set("injection.strict", true);
                 // whoever comes back with a cheat client within a day: 7 days, without a word more
                 c.set("default-action", "KICK");
@@ -102,6 +102,8 @@ public final class Setup {
             }
         }
         plugin.saveConfig();
+        // with Grim: its thresholds follow the level
+        if (dev.bastion.ac.GrimHook.present() && c.getBoolean("anticheat.grim.configure", true)) dev.bastion.ac.GrimHook.configure(plugin, null);
         // the known mods of the level; those Bastion added for a higher level before are allowed again,
         // those the team blocked by hand stay
         Set<String> wanted = new LinkedHashSet<>(mods(level));

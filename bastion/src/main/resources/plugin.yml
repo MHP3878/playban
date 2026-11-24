@@ -3,7 +3,7 @@ version: '${project.version}'
 main: dev.bastion.BastionPlugin
 api-version: '1.21'
 description: Anti-cheat, cheat clients, injectors, cheat resource packs and mods - with a file on every player.
-softdepend: [StaffCore, LuckPerms, LiteBans, AdvancedBan, Essentials, floodgate, Geyser-Spigot]
+softdepend: [StaffCore, LuckPerms, LiteBans, AdvancedBan, Essentials, floodgate, Geyser-Spigot, GrimAC]
 
 commands:
   bastion:

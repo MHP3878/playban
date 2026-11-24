@@ -134,6 +134,7 @@ public final class AkteMenu {
             case "ban" -> Material.BARRIER;
             case "unban", "reset" -> Material.LIME_DYE;
             case "cheat" -> Material.IRON_SWORD;
+            case "grim" -> Material.NETHERITE_SWORD;
             case "mod" -> Material.BOOK;
             case "inject" -> Material.SPIDER_EYE;
             case "sign" -> Material.GRAY_DYE;

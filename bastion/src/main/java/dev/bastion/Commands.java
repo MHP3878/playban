@@ -299,6 +299,25 @@ public final class Commands implements TabExecutor {
                 plugin.menus().room(p);
                 return;
             }
+            case "grim" -> {
+                // from Grim's punishments.yml (the console): "bastion grim <player> <check> <vl>"; "bastion grim setup" writes it
+                if (sender instanceof Player && !sender.hasPermission("bastion.admin")) {
+                    lang().send(sender, "no-permission");
+                    return;
+                }
+                if (args.length >= 2 && args[1].equalsIgnoreCase("setup")) {
+                    if (dev.bastion.ac.GrimHook.present()) dev.bastion.ac.GrimHook.configure(plugin, sender);
+                    else lang().send(sender, "grim.missing");
+                    return;
+                }
+                if (args.length < 3) {
+                    lang().send(sender, "grim.usage");
+                    return;
+                }
+                Player target = org.bukkit.Bukkit.getPlayerExact(args[1]);
+                if (target != null) plugin.antiCheat().grimCatch(target, args[2], args.length > 3 ? args[3] : "");
+                return;
+            }
             case "ac", "anticheat" -> {
                 // the anti-cheat's own words: points, watch, replay, antixray ...
                 String[] rest = java.util.Arrays.copyOfRange(args, 1, args.length);

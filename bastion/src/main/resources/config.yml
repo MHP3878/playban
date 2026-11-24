@@ -216,8 +216,12 @@ anticheat:
   grace-seconds: 6
   # one point fades every this many seconds
   fade-seconds: 60
-  # caught at once by these, no warning: clear cheats
-  instant: [fly, jesus, badpackets, elytra, trident]
+  # caught at once by these, no warning: only what no real client can send (impossible head angles,
+  # riptide without water). Movement and fights are never caught at once: lag and odd blocks look like them.
+  instant: [badpackets, trident]
+  # movement alone (fly, speed, step, no fall ...) only kicks; the ladder (and so a ban) only takes over
+  # when it happens this many times within a day
+  movement-ban-after: 3
   # a punishment needs at least this many separate findings within two minutes, so one odd moment
   # (lag, an odd block) never punishes anybody. Impossible head angles and riptide without water or
   # trident count at once. Setbacks happen anyway, at every finding.
@@ -281,10 +285,26 @@ anticheat:
     elytra: {enabled: true, weight: 1.0}
     trident: {enabled: true, weight: 1.0}
   # ---- Grim: when the anti-cheat Grim is installed too, its findings count here as well
+  # Grim (the free prediction anti-cheat, modrinth.com/plugin/grimac): with it on the server, movement and
+  # fights are Grim's; Bastion keeps x-ray mining, clicks, totems, mods, injections and packs, and punishes
+  # when Grim is sure: Grim's punishments.yml calls "bastion grim <player> <check> <vl>".
   grim:
     enabled: true
-    # points per Grim violation
-    points: 2.0
+    # Bastion's own movement and fight checks step aside while Grim is there
+    replace-own: true
+    # Bastion writes its lines into Grim's punishments.yml (a copy of the old file is kept) and reloads Grim
+    configure: true
+    # at how many of Grim's violations (within 5 minutes) Bastion punishes, per group of Grim's checks;
+    # Grim itself only alerts at a third of these. /setup 1 takes 1.5 times, /setup 3 0.7 times.
+    thresholds:
+      Simulation: 300
+      Knockback: 40
+      Post: 90
+      BadPackets: 60
+      Reach: 10
+      Hitboxes: 20
+      Misc: 80
+      Combat: 60
 
 
 # ---- Cheat resource packs (x-ray): Lumio 0.10 or newer says which of their own packs players have on,

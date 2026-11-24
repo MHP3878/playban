@@ -39,6 +39,9 @@ class BastionTest {
         plugin.getConfig().set("ban-system", "modcheck");
         // the tests add many new accounts at once; the bot guard of the anti-cheat has its own test
         plugin.getConfig().set("anticheat.checks.bot.enabled", false);
+        // no downloads from Modrinth in tests
+        plugin.getConfig().set("anticheat.consensus.download", false);
+        plugin.getConfig().set("anticheat.consensus.update", false);
         admin = server.addPlayer("Admin");
         admin.setOp(true);
         steve = server.addPlayer("Steve");
@@ -1311,14 +1314,107 @@ class BastionTest {
         dev.bastion.ac.GrimHook.configure(plugin, null);
         y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(grim.getDataFolder(), "punishments.yml"));
         assertEquals(1, y.getStringList("Punishments.Simulation.commands").stream().filter(c -> c.contains("bastion grim")).count());
-        // Bastion's own movement checks step aside
+        // Bastion's own checks still have their say, but do not put anybody back (Grim does)
         assertTrue(plugin.antiCheat().grimReplaces());
         plugin.antiCheat().flag(steve, "fly", 25, "test");
-        assertEquals(0.0, plugin.antiCheat().points(steve.getUniqueId(), "fly"));
-        // and Grim's call works from the console
+        assertTrue(plugin.antiCheat().points(steve.getUniqueId(), "fly") > 0, "Bastion still judges");
+        // Grim's verdict from the console is one vote of two: watched, not punished
         plugin.getConfig().set("punish.ladder", List.of("KICK", "BAN 7d"));
         assertTrue(server.dispatchCommand(server.getConsoleSender(), "bastion grim Steve Reach 9"));
+        assertEquals(0, plugin.akte().of(steve.getUniqueId()).caught, "one anti-cheat alone punishes nobody");
+        assertTrue(plugin.antiCheat().watched(steve.getUniqueId()), "watched");
+        // Bastion agrees: both of them, the ladder
+        plugin.antiCheat().consensus().vote(steve, dev.bastion.ac.Consensus.BASTION, "reach");
         server.getScheduler().performTicks(600);
         assertEquals(1, plugin.akte().of(steve.getUniqueId()).caught);
+    }
+
+    @Test
+    void threeAntiCheatsMustAgreeTwoWatchOneNotes() {
+        MockBukkit.createMockPlugin("GrimAC");
+        MockBukkit.createMockPlugin("Intave");
+        var c = plugin.antiCheat().consensus();
+        assertEquals(List.of("bastion", "grim", "intave"), c.sources());
+        assertTrue(c.active());
+        UUID id = steve.getUniqueId();
+        plugin.getConfig().set("punish.ladder", List.of("BAN 7d"));
+        c.vote(steve, dev.bastion.ac.Consensus.GRIM, "Simulation (300)");
+        assertFalse(plugin.antiCheat().watched(id), "one of three: only noted");
+        assertEquals(1, c.said(id).size());
+        // the same anti-cheat again is still one voice
+        c.vote(steve, dev.bastion.ac.Consensus.GRIM, "Simulation (420)");
+        assertFalse(plugin.antiCheat().watched(id));
+        c.vote(steve, dev.bastion.ac.Consensus.INTAVE, "Physics (999)");
+        assertTrue(plugin.antiCheat().watched(id), "two of three: watched");
+        assertEquals(0, plugin.akte().of(id).caught, "no punishment");
+        assertNull(plugin.punish().caseOf(id));
+        c.vote(steve, dev.bastion.ac.Consensus.BASTION, "Fly");
+        server.getScheduler().performTicks(600);
+        assertEquals(1, plugin.akte().of(id).caught, "all three: the ladder");
+        assertNotNull(plugin.punish().caseOf(id));
+        assertTrue(c.said(id).isEmpty(), "the votes start again");
+    }
+
+    @Test
+    void oldVotesRunOut() {
+        MockBukkit.createMockPlugin("GrimAC");
+        MockBukkit.createMockPlugin("Intave");
+        var c = plugin.antiCheat().consensus();
+        long[] now = {System.currentTimeMillis()};
+        c.clock = () -> now[0];
+        c.vote(steve, dev.bastion.ac.Consensus.GRIM, "Simulation");
+        c.vote(steve, dev.bastion.ac.Consensus.INTAVE, "Physics");
+        now[0] += 11 * 60_000L;
+        c.vote(steve, dev.bastion.ac.Consensus.BASTION, "Fly");
+        assertEquals(1, c.said(steve.getUniqueId()).size(), "ten minutes later the first two do not count any more");
+        assertTrue(steve.isOnline());
+    }
+
+    @Test
+    void intaveIsSetUpBeforeItStartsAndItsVerdictIsAVote() throws Exception {
+        // an Intave jar as it comes from Modrinth, with its default config
+        java.io.File jar = new java.io.File(plugin.getDataFolder().getParentFile(), "Intave-test.jar");
+        try (var zip = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(jar))) {
+            zip.putNextEntry(new java.util.zip.ZipEntry("config.yml"));
+            zip.write("""
+                    config: THIS
+                    kick-commands:
+                      - "intave internals kickip {player} &cYou have been kicked"
+                      - "kick {player} &cRemoved"
+                    ban-commands:
+                      - "ban {player} Cheating / {log-id}"
+                    physics-mm: BARELY
+                    rejoin-delay: 3600
+                    privacy: BEST_DETECTION
+                    """.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+        assertTrue(dev.bastion.ac.IntaveHook.configure(plugin, jar));
+        var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                new java.io.File(plugin.getDataFolder().getParentFile(), "Intave/config.yml"));
+        assertEquals("SILENT", y.getString("physics-mm"), "only watches: Grim puts players back");
+        assertEquals(0, y.getInt("rejoin-delay"));
+        assertEquals("HIGHEST_PRIVACY", y.getString("privacy"), "no IP addresses to its cloud");
+        assertEquals(List.of("bastion vote intave {player} kick"), y.getStringList("kick-commands"));
+        assertEquals(List.of("bastion vote intave {player} ban"), y.getStringList("ban-commands"));
+        assertEquals("THIS", y.getString("config"), "the rest stays");
+        assertFalse(dev.bastion.ac.IntaveHook.configure(plugin, jar), "already set up: nothing to do");
+        // Intave's verdict from the console: with Grim and Intave there, one vote of three
+        MockBukkit.createMockPlugin("GrimAC");
+        MockBukkit.createMockPlugin("Intave");
+        assertTrue(server.dispatchCommand(server.getConsoleSender(), "bastion vote intave Steve ban AttackRaytrace 200"));
+        assertTrue(steve.isOnline(), "one of three punishes nobody");
+        assertEquals(1, plugin.antiCheat().consensus().said(steve.getUniqueId()).size());
+    }
+
+    @Test
+    void otherAntiCheatsAreSwitchedOff() {
+        var vulcan = MockBukkit.createMockPlugin("Vulcan");
+        var grim = MockBukkit.createMockPlugin("GrimAC");
+        var worldedit = MockBukkit.createMockPlugin("WorldEdit");
+        assertEquals(List.of("Vulcan"), new dev.bastion.ac.AcManager(plugin).removeOthers());
+        assertFalse(vulcan.isEnabled(), "another anti-cheat would fight with Grim");
+        assertTrue(grim.isEnabled());
+        assertTrue(worldedit.isEnabled(), "other plugins are not touched");
     }
 }

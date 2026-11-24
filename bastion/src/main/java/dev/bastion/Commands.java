@@ -299,6 +299,20 @@ public final class Commands implements TabExecutor {
                 plugin.menus().room(p);
                 return;
             }
+            case "vote" -> {
+                // from Intave's kick and ban commands (the console): "bastion vote intave <player> <kick|ban> [check] [vl]"
+                if (sender instanceof Player && !sender.hasPermission("bastion.admin")) {
+                    lang().send(sender, "no-permission");
+                    return;
+                }
+                if (args.length < 4 || !args[1].equalsIgnoreCase("intave")) {
+                    lang().send(sender, "consensus.usage");
+                    return;
+                }
+                Player target = org.bukkit.Bukkit.getPlayerExact(args[2]);
+                if (target != null) plugin.antiCheat().intaveVote(target, args[3], args.length > 4 ? args[4] : "", args.length > 5 ? args[5] : "");
+                return;
+            }
             case "grim" -> {
                 // from Grim's punishments.yml (the console): "bastion grim <player> <check> <vl>"; "bastion grim setup" writes it
                 if (sender instanceof Player && !sender.hasPermission("bastion.admin")) {

@@ -285,16 +285,34 @@ anticheat:
     elytra: {enabled: true, weight: 1.0}
     trident: {enabled: true, weight: 1.0}
   # ---- Grim: when the anti-cheat Grim is installed too, its findings count here as well
-  # Grim (the free prediction anti-cheat, modrinth.com/plugin/grimac): with it on the server, movement and
-  # fights are Grim's; Bastion keeps x-ray mining, clicks, totems, mods, injections and packs, and punishes
-  # when Grim is sure: Grim's punishments.yml calls "bastion grim <player> <check> <vl>".
+  # Three anti-cheats, one verdict: Grim and Intave (free simulation anti-cheats, fetched from Modrinth)
+  # and Bastion's own checks each say on their own when they are sure. All of them agree within the
+  # window: the next step of the ladder. All but one: the player is watched and the team told. Fewer:
+  # only noted. While the server or the player lags, a verdict does not count.
+  consensus:
+    enabled: true
+    punish: 3
+    window-minutes: 10
+    min-tps: 17
+    max-ping: 350
+    # Grim and Intave come from Modrinth (official files, checked) when they are missing; a restart starts them
+    download: true
+    # newer versions wait in plugins/update and come with the next restart
+    update: true
+  # other anti-cheats fight with Grim (two of them pulling one player): they are switched off and moved to
+  # plugins/Bastion/entfernt (take a file back from there to use it again)
+  remove-others: true
+  other-anticheats: [Vulcan, Spartan, NoCheatPlus, Matrix, AAC, AAC5, AACAdditionPro, Negativity, Themis, LightAntiCheat,
+    Karhu, Polar, Verus, Horizon, Kauri, Hawk, AntiAura, Wraith, GodsEye, Reflex, Sparky, MythicalAC, OmniAnticheat,
+    VoidAC, MTSAntiCheat, NoChanceAntiCheat, ParagonAC, QuantumAC, AegisAntiCheat, CounterAC, AntiCheatReloaded,
+    LightningGrim, SoaromaSAC, Artemis, Fiona]
+  # Grim (modrinth.com/plugin/grimac) puts players back and judges movement and fights. Its verdict:
+  # its violations within five minutes reach these thresholds (Bastion writes them into Grim's
+  # punishments.yml, a copy of the old file is kept, and reloads Grim).
   grim:
     enabled: true
-    # Bastion's own movement and fight checks step aside while Grim is there
-    replace-own: true
-    # Bastion writes its lines into Grim's punishments.yml (a copy of the old file is kept) and reloads Grim
     configure: true
-    # at how many of Grim's violations (within 5 minutes) Bastion punishes, per group of Grim's checks;
+    # at how many of Grim's violations (within 5 minutes) Grim gives its verdict, per group of its checks;
     # Grim itself only alerts at a third of these. /setup 1 takes 1.5 times, /setup 3 0.7 times.
     thresholds:
       Simulation: 300
@@ -305,6 +323,11 @@ anticheat:
       Hitboxes: 20
       Misc: 80
       Combat: 60
+  # Intave (modrinth.com/plugin/intave): a second simulation anti-cheat. It only watches (no setbacks),
+  # sends no IP addresses, and when it would kick or ban somebody, that is its verdict in Bastion.
+  intave:
+    enabled: true
+    configure: true
 
 
 # ---- Cheat resource packs (x-ray): Lumio 0.10 or newer says which of their own packs players have on,

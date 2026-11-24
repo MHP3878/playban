@@ -4,7 +4,7 @@ Anti-cheat, cheat clients, injectors, cheat resource packs and mods in one plugi
 
 ## Quick start
 
-1. Put `Bastion-2.0.4.jar` in `plugins/` and start the server. Recommended: also the free anti-cheat **Grim** ([modrinth.com/plugin/grimac](https://modrinth.com/plugin/grimac), the Paper file) for movement and fights (see below).
+1. Put `Bastion-2.1.0.jar` in `plugins/` and start the server. Bastion fetches the anti-cheats Grim and Intave itself; restart once more and all three work together (see below).
 2. `/setup` and choose how strict: **1 Mild**, **2 Strict** or **3 Hard** (or `/setup 3` at once).
 3. For full protection: `/bastion lumio pflicht` (every player needs Lumio).
 4. Put your Discord link in the setup menu: it is shown on every ban, kick and warning screen.
@@ -18,7 +18,7 @@ Anti-cheat, cheat clients, injectors, cheat resource packs and mods in one plugi
 | Anti-cheat ladder | 3x kick, 3x warning, bans 1 h, 1 d, 7 d, 30 d, forever | kick, 2x warning, bans 1 d, 7 d, 30 d, forever | kick, ban 7 d, 30 d, forever |
 | Back with a cheat client/injector/pack | kick again | 3x in 24 h: 1 day ban | 2x in 24 h: **7 days ban** |
 | Anti-cheat points until caught | 35 | 25 | 15 |
-| With Grim: Grim's violations until punished | 1.5 x the thresholds | the thresholds | 0.7 x the thresholds |
+| Grim's violations until its verdict | 1.5 x the thresholds | the thresholds | 0.7 x the thresholds |
 | Injector strict mode | off | off | on |
 | Paper anti-x-ray | - | on | on |
 
@@ -26,18 +26,21 @@ Each level can still be changed in single settings afterwards (config.yml or the
 
 ## The anti-cheat
 
-**Nobody is punished for one odd moment.** A punishment needs three separate moments (findings within three seconds of each other are one moment) within two minutes. Movement alone (fly, speed, step, no fall, timer ...) only kicks; a step up the ladder (and so a ban) only when it happens three times in a day (`anticheat.movement-ban-after`). Only what no real client can send (impossible head angles, riptide without water) catches at once. Explosions, wind charges and big pushes are not judged until the player lands; a fall into water, onto slime, hay, beds or honey is no "no fall".
+**Nobody is punished for one odd moment, and with Grim and Intave nobody for what one anti-cheat says.** A punishment needs three separate moments (findings within three seconds of each other are one moment) within two minutes. Movement alone (fly, speed, step, no fall, timer ...) only kicks; a step up the ladder (and so a ban) only when it happens three times in a day (`anticheat.movement-ban-after`). Only what no real client can send (impossible head angles, riptide without water) catches at once. Explosions, wind charges and big pushes are not judged until the player lands; a fall into water, onto slime, hay, beds or honey is no "no fall".
 
-### With Grim (recommended)
+### Three anti-cheats, one verdict
 
-Grim is a free prediction anti-cheat (GPL-3.0) that simulates every player's movement and fights the way the game does, used on large servers and updated for every Minecraft version. Install it unchanged from [modrinth.com/plugin/grimac](https://modrinth.com/plugin/grimac) next to Bastion. Then:
+Bastion works with two free simulation anti-cheats that are used on large servers: **Grim** ([modrinth.com/plugin/grimac](https://modrinth.com/plugin/grimac), GPL-3.0) and **Intave** ([modrinth.com/plugin/intave](https://modrinth.com/plugin/intave), free base version, source available). You only install Bastion:
 
-- **Grim does movement and fights** (and puts cheaters back). Bastion's own movement and fight checks step aside (`anticheat.grim.replace-own`).
-- **Bastion punishes when Grim is sure:** on the first start Bastion writes one line into each group of Grim's `punishments.yml` (`<threshold>:0 bastion grim %player% %check_name% %vl%`, a copy of the old file is kept as `punishments.yml.before-bastion`) and reloads Grim. Grim's own alerts stay. The thresholds are in Bastion's `config.yml` (`anticheat.grim.thresholds`, violations within five minutes) and follow the level of `/setup`; Grim itself alerts at a third of them. `/bastion grim setup` writes them again.
-- **Bastion's screens, file and ladder:** reach, hitboxes and aim go up the ladder; movement and everything else only kick, unless it happens three times in a day. Grim's findings are noted in the player's file (`/akte`), at most once a minute per check.
-- Bastion keeps what Grim does not look at: x-ray mining, clicks, totems, crystals, mods, cheat clients, injectors and resource packs.
+- **Bastion fetches them itself:** when Grim or Intave is missing, Bastion downloads the official file for your Minecraft version from Modrinth (checked against Modrinth's SHA-512 fingerprint) into `plugins/`. Restart the server once, then they run. Newer versions are downloaded into `plugins/update/` and come with the next restart (`anticheat.consensus.download` / `update`). Intave fetches ProtocolLib itself, which it needs.
+- **Set up at once:** Grim's `punishments.yml` gets Bastion's thresholds (copy of the old file kept, Grim reloaded). Intave's `config.yml` is written before its first start: it only watches (`physics-mm: SILENT`, Grim puts players back), no rejoin block, no IP addresses to its cloud, and its kicks and bans become votes (`bastion vote intave ...`). Old files are kept as `*.before-bastion`.
+- **Other anti-cheats go:** Vulcan, Spartan, NoCheatPlus, Matrix, AAC and others on the list `anticheat.other-anticheats` would fight with Grim. Bastion switches them off and moves their file to `plugins/Bastion/entfernt/` (take it back from there; `anticheat.remove-others: false` leaves them).
+- **The vote:** Grim, Intave and Bastion's own checks each say on their own when they are sure a player cheats. **All three within ten minutes: the next step of the ladder** (with the level of `/setup`). **Two of three: the player is watched** and the team is told. **One: only noted** in the file and told to the team. With only two anti-cheats installed, both must agree, and one watches. A verdict while the server (below 17 TPS) or the player (above 350 ms) lags does not count. Every vote is in the player's file (`/akte`).
+- **Only Grim puts players back.** While Grim is there, Bastion's own checks still judge (and vote) but do not set back, cancel hits or block breaks: two anti-cheats pulling one player make honest players rubber-band.
 
-### Bastion's own checks (without Grim)
+Tested on Paper 1.21.4 with the real client and all three anti-cheats: falls from 25 and 40 blocks, a jump into water, three creepers (one charged) and TNT right next to the player gave no vote at all.
+
+### Bastion's own checks
 
 Several layers that work together; whatever breaks the game's rules is put back at once (setback), points decide the punishment:
 
@@ -74,7 +77,8 @@ The ranks that count on the server (from StaffCore or LuckPerms; without a rank 
 | `/bastion ac [points\|watch\|unwatch\|reset\|clear\|replay] <player>` | The anti-cheat: points, watch list, replays of what was found | `bastion.check` |
 | `/bastion alerts` | Anti-cheat alerts on or off for you | `bastion.check` |
 | `/bastion grim setup` | Writes Bastion's thresholds into Grim's `punishments.yml` again and reloads Grim | `bastion.admin` |
-| `/bastion grim <player> <check> [vl]` | What Grim calls when it is sure (from the console) | console or `bastion.admin` |
+| `/bastion grim <player> <check> [vl]` | Grim's verdict (Grim calls it from the console) | console or `bastion.admin` |
+| `/bastion vote intave <player> <kick\|ban> [check] [vl]` | Intave's verdict (Intave calls it from the console) | console or `bastion.admin` |
 | `/bastion raenge` | Ranks & rights | `bastion.ranks` |
 | `/bastion` | The menu: check players, blocked mods, suggestions, settings, banned players | `bastion.check` |
 | `/bastion <player>` | All mods of a player; click a mod: **Punish** or **Let pass** | `bastion.check` |

@@ -28,6 +28,16 @@ public class BastionPlugin extends JavaPlugin {
     @Override
     public void onLoad() {
         takeOverModCheck();
+        // Intave reads its settings early: Bastion's go in before it starts working
+        try {
+            saveDefaultConfig();
+            if (getConfig().getBoolean("anticheat.intave.enabled", true) && getConfig().getBoolean("anticheat.intave.configure", true)) {
+                org.bukkit.plugin.Plugin intave = getServer().getPluginManager().getPlugin("Intave");
+                if (intave != null) dev.bastion.ac.IntaveHook.configure(this, dev.bastion.ac.AcManager.jarOfPlugin(intave));
+            }
+        } catch (RuntimeException e) {
+            getLogger().warning("Could not set up Intave: " + e.getMessage());
+        }
     }
 
     /**
@@ -99,8 +109,18 @@ public class BastionPlugin extends JavaPlugin {
         antiCheat = new dev.bastion.ac.AntiCheat(this);
         getServer().getPluginManager().registerEvents(antiCheat, this);
         antiCheat.start();
-        // Grim, when installed, as one more layer (after every plugin is up)
-        getServer().getScheduler().runTask(this, () -> dev.bastion.ac.GrimHook.register(this));
+        // Grim and Intave, the two other anti-cheats (after every plugin is up): set up, other anti-cheats
+        // off, missing ones fetched from Modrinth, then the verdict is a vote of all of them
+        getServer().getScheduler().runTask(this, () -> {
+            dev.bastion.ac.AcManager manager = new dev.bastion.ac.AcManager(this);
+            manager.removeOthers();
+            dev.bastion.ac.GrimHook.register(this);
+            dev.bastion.ac.IntaveHook.register(this);
+            var consensus = antiCheat.consensus();
+            getLogger().info("Anti-cheats with a say: " + consensus.describe()
+                    + (consensus.active() ? " (a ban needs all of them, all but one watch)" : " (Bastion alone)"));
+            manager.checkAsync();
+        });
         // the files of the players are written a moment after they changed
         getServer().getScheduler().runTaskTimer(this, akte::flush, 600L, 600L);
         Commands commands = new Commands(this);

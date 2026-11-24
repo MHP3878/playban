@@ -22,10 +22,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Grim, the free prediction anti-cheat, does movement and fights; Bastion does the rest and the
- * punishing. Grim decides when it is sure (its violations within five minutes reach Bastion's
- * thresholds in Grim's punishments.yml) and calls "bastion grim &lt;player&gt; &lt;check&gt; &lt;vl&gt;";
- * Bastion then kicks or bans with its own screens, the player's file and the ladder.
+ * Grim, the free prediction anti-cheat, puts players back and is one voice of three (Consensus). Grim
+ * gives its verdict when it is sure (its violations within five minutes reach Bastion's thresholds in
+ * Grim's punishments.yml) by calling "bastion grim &lt;player&gt; &lt;check&gt; &lt;vl&gt;".
  *
  * <p>Single findings of Grim do not count: they only go into the player's file, at most once a minute
  * per check. Read through Grim's event by name, so Bastion runs fine without Grim.
@@ -89,7 +88,7 @@ public final class GrimHook implements Listener {
                 }, plugin, true);
             }
         }
-        plugin.getLogger().info("Grim found: movement and fights are Grim's, Bastion punishes when Grim is sure.");
+        plugin.getLogger().info("Grim found: it puts players back, and its verdict is one vote of three.");
         if (plugin.getConfig().getBoolean("anticheat.grim.configure", true)) configure(plugin, null);
         return true;
     }

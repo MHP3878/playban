@@ -804,3 +804,18 @@ grim:
   missing: "<gray>Grim ist nicht installiert: <white>modrinth.com/plugin/grimac</white>"
   no-file: "<red>Grims punishments.yml ließ sich nicht lesen oder schreiben. Läuft Grim schon einmal gestartet auf dem Server?"
   configured: "<green>Grim ist eingerichtet: in <white>{groups}</white> Gruppen straft Bastion, wenn Grim sicher ist. Die alte Datei liegt als <white>punishments.yml.before-bastion</white> daneben."
+
+consensus:
+  usage: "<gray>Das ruft Intave selbst auf: <white>bastion vote intave <spieler> <kick|ban> [check] [vl]</white>"
+  reason: "Anti-Cheat: {who}"
+  note: "<gray>⚑ <white>{player}</white>: <white>{who}</white> <dark_gray>({n} von {of} Anti-Cheats, nur notiert)"
+  watch: "<gold>⚑ <white>{player}</white> <gold>steht unter Beobachtung</gold>: {n} von {of} Anti-Cheats sagen Cheater: <white>{who}</white>"
+  punish: "<red>⚑ <white>{player}</white>: <red>alle {n} Anti-Cheats sind sich einig</red>: <white>{who}</white>"
+  lag: "<gray>⚑ <white>{player}</white>: {what} <dark_gray>(Lag: zählt nicht)"
+  lag-short: "Lag, zählt nicht"
+
+acmanager:
+  removed: "<gold>⚠ <gray>Der Anti-Cheat <white>{name}</white> wurde ausgeschaltet und entfernt (er würde sich mit Grim streiten): <white>{where}</white>"
+  move-failed: "Datei ließ sich nicht verschieben, bitte von Hand löschen"
+  installed: "<green>✔ <white>{names}</white> wurde installiert (offizielle Datei von Modrinth, geprüft). <gold>Einmal den Server neu starten</gold>, dann stimmen alle Anti-Cheats zusammen ab."
+  updated: "<gray>Eine neuere Version von <white>{names}</white> liegt bereit und kommt mit dem nächsten Neustart."

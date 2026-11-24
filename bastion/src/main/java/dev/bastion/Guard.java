@@ -73,6 +73,8 @@ public final class Guard implements Listener {
         /** when the list came, and when Lumio last said what it found in the game (0 = never) */
         public long lumioAt;
         public long integrityAt;
+        /** which of Lumio's checks have run (agents, native, code, sampled ...) */
+        public final Set<String> integrityChecks = java.util.concurrent.ConcurrentHashMap.newKeySet();
         /** what Lumio found in the game (injected code and the like), for the team */
         public final List<String> integrity = new ArrayList<>();
         int signsDone;

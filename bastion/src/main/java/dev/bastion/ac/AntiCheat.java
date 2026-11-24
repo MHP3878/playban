@@ -1600,6 +1600,13 @@ public final class AntiCheat implements Listener, TabExecutor {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
+    public void onDeath(org.bukkit.event.entity.PlayerDeathEvent e) {
+        State st = state(e.getPlayer());
+        st.knock = null;
+        st.pending = null;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(PlayerRespawnEvent e) {
         exemptFor(e.getPlayer(), 3000);
     }
@@ -1657,6 +1664,8 @@ public final class AntiCheat implements Listener, TabExecutor {
     private void knockCheck(Player p, State st) {
         Knock k = st.knock;
         st.knock = null;
+        // a hit that killed: the dead do not move, that is no anti-knockback
+        if (p.isDead() || p.getHealth() <= 0) return;
         if (!p.isOnline() || exempt(p) || p.isInsideVehicle() || p.getWorld() != k.start().getWorld() || special(p) || ping(p) > 250) return;
         Location now = p.getLocation();
         double vh = Math.hypot(k.vx(), k.vz());
@@ -1668,8 +1677,7 @@ public final class AntiCheat implements Listener, TabExecutor {
         // a wall in the way stops a knockback for everybody
         Location eyeStart = k.start().clone().add(0, 0.6, 0);
         Vector dir = new Vector(ux, 0, uz);
-        if (p.getWorld().rayTraceBlocks(eyeStart, dir, expected + 0.4) != null
-                || p.getWorld().rayTraceBlocks(k.start().clone().add(0, 0.1, 0), dir, expected + 0.4) != null) return;
+        if (wall(eyeStart, dir, expected + 0.4) || wall(k.start().clone().add(0, 0.1, 0), dir, expected + 0.4)) return;
         flag(p, "velocity", severity(expected - along, 0, expected, 10), String.format(Locale.ROOT, "%.2f/%.2f", Math.max(0, along), expected));
         if (plugin.getConfig().getBoolean("anticheat.setback", true)) {
             Location pushed = k.start().clone().add(ux * expected * 0.8, 0, uz * expected * 0.8);
@@ -1677,6 +1685,15 @@ public final class AntiCheat implements Listener, TabExecutor {
             pushed.setPitch(now.getPitch());
             st.ownTeleport = true;
             p.teleport(pushed);
+        }
+    }
+
+    /** Whether a block stands in the way (a server that cannot say counts as "no wall"). */
+    private static boolean wall(Location from, Vector dir, double distance) {
+        try {
+            return from.getWorld().rayTraceBlocks(from, dir, distance) != null;
+        } catch (RuntimeException e) {
+            return false;
         }
     }
 

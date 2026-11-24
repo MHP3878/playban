@@ -3781,4 +3781,63 @@ class StaffCoreTest {
         lumio.onPing(off);
         assertTrue(off.motd().children().isEmpty());
     }
+
+    @Test
+    void aJammedPlayerIsCutOffFromTheChatWithoutNoticing() {
+        java.util.Set<String> lastViewers = new java.util.HashSet<>();
+        server.getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+            public void on(AsyncChatEvent e) {
+                lastViewers.clear();
+                if (e.isCancelled()) return;
+                for (var a : e.viewers()) if (a instanceof org.bukkit.entity.Player v) lastViewers.add(v.getName());
+            }
+        }, plugin);
+        PlayerMock member = server.addPlayer("Member");
+        assertTrue(admin.performCommand("jammer Troll 1"));
+        assertTrue(plugin.jammer().isJammed(troll.getUniqueId()));
+
+        typeInChat(troll, "hello?");
+        assertTrue(lastViewers.contains("Troll"), "they see their own message");
+        assertFalse(lastViewers.contains("Bystander"), "nobody else does");
+        assertFalse(lastViewers.contains("Member"));
+        assertTrue(lastViewers.contains("Admin"), "the team reads along");
+
+        typeInChat(bystander, "hi all");
+        assertFalse(lastViewers.contains("Troll"), "nothing reaches them");
+        assertTrue(lastViewers.contains("Member"));
+
+        // a private message from them looks sent and reaches nobody
+        while (troll.nextComponentMessage() != null) { }
+        while (bystander.nextComponentMessage() != null) { }
+        var whisper = new org.bukkit.event.player.PlayerCommandPreprocessEvent(troll, "/msg Bystander are you there");
+        server.getPluginManager().callEvent(whisper);
+        assertTrue(whisper.isCancelled());
+        assertNotNull(troll.nextComponentMessage(), "their own copy is shown");
+        assertNull(bystander.nextComponentMessage(), "the other one gets nothing");
+        // and one to them looks delivered too
+        var toThem = new org.bukkit.event.player.PlayerCommandPreprocessEvent(bystander, "/tell Troll hey");
+        server.getPluginManager().callEvent(toThem);
+        assertTrue(toThem.isCancelled());
+        assertNotNull(bystander.nextComponentMessage());
+        assertNull(troll.nextComponentMessage());
+        // between others nothing changes
+        var normal = new org.bukkit.event.player.PlayerCommandPreprocessEvent(bystander, "/msg Member hey");
+        server.getPluginManager().callEvent(normal);
+        assertFalse(normal.isCancelled());
+
+        // it stays after rejoining (saved), and the status shows it with a button to lift it
+        plugin.jammer().load();
+        assertTrue(plugin.jammer().isJammed(troll.getUniqueId()));
+        assertTrue(plugin.playerStatus().of(troll.getUniqueId(), "Troll", "Admin").stream().anyMatch(r -> r.key().equals("jammed")));
+        assertTrue(admin.performCommand("jammer out Troll"));
+        assertFalse(plugin.jammer().isJammed(troll.getUniqueId()));
+        typeInChat(troll, "back");
+        assertTrue(lastViewers.contains("Bystander"));
+
+        // with a time it runs out on its own
+        assertTrue(admin.performCommand("jammer Troll 2 10m"));
+        assertEquals(2, plugin.jammer().level(troll.getUniqueId()));
+        assertNotEquals(0, plugin.jammer().entry(troll.getUniqueId()).until());
+    }
 }

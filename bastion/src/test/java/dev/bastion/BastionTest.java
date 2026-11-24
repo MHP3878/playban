@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.bukkit.Location;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.Material;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -662,6 +663,22 @@ class BastionTest {
         server.getScheduler().performTicks(60);
         assertTrue(alex.isOnline(), "not kicked: a window instead");
         assertEquals(CheckRoom.State.MISSING_LUMIO, plugin.room().stateOf(alex));
+        // the window cannot be closed: whoever closed it and looks around gets it again at once
+        long first = plugin.room().windowShownAt(alex);
+        assertTrue(first > 0, "the window was opened");
+        now += 2000;
+        Location look = alex.getLocation().clone();
+        look.setYaw(look.getYaw() + 40);
+        PlayerMoveEvent turn = new PlayerMoveEvent(alex, alex.getLocation(), look);
+        server.getPluginManager().callEvent(turn);
+        assertTrue(plugin.room().windowShownAt(alex) > first, "looked around: the window is open again");
+        long second = plugin.room().windowShownAt(alex);
+        now += 2000;
+        alex.simulatePlayerMove(alex.getLocation().clone().add(0, 0, 0));
+        assertEquals(second, plugin.room().windowShownAt(alex), "standing still in the window: nothing happens");
+        now += 2000;
+        server.getPluginManager().callEvent(new org.bukkit.event.player.PlayerItemHeldEvent(alex, 0, 3));
+        assertTrue(plugin.room().windowShownAt(alex) > second, "switching items means the window was closed: open again");
         // commands and chat wait
         alex.performCommand("spawn");
         assertTrue(plugin.room().holds(alex));
@@ -779,6 +796,29 @@ class BastionTest {
                 + "{\"kind\":\"thread\",\"strong\":true,\"what\":\"start 0x7ff6000 outside every module\"}]}").getAsJsonObject();
         plugin.lumio().integrity(steve, strong);
         assertFalse(steve.isOnline(), "out");
+    }
+
+    @Test
+    void theJoinCheckWaitsUntilLumioWatchedTheGame() {
+        plugin.getConfig().set("lumio.mode", "optional");
+        String nonce = greet(steve);
+        Guard.Info info = plugin.guard().info(steve.getUniqueId());
+        Lumio.Report r = new Lumio.Report();
+        r.lumio = "0.11.3";
+        r.complete = true;
+        assertFalse(Lumio.gameChecked(r, info), "no answer yet");
+        plugin.lumio().integrity(steve, com.google.gson.JsonParser.parseString("{\"v\":1,\"nonce\":\"" + nonce
+                + "\",\"checks\":[\"agents\",\"native\",\"code\"],\"findings\":[]}").getAsJsonObject());
+        assertFalse(Lumio.gameChecked(r, info), "the game's thread was not watched yet");
+        plugin.lumio().integrity(steve, com.google.gson.JsonParser.parseString("{\"v\":1,\"nonce\":\"" + nonce
+                + "\",\"checks\":[\"agents\",\"native\",\"code\",\"sampled\"],\"findings\":[]}").getAsJsonObject());
+        assertTrue(Lumio.gameChecked(r, info), "everything looked at once");
+        // an older Lumio cannot say so: its first answer is enough
+        Guard.Info fresh = new Guard.Info();
+        fresh.integrityAt = 1;
+        Lumio.Report old = new Lumio.Report();
+        old.lumio = "0.11.2";
+        assertTrue(Lumio.gameChecked(old, fresh));
     }
 
     private void findings(PlayerMock p, String json) {
@@ -1165,5 +1205,28 @@ class BastionTest {
         ac.onConsume(eat);
         assertTrue(eat.isCancelled(), "eating at once does not count");
         assertTrue(ac.points(eater.getUniqueId(), "fasteat") > 0);
+    }
+
+    @Test
+    void aDeadlyHitIsNoAntiKnockback() {
+        var ac = plugin.antiCheat();
+        PlayerMock alive = server.addPlayer("Alive");
+        PlayerMock dying = server.addPlayer("Dying");
+        for (PlayerMock p : List.of(alive, dying)) {
+            p.setGameMode(org.bukkit.GameMode.SURVIVAL);
+            Location at = p.getLocation();
+            for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) {
+                at.getWorld().getBlockAt(at.getBlockX() + x, at.getBlockY() - 1, at.getBlockZ() + z).setType(Material.STONE);
+                for (int y = 0; y <= 3; y++) at.getWorld().getBlockAt(at.getBlockX() + x, at.getBlockY() + y, at.getBlockZ() + z).setType(Material.AIR);
+            }
+            ac.endGrace(p);
+        }
+        // both are hit; neither moves afterwards
+        ac.onVelocity(new org.bukkit.event.player.PlayerVelocityEvent(alive, new org.bukkit.util.Vector(0.4, 0.36, 0)));
+        ac.onVelocity(new org.bukkit.event.player.PlayerVelocityEvent(dying, new org.bukkit.util.Vector(0.4, 0.36, 0)));
+        dying.setHealth(0);
+        server.getScheduler().performTicks(20);
+        assertTrue(ac.points(alive.getUniqueId(), "velocity") > 0, "alive and not pushed: anti-knockback");
+        assertEquals(0.0, ac.points(dying.getUniqueId(), "velocity"), "the hit killed: the dead do not move");
     }
 }

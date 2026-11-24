@@ -106,6 +106,18 @@ public final class Lumio implements Listener, PluginMessageListener {
         return injectionCheck() && compare(r.lumio, INTEGRITY_SINCE) < 0;
     }
 
+    /** Since this Lumio the game's own thread is watched, and the answer says when that was done. */
+    public static final String SAMPLED_SINCE = "0.11.3";
+
+    /**
+     * Whether everything Lumio looks at in the game has been looked at once: its first answer, and from
+     * 0.11.3 on also the watch of the game's thread (an injected cheat runs there).
+     */
+    static boolean gameChecked(Report r, Guard.Info info) {
+        if (info.integrityAt <= 0) return false;
+        return r == null || r.lumio.isBlank() || compare(r.lumio, SAMPLED_SINCE) < 0 || info.integrityChecks.contains("sampled");
+    }
+
     /** Whether this Lumio says what it finds in the game (0.6+). */
     static boolean checksGame(Report r) {
         return r != null && !r.lumio.isBlank() && compare(r.lumio, INTEGRITY_SINCE) >= 0;
@@ -366,6 +378,15 @@ public final class Lumio implements Listener, PluginMessageListener {
         String nonce = nonces.get(p.getUniqueId());
         if (nonce == null || !nonce.equals(str(o, "nonce", 64))) return;
         info.integrityAt = System.currentTimeMillis();
+        JsonElement done = o.get("checks");
+        if (done != null && done.isJsonArray()) {
+            int k = 0;
+            for (JsonElement c : done.getAsJsonArray()) {
+                if (k++ >= 24 || !c.isJsonPrimitive()) continue;
+                String name = c.getAsString();
+                if (name.matches("[a-z]{2,16}")) info.integrityChecks.add(name);
+            }
+        }
         JsonElement f = o.get("findings");
         if (f == null || !f.isJsonArray()) return;
         List<String> strong = new ArrayList<>();

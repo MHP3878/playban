@@ -60,6 +60,9 @@ public final class CheckRoom implements Listener {
         long stateSince;
         String mods = "";
         final BossBar bar;
+        /** when and where the window was last opened: a player who moves or acts after that has closed it */
+        long shownAt;
+        Location shownWhere;
 
         Guest(Location back, GameMode mode, BossBar bar, long since) {
             this.since = since;
@@ -214,6 +217,11 @@ public final class CheckRoom implements Listener {
     void release(Player p, boolean welcome, boolean now) {
         Guest g = guests.remove(p.getUniqueId());
         if (g == null) return;
+        if (Boolean.getBoolean("bastion.debug")) {
+            Guard.Info info = plugin.guard().info(p.getUniqueId());
+            plugin.getLogger().info("check room: " + p.getName() + " out after " + (clock.getAsLong() - g.since) + " ms, Lumio checks "
+                    + info.integrityChecks + (info.integrityAt > 0 ? "" : " (no answer)"));
+        }
         p.hideBossBar(g.bar);
         p.getPersistentDataContainer().remove(backKey);
         if (p.getGameMode() != g.mode) p.setGameMode(g.mode);
@@ -320,9 +328,10 @@ public final class CheckRoom implements Listener {
         boolean lumioDone;
         if (mode.equals("off")) lumioDone = true;
         else if (hasLumio) {
-            // Lumio 0.6+ also says what it found in the game; that answer is part of the check
+            // Lumio 0.6+ also says what it found in the game (injected code too); that answer is part
+            // of the check: nobody plays before the game was looked at
             boolean needGame = plugin.lumio().injectionCheck() && Lumio.checksGame(r);
-            lumioDone = r != null && r.complete && (!needGame || info.integrityAt > 0);
+            lumioDone = r != null && r.complete && (!needGame || Lumio.gameChecked(r, info));
         }
         else lumioDone = age >= 2500;
         if (mode.equals("required")) {
@@ -332,6 +341,11 @@ public final class CheckRoom implements Listener {
             if (hasLumio && lumioDone && plugin.lumio().outdated(r)) return "outdated";
         }
         if (judged && signDone && lumioDone) return "ok";
+        if (age >= max && Boolean.getBoolean("bastion.debug")) {
+            plugin.getLogger().info("check room: " + p.getName() + " waited the longest time: sign " + signDone + " (" + info.sign + ", joinChecked "
+                    + info.joinChecked + ", probing " + plugin.guard().probing(p.getUniqueId()) + "), lumio " + lumioDone + " (report "
+                    + (r == null ? "none" : r.complete + " " + r.lumio) + ", integrity " + info.integrityAt + " " + info.integrityChecks + ")");
+        }
         if (age >= max && (lumioDone || !mode.equals("required"))) return "ok";
         return "wait";
     }
@@ -366,6 +380,7 @@ public final class CheckRoom implements Listener {
     public void showWindow(Player p) {
         Guest g = guests.get(p.getUniqueId());
         if (g == null) return;
+        shown(p, g);
         switch (g.state) {
             case FORBIDDEN -> plugin.popups().forbidden(p, g.mods);
             case NO_REPORT -> plugin.popups().lumio(p, "noreport");
@@ -379,7 +394,11 @@ public final class CheckRoom implements Listener {
     /** /mcroom: leave (from the window), guide, or the window again. Outside the room (a preview) leave just closes it. */
     public void command(Player p, String what) {
         switch (what.toLowerCase(Locale.ROOT)) {
-            case "guide" -> plugin.popups().guide(p);
+            case "guide" -> {
+                Guest g = guests.get(p.getUniqueId());
+                if (g != null) shown(p, g);
+                plugin.popups().guide(p);
+            }
             case "window" -> {
                 if (holds(p)) showWindow(p);
                 else plugin.popups().lumio(p, "missing");
@@ -389,6 +408,31 @@ public final class CheckRoom implements Listener {
                 else plugin.popups().close(p);
             }
         }
+    }
+
+    private void shown(Player p, Guest g) {
+        g.shownAt = clock.getAsLong();
+        g.shownWhere = p.getLocation();
+    }
+
+    /**
+     * The window cannot be closed: a player waiting for Lumio (or with a forbidden mod) who moves,
+     * looks around, clicks, chats or switches items has closed it, so it opens again at once. Only
+     * "leave the server" in the window gets them out.
+     */
+    void reopen(Player p) {
+        Guest g = guests.get(p.getUniqueId());
+        if (g == null || g.state == State.CHECKING) return;
+        if (clock.getAsLong() - g.shownAt < 800) return;
+        showWindow(p);
+    }
+
+    /** Whether the player moved or looked around since the window was opened (an open window holds them still). */
+    static boolean movedSince(Location shown, Location now) {
+        if (shown == null || now == null || shown.getWorld() != now.getWorld()) return true;
+        double dx = shown.getX() - now.getX(), dy = shown.getY() - now.getY(), dz = shown.getZ() - now.getZ();
+        float yaw = Math.abs(((now.getYaw() - shown.getYaw()) % 360 + 540) % 360 - 180);
+        return dx * dx + dy * dy + dz * dz > 0.04 || yaw > 8 || Math.abs(now.getPitch() - shown.getPitch()) > 8;
     }
 
     // ---------------------------------------------------------------- nothing happens inside
@@ -413,14 +457,40 @@ public final class CheckRoom implements Listener {
         if (holds(e.getPlayer())) e.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onInteract(PlayerInteractEvent e) {
-        if (holds(e.getPlayer())) e.setCancelled(true);
+        if (!holds(e.getPlayer())) return;
+        e.setCancelled(true);
+        reopen(e.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent e) {
-        if (holds(e.getPlayer())) e.setCancelled(true);
+        if (!holds(e.getPlayer())) return;
+        e.setCancelled(true);
+        reopen(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onSwing(org.bukkit.event.player.PlayerAnimationEvent e) {
+        if (holds(e.getPlayer())) reopen(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onSlot(org.bukkit.event.player.PlayerItemHeldEvent e) {
+        if (holds(e.getPlayer())) reopen(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onSneak(org.bukkit.event.player.PlayerToggleSneakEvent e) {
+        if (holds(e.getPlayer())) reopen(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onSwap(org.bukkit.event.player.PlayerSwapHandItemsEvent e) {
+        if (!holds(e.getPlayer())) return;
+        e.setCancelled(true);
+        reopen(e.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -432,7 +502,10 @@ public final class CheckRoom implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
-        if (holds(e.getPlayer()) && !inside(e.getTo())) e.setCancelled(true);
+        if (!holds(e.getPlayer())) return;
+        if (!inside(e.getTo())) e.setCancelled(true);
+        Guest g = guests.get(e.getPlayer().getUniqueId());
+        if (g != null && g.state != State.CHECKING && movedSince(g.shownWhere, e.getTo())) reopen(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -442,6 +515,7 @@ public final class CheckRoom implements Listener {
         if (cmd.startsWith("/mcroom")) return;
         e.setCancelled(true);
         lang().send(e.getPlayer(), "room.wait");
+        reopen(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -449,6 +523,11 @@ public final class CheckRoom implements Listener {
         if (!holds(e.getPlayer())) return;
         e.setCancelled(true);
         e.getPlayer().sendMessage(lang().prefixed("room.wait"));
+        Player p = e.getPlayer();
+        // chat is not on the main thread; the window is
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (p.isOnline()) reopen(p);
+        });
     }
 
     /** For tests and the menu: the players in the room. */
@@ -459,6 +538,12 @@ public final class CheckRoom implements Listener {
     Component state(Player p) {
         Guest g = guests.get(p.getUniqueId());
         return g == null ? Component.empty() : Component.text(g.state.name());
+    }
+
+    /** When the window was last opened for this player (0 = never), for tests. */
+    long windowShownAt(Player p) {
+        Guest g = guests.get(p.getUniqueId());
+        return g == null ? 0 : g.shownAt;
     }
 
     State stateOf(Player p) {

@@ -35,6 +35,7 @@ public class StaffCorePlugin extends JavaPlugin {
     private ModerationManager moderation;
     private PrisonManager prison;
     private TrollManager trolls;
+    private dev.staffcore.module.Jammer jammer;
     private FakeBaseManager fakeBases;
     private dev.staffcore.module.Teleports teleports;
     private dev.staffcore.module.HomeManager homes;
@@ -120,6 +121,10 @@ public class StaffCorePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(prison, this);
         prison.start();
         trolls = new TrollManager(this);
+        jammer = new dev.staffcore.module.Jammer(this);
+        jammer.load();
+        getServer().getPluginManager().registerEvents(jammer, this);
+        jammer.start();
         getServer().getPluginManager().registerEvents(trolls, this);
         fakeBases = new FakeBaseManager(this);
         getServer().getPluginManager().registerEvents(fakeBases, this);
@@ -374,6 +379,9 @@ public class StaffCorePlugin extends JavaPlugin {
                 .setting("banhammer.action", CYCLE, org.bukkit.Material.MACE, "KICK", "KICK", "PLAYBAN 1h", "PLAYBAN 1d", "BAN 1d", "BAN 7d", "BAN perm", "CATEGORY cheating");
         modules.add("trolls", org.bukkit.Material.EGG, "modules.trolls", true)
                 .command(new dev.staffcore.module.ModuleManager.Cmd("troll", "Harmless jokes on a player", "staffcore.troll", trolls));
+        modules.add("jammer", org.bukkit.Material.SCULK_SHRIEKER, "modules.jammer", true)
+                .command(new dev.staffcore.module.ModuleManager.Cmd("jammer", "Cut a player off from chat, private messages and voice chat, unnoticed",
+                        "staffcore.jammer", jammer, java.util.List.of("jam")));
     }
 
     private void register(String name, String description, String permission, org.bukkit.command.TabExecutor executor) {
@@ -390,6 +398,7 @@ public class StaffCorePlugin extends JavaPlugin {
         if (announcer != null) announcer.stop();
         if (investigations != null) investigations.stopAll();
         if (antiCheat != null) antiCheat.stop();
+        if (jammer != null) jammer.stop();
         if (money != null) {
             money.saveIfDirty();
             money.unhookVault();
@@ -445,6 +454,7 @@ public class StaffCorePlugin extends JavaPlugin {
     public PrisonManager prison() { return prison; }
 
     public TrollManager trolls() { return trolls; }
+    public dev.staffcore.module.Jammer jammer() { return jammer; }
 
     public FakeBaseManager fakeBases() { return fakeBases; }
 

@@ -1,4 +1,4 @@
 {
-  "de": "Bessere Erkennung von Inject-Clients: Lumio schaut dem Spiel 20-mal pro Sekunde über die Schulter und erkennt auch Code, der in Javas Kern geschleust wurde.",
-  "en": "Better detection of injection clients: Lumio looks at the game twenty times a second and also finds code pushed into Java's core."
+  "de": "Die Inject-Prüfung läuft jetzt schon beim Betreten des Servers komplett durch, bevor man spielen kann.",
+  "en": "The injection check now runs completely when joining a server, before you can play."
 }

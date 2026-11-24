@@ -238,6 +238,12 @@ modules:
   prison: true
   fakebase: true
   trolls: true
+  jammer: true
+
+# ---- /jammer ----
+jammer:
+  # the team (staffcore.jammer) still reads what jammed players write, marked [J]
+  team-sees: true
 
 # ---- Admin mode and /admin ----
 admin-mode:

@@ -146,6 +146,10 @@ public final class AdminPanel implements TabExecutor, Listener {
             p.closeInventory();
             p.performCommand("lag");
         });
+        if (p.hasPermission("staffcore.jammer") && plugin.modules().on("jammer") && plugin.jammer() != null) {
+            m.set(50, Items.of(Material.SCULK_SHRIEKER, lang().msg("panel.jammer", "count", plugin.jammer().all().size()),
+                    lang().lore("panel.jammer-lore")), e -> plugin.jammer().menu().main(p, 0));
+        }
         m.set(49, Items.of(Material.BARRIER, lang().msg("panel.close"), List.of()), e -> p.closeInventory());
         m.fill().open(p);
     }

@@ -1805,6 +1805,9 @@ module:
   trolls:
     name: "<#ffc371><bold>Trolls</bold>"
     lore: ["<gray>/troll: harmlose Späße."]
+  jammer:
+    name: "<#ffc371><bold>Jammer</bold>"
+    lore: ["<gray>/jammer: kapselt einen Spieler unbemerkt", "<gray>ab: Chat, Privatnachrichten und", "<gray>Voice-Chat erreichen niemanden mehr."]
   totem:
     name: "<#ffc371><bold>/totem</bold>"
     lore: ["<gray>Legt ein Totem aus dem Inventar in", "<gray>die Nebenhand, nach kurzer Zeit. Mit", "<gray>Lumio liegt es im Kreismenü (G)."]
@@ -2010,6 +2013,8 @@ panel:
   tools: "<#ffc371>Admin-Items"
   modules: "<#ffc371>Module"
   lag: "<#ffc371>Server und Lag"
+  jammer: "<#ffc371>Jammer</#ffc371> <gray>({count} abgekapselt)"
+  jammer-lore: ["<gray>Spieler unbemerkt abkapseln:", "<gray>stumm, eingefroren oder Geisterstadt,", "<gray>und mit ihnen reden."]
   close: "<red>Schließen"
 
 anticheat:
@@ -2268,6 +2273,7 @@ pstatus:
     watched: "<gold><bold>Vom Anti-Cheat beobachtet"
     points: "<white><bold>Anti-Cheat-Punkte"
     vanished: "<gray><bold>Unsichtbar"
+    jammed: "<dark_aqua><bold>Abgekapselt (Jammer)"
   plain:
     frozen: "Einfrieren"
     cuffed: "Handschellen"
@@ -2278,6 +2284,7 @@ pstatus:
     watched: "Beobachtung"
     points: "Anti-Cheat-Punkte"
     vanished: "Unsichtbarkeit"
+    jammed: "Jammer"
 
 rights:
   gamemode: "<gold>⚠ <white>{player}</white> <gray>hat <white>{mode}</white> bekommen <gray>· von <white>{by}</white>. Klick für /check."
@@ -2345,3 +2352,62 @@ lumio:
     baltop: "Reichste"
   ticket-title: "Neues Ticket #{id}"
   ticket-text: "{player}: {text}"
+
+jammer:
+  usage: "<gray><white>/jammer</white> öffnet das Menü. <white>/jammer <spieler> <1|2|3> [zeit]</white> kapselt ab, <white>/jammer out <spieler></white> holt raus, <white>/jammer talk <spieler></white> redet mit ihm, <white>/jammer list</white> zeigt alle."
+  "on": "<dark_aqua>⛓ <white>{player}</white> <gray>ist abgekapselt: <white>{level}</white> (<white>{time}</white>). Nichts von <white>{player}</white> kommt mehr an, und nichts kommt bei <white>{player}</white> an. Es fällt nicht auf."
+  "off": "<green><white>{player}</white> ist wieder ganz normal dabei."
+  not-jammed: "<gray><white>{player}</white> ist nicht abgekapselt."
+  no-voice: "<gray>(Simple Voice Chat ist nicht installiert: der Voice-Teil fällt weg.)"
+  forever: "unbegrenzt"
+  list-empty: "<gray>Niemand ist abgekapselt."
+  list-head: "<dark_aqua>⛓ Abgekapselt ({count}):"
+  list-line: "<gray>- <white>{player}</white> · {level} · von {by} · noch {time}"
+  tag: "<dark_gray>[<dark_aqua>J</dark_aqua>]</dark_gray> "
+  tag-hover: "<gray><white>{player}</white> ist abgekapselt (/jammer):<newline><gray>nur das Team sieht das."
+  talk-tag: "<dark_gray>[<green>→ {players}</green>]</dark_gray> "
+  talk-on: "<green>Du redest jetzt mit <white>{player}</white>: ihr seht und hört euch (auch aus dem Vanish heraus, nur für <white>{player}</white>), und was du in den Chat schreibst, liest nur <white>{player}</white>. Nochmal klicken oder <white>/jammer talk {player}</white> beendet es."
+  talk-off: "<gray>Du redest nicht mehr mit <white>{player}</white>. Dein Chat geht wieder an alle."
+  whisper: "<gray>{from} → {to}: <white>{text}"
+  me: "ich"
+  level:
+    "1":
+      short: "Stufe 1 · Stumm"
+      name: "<white><bold>Stufe 1 · Stumm</bold>"
+      lore: ["<gray>Chat, Privatnachrichten und Voice-Chat", "<gray>erreichen niemanden, und nichts erreicht", "<gray>ihn. Er sieht seine Nachrichten ganz", "<gray>normal: es fällt ihm nicht auf."]
+    "2":
+      short: "Stufe 2 · Eingefroren"
+      name: "<aqua><bold>Stufe 2 · Eingefroren</bold>"
+      lore: ["<gray>Wie Stufe 1, und alle anderen Spieler", "<gray>stehen für ihn still, als wären alle", "<gray>weg. Nur er bewegt sich. Treffen kann", "<gray>keiner keinen."]
+    "3":
+      short: "Stufe 3 · Geisterstadt"
+      name: "<dark_red><bold>Stufe 3 · Geisterstadt</bold>"
+      lore: ["<gray>Wie Stufe 1, und alle Spieler, Tiere", "<gray>und Monster sind für ihn verschwunden.", "<gray>Eine leere Welt, bis du ihn rausholst."]
+  menu:
+    title: "<dark_gray>Jammer"
+    player-title: "<dark_gray>Jammer: {player}"
+    info:
+      name: "<dark_aqua><bold>Jammer</bold> <gray>({count} abgekapselt)"
+      lore: ["<gray>Kapselt Spieler unbemerkt ab:", "<white>1</white> <gray>stumm, <white>2</white> <gray>eingefroren, <white>3</white> <gray>Geisterstadt.", "", "<gray>Klick auf einen Spieler: Stufe, Zeit,", "<gray>mit ihm reden oder rausholen."]
+    name: "<white>{player}"
+    name-jammed: "<dark_aqua>⛓ <white>{player}"
+    free: "<gray>Nicht abgekapselt."
+    jammed: "<dark_aqua>{what}"
+    since: "<gray>von {by} · noch {time}"
+    talking: "<green>Du redest mit {player}."
+    offline: "<dark_gray>(offline)"
+    click: "<#ffc371>Klick: verwalten"
+    nobody: "<green>Niemand online"
+    active: "<green>▶ Aktiv"
+    choose: "<#ffc371>Klick: diese Stufe ({time})"
+    time: "<white>Zeit: <#ffc371>{time}"
+    time-lore: ["<gray>Klick: unbegrenzt, 10 Minuten, 1 Stunde,", "<gray>1 Tag, 7 Tage. Gilt für die nächste", "<gray>Stufe, die du anklickst."]
+    talk-on: "<green><bold>Du redest mit {player}</bold>"
+    talk-off: "<gray>Mit {player} reden"
+    talk-lore: ["<gray>Ihr seht und hört euch, auch wenn du", "<gray>im Vanish bist (nur er sieht dich).", "<gray>Dein Chat geht dann nur an ihn.", "<#ffc371>Klick: an oder aus"]
+    lift: "<green><bold>{player} rausholen</bold>"
+    lift-lore: ["<gray>Alles ist sofort wieder normal:", "<gray>Chat, Voice, Spieler und Tiere."]
+    back: "<gray>Zurück"
+    prev: "<gray>Vorherige Seite"
+    next: "<gray>Nächste Seite"
+    close: "<red>Schließen"

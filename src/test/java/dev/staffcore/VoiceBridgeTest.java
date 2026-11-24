@@ -11,8 +11,12 @@ import de.maxhenkel.voicechat.api.events.Event;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
 import de.maxhenkel.voicechat.api.events.JoinGroupEvent;
 import de.maxhenkel.voicechat.api.events.LeaveGroupEvent;
-import de.maxhenkel.voicechat.api.events.PlayerForcedStateEvent;
-import de.maxhenkel.voicechat.api.events.PlayerVisibilityEvent;
+import de.maxhenkel.voicechat.api.events.EntitySoundPacketEvent;
+import de.maxhenkel.voicechat.api.events.LocationalSoundPacketEvent;
+import de.maxhenkel.voicechat.api.events.MicrophonePacketEvent;
+import de.maxhenkel.voicechat.api.events.StaticSoundPacketEvent;
+import de.maxhenkel.voicechat.api.packets.MicrophonePacket;
+import de.maxhenkel.voicechat.api.packets.SoundPacket;
 import de.maxhenkel.voicechat.api.events.RemoveGroupEvent;
 import de.maxhenkel.voicechat.api.events.VoicechatServerStartedEvent;
 import dev.staffcore.voice.SimpleVoiceChatBridge;
@@ -79,10 +83,6 @@ class VoiceBridgeTest {
         final Map<Class<?>, List<Consumer<Event>>> handlers = new HashMap<>();
         final Map<UUID, TestGroup> groups = new LinkedHashMap<>();
         final Map<UUID, UUID> membership = new HashMap<>();
-        final Map<UUID, Boolean> forceMuted = new HashMap<>();
-        final Map<UUID, Boolean> forceDisabled = new HashMap<>();
-        /** key: observer + ":" + player */
-        final Map<String, Boolean> hidden = new HashMap<>();
         String pluginId;
 
         @Override
@@ -128,34 +128,39 @@ class VoiceBridgeTest {
             public VoicechatConnection getConnection() { return connection; }
         }
 
-        class ForcedEv extends Base implements PlayerForcedStateEvent {
-            final VoicechatConnection connection;
-            boolean muted, disabled;
+        /** What the speaker's microphone sends to the voice chat. */
+        class MicEv extends Base implements MicrophonePacketEvent {
+            final VoicechatConnection sender;
 
-            ForcedEv(VoicechatConnection connection) {
-                this.connection = connection;
+            MicEv(VoicechatConnection sender) {
+                this.sender = sender;
             }
 
-            public VoicechatConnection getConnection() { return connection; }
-            public boolean isForceMuted() { return muted; }
-            public boolean isForceDisabled() { return disabled; }
-            public void forceMute() { muted = true; }
-            public void forceDisable() { disabled = true; }
+            public MicrophonePacket getPacket() { return () -> new byte[0]; }
+            public VoicechatConnection getReceiverConnection() { return null; }
+            public VoicechatConnection getSenderConnection() { return sender; }
         }
 
-        class VisibilityEv extends Base implements PlayerVisibilityEvent {
-            final ServerPlayer observer, player;
-            boolean hiddenNow;
+        /** What the voice chat passes on to one listener (in a group, nearby, or at a place). */
+        class SoundEv extends Base implements StaticSoundPacketEvent, EntitySoundPacketEvent, LocationalSoundPacketEvent {
+            final VoicechatConnection sender, receiver;
 
-            VisibilityEv(ServerPlayer observer, ServerPlayer player) {
-                this.observer = observer;
-                this.player = player;
+            SoundEv(VoicechatConnection sender, VoicechatConnection receiver) {
+                this.sender = sender;
+                this.receiver = receiver;
             }
 
-            public ServerPlayer getObserver() { return observer; }
-            public ServerPlayer getPlayer() { return player; }
-            public boolean isHidden() { return hiddenNow; }
-            public void hide() { hiddenNow = true; }
+            public SoundPacket getPacket() { return () -> new byte[0]; }
+            public VoicechatConnection getReceiverConnection() { return receiver; }
+            public VoicechatConnection getSenderConnection() { return sender; }
+            public String getSource() { return "group"; }
+        }
+
+        /** Whether listener hears speaker: the microphone packet comes in, then the voice chat sends it on. */
+        @SuppressWarnings("unchecked")
+        boolean hears(org.bukkit.entity.Player speaker, org.bukkit.entity.Player listener, Class<?> how) {
+            if (fire(MicrophonePacketEvent.class, new MicEv(new Conn(speaker))).cancelled) return false;
+            return !fire((Class<? super SoundEv>) how, new SoundEv(new Conn(speaker), new Conn(listener))).cancelled;
         }
 
         ServerPlayer wrap(org.bukkit.entity.Player bukkit) {
@@ -186,19 +191,10 @@ class VoiceBridgeTest {
                 membership.put(bukkit.getUniqueId(), group.getId());
             }
 
-            public void evaluateForcedState() {
-                ForcedEv e = fire(PlayerForcedStateEvent.class, new ForcedEv(this));
-                forceMuted.put(bukkit.getUniqueId(), e.muted);
-                forceDisabled.put(bukkit.getUniqueId(), e.disabled);
-            }
-
-            public void evaluateVisibility() {
-                for (org.bukkit.entity.Player observer : server.getOnlinePlayers()) {
-                    if (observer.equals(bukkit)) continue;
-                    VisibilityEv e = fire(PlayerVisibilityEvent.class, new VisibilityEv(wrap(observer), wrap(bukkit)));
-                    hidden.put(observer.getUniqueId() + ":" + bukkit.getUniqueId(), e.hiddenNow);
-                }
-            }
+            public boolean isInGroup() { return getGroup() != null; }
+            public boolean isConnected() { return true; }
+            public boolean isDisabled() { return false; }
+            public boolean isInstalled() { return true; }
 
             public ServerPlayer getPlayer() { return wrap(bukkit); }
         }
@@ -274,6 +270,16 @@ class VoiceBridgeTest {
         server.getScheduler().performTicks(30);
     }
 
+    private boolean hears(PlayerMock speaker, PlayerMock listener) {
+        // in a group the voice chat sends static sound; nearby it is entity or locational sound
+        boolean group = voicechat.hears(speaker, listener, StaticSoundPacketEvent.class);
+        boolean near = voicechat.hears(speaker, listener, EntitySoundPacketEvent.class);
+        boolean place = voicechat.hears(speaker, listener, LocationalSoundPacketEvent.class);
+        assertEquals(group, near, "the same answer for every kind of voice");
+        assertEquals(group, place);
+        return group;
+    }
+
     @AfterEach
     void tearDown() {
         MockBukkit.unmock();
@@ -284,7 +290,7 @@ class VoiceBridgeTest {
         assertEquals("staffcore", voicechat.pluginId);
         assertTrue(plugin.voice().available());
         for (Class<?> event : List.of(JoinGroupEvent.class, CreateGroupEvent.class, LeaveGroupEvent.class, RemoveGroupEvent.class,
-                PlayerForcedStateEvent.class, PlayerVisibilityEvent.class)) {
+                MicrophonePacketEvent.class, EntitySoundPacketEvent.class, LocationalSoundPacketEvent.class, StaticSoundPacketEvent.class)) {
             assertTrue(voicechat.handlers.containsKey(event), event.getSimpleName() + " is listened to");
         }
     }
@@ -308,18 +314,20 @@ class VoiceBridgeTest {
         VoicechatConnection by = voicechat.getConnectionOf(bystander.getUniqueId());
         by.setGroup(g);
 
+        assertTrue(hears(bystander, troll));
         plugin.voice().setMuted(bystander.getUniqueId(), true, "Admin");
-        assertTrue(voicechat.forceMuted.get(bystander.getUniqueId()), "the voice chat force-mutes the player");
+        assertFalse(hears(bystander, troll), "a muted player is heard by nobody");
+        assertTrue(hears(troll, bystander), "but still hears the others");
         plugin.voice().setDeaf(bystander.getUniqueId(), true, "Admin");
-        assertTrue(voicechat.forceDisabled.get(bystander.getUniqueId()));
+        assertFalse(hears(troll, bystander), "a deafened player hears nobody");
         plugin.voice().setMuted(bystander.getUniqueId(), false, "Admin");
-        assertFalse(voicechat.forceMuted.get(bystander.getUniqueId()));
-        assertTrue(voicechat.forceDisabled.get(bystander.getUniqueId()), "deafen stays until it is undone");
+        assertTrue(hears(bystander, troll));
+        assertFalse(hears(troll, bystander), "deafen stays until it is undone");
 
         plugin.voice().kick(g.getId(), bystander.getUniqueId(), "Admin");
         assertNull(by.getGroup());
         server.getScheduler().performTicks(2);
-        assertFalse(voicechat.forceDisabled.get(bystander.getUniqueId()), "leaving the group lifts it");
+        assertTrue(hears(troll, bystander), "leaving the group lifts it");
 
         plugin.voice().ban(g.getId(), bystander.getUniqueId(), "Admin");
         by.setGroup(g);
@@ -333,15 +341,17 @@ class VoiceBridgeTest {
         Group g = voicechat.playerCreates(troll, "Trolls only", null);
         plugin.voice().join(admin, g.getId(), true);
         assertEquals(g.getId(), voicechat.membership.get(admin.getUniqueId()), "really a member, so talking and listening work");
-        assertTrue(voicechat.hidden.get(troll.getUniqueId() + ":" + admin.getUniqueId()), "hidden from the player");
+        assertTrue(plugin.voice().isInvisible(admin.getUniqueId()));
+        assertTrue(hears(troll, admin), "the team member listens");
+        assertTrue(plugin.voice().isHiddenFrom(admin.getUniqueId(), troll.getUniqueId()), "not named to players (reports)");
         PlayerMock mod = server.addPlayer("Mod");
         mod.setOp(true);
         server.getScheduler().performTicks(30);
         plugin.voice().setInvisible(admin, false);
         plugin.voice().setInvisible(admin, true);
-        assertFalse(voicechat.hidden.get(mod.getUniqueId() + ":" + admin.getUniqueId()), "another team member still sees them");
+        assertFalse(plugin.voice().isHiddenFrom(admin.getUniqueId(), mod.getUniqueId()), "another team member still sees them");
         plugin.voice().setInvisible(admin, false);
-        assertFalse(voicechat.hidden.get(troll.getUniqueId() + ":" + admin.getUniqueId()));
+        assertFalse(plugin.voice().isHiddenFrom(admin.getUniqueId(), troll.getUniqueId()));
     }
 
     @Test
@@ -378,8 +388,29 @@ class VoiceBridgeTest {
         assertEquals(group, voicechat.membership.get(bystander.getUniqueId()));
         assertTrue(voicechat.getGroup(group).isHidden());
         assertTrue(voicechat.getGroup(group).hasPassword());
-        assertTrue(voicechat.forceMuted.get(bystander.getUniqueId()), "silent until they agree");
+        assertFalse(hears(bystander, admin), "silent until they agree");
         bystander.performCommand("voice speak");
-        assertFalse(voicechat.forceMuted.get(bystander.getUniqueId()));
+        assertTrue(hears(bystander, admin));
+    }
+
+    @Test
+    void aJammedPlayerIsHeardByNobodyAndHearsNobody() {
+        Group g = voicechat.playerCreates(troll, "Trolls only", null);
+        voicechat.getConnectionOf(bystander.getUniqueId()).setGroup(g);
+        assertTrue(hears(troll, bystander));
+        assertTrue(admin.performCommand("jammer Troll 1"));
+        assertFalse(hears(troll, bystander), "nobody hears the jammed player");
+        assertFalse(hears(bystander, troll), "and the jammed player hears nobody");
+        assertTrue(hears(admin, bystander), "everyone else as before");
+        assertNotNull(voicechat.membership.get(troll.getUniqueId()), "still in the group: nothing to notice");
+        // a team member talks with them: only these two hear each other
+        assertTrue(admin.performCommand("jammer talk Troll"));
+        assertTrue(hears(troll, admin), "the team member hears them");
+        assertTrue(hears(admin, troll), "and they hear the team member");
+        assertFalse(hears(troll, bystander), "still nobody else");
+        assertFalse(hears(bystander, troll));
+        assertTrue(admin.performCommand("jammer out Troll"));
+        assertTrue(hears(troll, bystander), "lifted: heard again");
+        assertTrue(hears(bystander, troll));
     }
 }

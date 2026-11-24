@@ -198,6 +198,12 @@ final class Checks {
     /** Class names the sampler saw on the game's own thread (Render thread), with their loader and module. */
     static final Map<String, String> SAMPLED = new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile Thread sampler;
+    private static volatile long samplerSince;
+
+    /** How long the game's thread has been watched, in milliseconds (0 before the start). */
+    static long sampledFor() {
+        return sampler == null ? 0 : System.currentTimeMillis() - samplerSince;
+    }
 
     /**
      * A cheat put into the game has to run on the game's own thread to aim, hit or draw, but only for
@@ -230,6 +236,7 @@ final class Checks {
         }, "Lumio sampler");
         t.setDaemon(true);
         t.setPriority(Thread.MIN_PRIORITY);
+        samplerSince = System.currentTimeMillis();
         t.start();
         sampler = t;
     }

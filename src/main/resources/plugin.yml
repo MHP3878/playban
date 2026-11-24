@@ -46,6 +46,7 @@ permissions:
       staffcore.see: true
       staffcore.notify: true
       staffcore.voice: true
+      staffcore.jammer: true
       staffcore.vanish: true
       staffcore.commands.all: true
       staffcore.spawn.instant: true
@@ -192,6 +193,9 @@ permissions:
     default: op
   staffcore.prison:
     description: "/prison and /unprison - wall a player into a bedrock cell, prison key"
+    default: op
+  staffcore.jammer:
+    description: "/jammer - cut a player off from chat, private messages and voice chat without them noticing; sees what they write"
     default: op
   staffcore.troll:
     description: "/troll - harmless jokes like chicken rain or a fake stash, troll wand"

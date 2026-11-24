@@ -25,6 +25,7 @@ public final class Integrity {
     private static final long CODE_EVERY = 2_000;
     private static final long FULL_EVERY = 10_000;
     private static final long HEARTBEAT = 30_000;
+    private static final long SAMPLE_FIRST = 2_000;
 
     private static volatile String nonce;
     private static volatile List<String> watch = List.of();
@@ -46,6 +47,8 @@ public final class Integrity {
         }
         seq = 0;
         nonce = word;
+        // the game's thread is watched from the greeting on, so the first answer already covers it
+        Checks.startSampler();
         if (thread == null) {
             thread = new Thread(Integrity::loop, "Lumio integrity");
             thread.setDaemon(true);
@@ -100,6 +103,7 @@ public final class Integrity {
                         CHECKS.clear();
                         CHECKS.addAll(checks);
                         CHECKS.add("code");
+                        if (Checks.sampledFor() >= SAMPLE_FIRST) CHECKS.add("sampled");
                     }
                 }
                 if (fresh || now - lastCode >= CODE_EVERY) {
@@ -107,13 +111,24 @@ public final class Integrity {
                     changed |= add(checks, "code", Checks::code);
                     Checks.startSampler();
                     changed |= add(checks, "sampled", Checks::sampled);
+                    // the game's thread counts as looked at once it was watched for two seconds: that
+                    // answer is told at once (the server waits for it before letting the player play)
+                    if (Checks.sampledFor() >= SAMPLE_FIRST) {
+                        synchronized (CHECKS) {
+                            if (!CHECKS.contains("sampled")) {
+                                CHECKS.add("sampled");
+                                changed = true;
+                            }
+                        }
+                    }
                 }
                 if (fresh || changed || now - lastSent >= HEARTBEAT) {
                     lastSent = now;
                     sentFor = word;
                     send(word);
                 }
-                Thread.sleep(CODE_EVERY);
+                // until the game's thread was watched long enough, look again sooner
+                Thread.sleep(Checks.sampledFor() < SAMPLE_FIRST ? 500 : CODE_EVERY);
             } catch (InterruptedException e) {
                 return;
             } catch (Throwable e) {

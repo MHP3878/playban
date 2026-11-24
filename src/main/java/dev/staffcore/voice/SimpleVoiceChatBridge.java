@@ -137,17 +137,21 @@ public final class SimpleVoiceChatBridge implements VoiceBackend {
             UUID group = idOf(call(events + "GroupEvent", e, "getGroup"));
             if (group != null) manager.removed(group);
         });
-        on(registration, "PlayerForcedStateEvent", e -> {
-            UUID player = playerOf(call(events + "PlayerForcedStateEvent", e, "getConnection"));
-            if (player == null) return;
-            if (manager.isMuted(player)) call(events + "PlayerForcedStateEvent", e, "forceMute");
-            if (manager.isDeaf(player)) call(events + "PlayerForcedStateEvent", e, "forceDisable");
+        // mute, deafen and /jammer: what a player says is dropped before it is sent on, and what would
+        // reach a player who may hear nobody is dropped too. Their own voice chat looks normal to them.
+        on(registration, "MicrophonePacketEvent", e -> {
+            if (!manager.anyBlock()) return;
+            UUID speaker = playerOf(call(events + "PacketEvent", e, "getSenderConnection"));
+            if (manager.dropMic(speaker)) call(events + "Event", e, "cancel");
         });
-        on(registration, "PlayerVisibilityEvent", e -> {
-            UUID player = bukkitId(call(events + "PlayerVisibilityEvent", e, "getPlayer"));
-            UUID observer = bukkitId(call(events + "PlayerVisibilityEvent", e, "getObserver"));
-            if (player != null && observer != null && manager.isHiddenFrom(player, observer)) call(events + "PlayerVisibilityEvent", e, "hide");
-        });
+        for (String sound : List.of("EntitySoundPacketEvent", "LocationalSoundPacketEvent", "StaticSoundPacketEvent")) {
+            on(registration, sound, e -> {
+                if (!manager.anyBlock()) return;
+                UUID listener = playerOf(call(events + "PacketEvent", e, "getReceiverConnection"));
+                UUID speaker = playerOf(call(events + "PacketEvent", e, "getSenderConnection"));
+                if (manager.dropSound(speaker, listener)) call(events + "Event", e, "cancel");
+            });
+        }
     }
 
     /** The voice chat wraps the server's own player object; on Paper that is a Bukkit player. */
@@ -254,8 +258,6 @@ public final class SimpleVoiceChatBridge implements VoiceBackend {
 
     @Override
     public void refresh(UUID player) {
-        Object connection = connection(player);
-        call(CONNECTION, connection, "evaluateForcedState");
-        call(CONNECTION, connection, "evaluateVisibility");
+        // nothing to do: every voice packet is judged as it comes, so a change counts at once
     }
 }

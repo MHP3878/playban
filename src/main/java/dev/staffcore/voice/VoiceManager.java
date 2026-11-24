@@ -96,6 +96,40 @@ public final class VoiceManager {
         return deaf.contains(player);
     }
 
+    /** Whether anything at all is held back in the voice chat right now (most of the time nothing is: no work per packet). */
+    public boolean anyBlock() {
+        return !muted.isEmpty() || !deaf.isEmpty() || !waitingToSpeak.isEmpty() || plugin.jammer() != null && plugin.jammer().any();
+    }
+
+    private boolean jammed(UUID id) {
+        return id != null && plugin.jammer() != null && plugin.jammer().isJammed(id);
+    }
+
+    private boolean talking(UUID a, UUID b) {
+        return plugin.jammer() != null && plugin.jammer().inContact(a, b);
+    }
+
+    /**
+     * Whether what this player says is dropped before it goes anywhere: muted, waiting to agree to
+     * speak, or jammed with nobody of the team talking with them.
+     */
+    public boolean dropMic(UUID speaker) {
+        if (speaker == null) return false;
+        return isMuted(speaker) || jammed(speaker) && !plugin.jammer().hasContact(speaker);
+    }
+
+    /**
+     * Whether this listener must not hear this speaker: a deafened listener hears nobody, a muted
+     * speaker is heard by nobody, and a jammed player only hears and is heard by the team member
+     * talking with them (/jammer talk).
+     */
+    public boolean dropSound(UUID speaker, UUID listener) {
+        if (listener != null && isDeaf(listener)) return true;
+        if (speaker != null && isMuted(speaker)) return true;
+        if (jammed(speaker) || jammed(listener)) return !talking(speaker, listener);
+        return false;
+    }
+
     public boolean isHiddenFrom(UUID player, UUID observer) {
         return invisible.contains(player) && !seesInvisible.contains(observer);
     }

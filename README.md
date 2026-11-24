@@ -221,6 +221,7 @@ Honest limit: many cheat clients (Meteor too) pretend to be plain Fabric and reg
 | Lag tools | `/lag`, `/cleanup` | - |
 | Announcements | `/announce` | how often, random order, sound |
 | Prison, fake bases, trolls | `/prison`, `/fakebase`, `/troll` | prison key time; fake base minutes and maximum |
+| Jammer | `/jammer` | whether the team reads what jammed players write |
 | Totem | `/totem`: a totem from the inventory into the off hand | delay (default half a second), also in a fight or not |
 
 Teleports from homes and requests count down while you stand still; moving cancels them. Frozen, cuffed, jailed or punished players cannot use them, and vanished staff cannot be found with `/tpa`.
@@ -269,6 +270,8 @@ The rules hold on every way a command can be run: below the level the command's 
 | `/tools` | Admin items | `staffcore.tools` |
 | `/prison <player> [time] [reason]` | Wall the player into a bedrock cell; `/unprison` lets them out | `staffcore.prison` |
 | `/troll <player> [joke]` | Harmless jokes, menu without a joke | `staffcore.troll` |
+| `/jammer` | Menu: cut players off unnoticed (3 levels), talk with them, bring them back | `staffcore.jammer` |
+| `/jammer <player> <1\|2\|3> [time]`, `/jammer out <player>`, `/jammer talk <player>` | The same without the menu | `staffcore.jammer` |
 | `/stafflog [player]` | Team protocol: who did what | `staffcore.stafflog` |
 | `/fakebase [here\|<player>] [1-8]` | Bait base deep underground against ESP and x-ray | `staffcore.fakebase` |
 
@@ -325,12 +328,22 @@ Extras: new tickets can be posted to a Discord channel (webhook), the team is re
 
 With the plugin Simple Voice Chat installed, `/voice` shows the team every voice group. Players only need the normal voice chat mod. The buttons are in StaffCore's own menu, because a server plugin cannot change the mod's screens.
 
-- Join a group visibly or unseen. Unseen means players do not see the team member in the group, but talking and listening work. Each team member can set which way is the default.
-- Per player: remove from the group, mute, "hears nothing", ban from the group. Mute and "hears nothing" end when the player leaves the group.
+- Join a group visibly or unseen. Unseen keeps the team member out of player reports; talking and listening work. Simple Voice Chat itself still lists every member of a group (it gives plugins no way to hide one). Each team member can set which way is the default.
+- Per player: remove from the group, mute, "hears nothing", ban from the group. Mute and "hears nothing" end when the player leaves the group. They work on every voice packet as it comes (Simple Voice Chat's packet events), so they count at once.
 - Per group: close it, set or remove a password, and show a password in chat where a click copies it. StaffCore only knows passwords set through its menu.
 - Whoever created a group can kick and ban in it with `/voice manage`.
 - Players report a group with `/voice report`, which opens a ticket.
 - The "Voice" button in a ticket creates a private voice group and moves everyone into it. Players are muted until they click to speak.
+
+## Jammer
+
+`/jammer` cuts a player off from everyone, without telling them. Everything is in one menu (also in `/admin`): click a player, choose a level, a time, talk with them or bring them back.
+
+- **Level 1, silent:** what they write in chat, in private messages (`/msg`, `/r`, `/me`, `/teammsg`) and in Simple Voice Chat reaches nobody, and nothing from others reaches them. On their screen all looks normal: their own messages are there, whispers look sent, the microphone works.
+- **Level 2, frozen:** as level 1, and every other player stands still for them, as if everybody had left. Only they move. Nobody can hit anybody. (StaffCore holds back the other players' movement on the way to this one player; on a server version where that is not possible, level 2 works like level 1 and the log says so.)
+- **Level 3, ghost town:** as level 1, and every other player, animal and monster is gone for them; monsters leave them alone.
+- **Talk:** a team member can talk with a jammed player. Then the two see and hear each other (a vanished team member becomes visible to this player only), and what the team member writes in chat goes to this player only. Everybody else stays cut off.
+- `/jammer out <player>` (or the milk bucket in the menu) brings everything back at once, at the players' real places. Jams with a time end on their own; jams are kept over restarts. The team (`staffcore.jammer`) reads what jammed players write, marked `[J]`.
 
 ## Ban screen and Discord
 

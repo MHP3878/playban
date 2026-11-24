@@ -723,9 +723,17 @@ public final class PunishmentManager {
         java.util.function.Function<Player, boolean[]> rightsOf = v -> rights.computeIfAbsent(v.getUniqueId(),
                 k -> new boolean[]{staffSee && v.hasPermission("staffcore.see"), v.hasPermission("staffcore.vanish")});
 
+        // /jammer: players in the ghost town see nobody, a jammed player sees the team member they talk with
+        dev.staffcore.module.Jammer jam = plugin.jammer();
+        java.util.Set<UUID> jamViewers = new java.util.HashSet<>();
+        if (jam != null && jam.any()) {
+            for (Player p : online) if (jam.isJammed(p.getUniqueId())) jamViewers.add(p.getUniqueId());
+        }
+
         java.util.Set<UUID> targets = new java.util.HashSet<>(special);
         targets.addAll(lastSpecialTargets);
         java.util.Set<UUID> viewers = new java.util.HashSet<>(blind);
+        viewers.addAll(jamViewers);
         viewers.addAll(lastBlindViewers);
         for (Player target : online) {
             boolean targetMatters = targets.contains(target.getUniqueId());
@@ -738,11 +746,16 @@ public final class PunishmentManager {
                 if (isVanished(t) && !r[1]) hidden = true;
                 if (blind.contains(viewer.getUniqueId()) && !(isPunished(viewer.getUniqueId()) && !inLimbo(viewer.getUniqueId())
                         && target.hasPermission("staffcore.staff") && !isVanished(t))) hidden = true;
+                if (jamViewers.contains(viewer.getUniqueId())) {
+                    Boolean sees = jam.sees(viewer, target);
+                    if (sees != null) hidden = !sees;
+                }
                 if (hidden) viewer.hidePlayer(plugin, target);
                 else viewer.showPlayer(plugin, target);
             }
         }
         lastSpecialTargets = special;
+        blind.addAll(jamViewers);
         lastBlindViewers = blind;
     }
 

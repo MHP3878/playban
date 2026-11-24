@@ -69,6 +69,8 @@ public final class StaffListener implements Listener {
         Player p = e.getPlayer();
         if (!vanished(p) || !plugin.getConfig().getBoolean("vanish.staff-chat-only", true)) return;
         if (plugin.tickets().inChat(p.getUniqueId())) return;
+        // talking with a jammed player (/jammer talk): the message goes to them
+        if (plugin.jammer() != null && !plugin.jammer().talksWith(p.getUniqueId()).isEmpty()) return;
         String text = PlainTextComponentSerializer.plainText().serialize(e.message());
         if (text.startsWith("!")) {
             e.message(Component.text(text.substring(1).trim()));

@@ -1805,6 +1805,9 @@ module:
   trolls:
     name: "<#ffc371><bold>Trolls</bold>"
     lore: ["<gray>/troll: harmless jokes."]
+  jammer:
+    name: "<#ffc371><bold>Jammer</bold>"
+    lore: ["<gray>/jammer: cuts a player off unnoticed:", "<gray>chat, private messages and voice", "<gray>chat reach nobody any more."]
   totem:
     name: "<#ffc371><bold>/totem</bold>"
     lore: ["<gray>Puts a totem from the inventory into", "<gray>the off hand after a short moment.", "<gray>With Lumio it is in the radial menu (G)."]
@@ -2010,6 +2013,8 @@ panel:
   tools: "<#ffc371>Admin items"
   modules: "<#ffc371>Modules"
   lag: "<#ffc371>Server and lag"
+  jammer: "<#ffc371>Jammer</#ffc371> <gray>({count} cut off)"
+  jammer-lore: ["<gray>Cut players off unnoticed:", "<gray>silent, frozen or ghost town,", "<gray>and talk with them."]
   close: "<red>Close"
 
 anticheat:
@@ -2268,6 +2273,7 @@ pstatus:
     watched: "<gold><bold>Watched by the anti-cheat"
     points: "<white><bold>Anti-cheat points"
     vanished: "<gray><bold>Invisible"
+    jammed: "<dark_aqua><bold>Cut off (jammer)"
   plain:
     frozen: "Freeze"
     cuffed: "Handcuffs"
@@ -2278,6 +2284,7 @@ pstatus:
     watched: "Watching"
     points: "Anti-cheat points"
     vanished: "Invisibility"
+    jammed: "Jammer"
 
 rights:
   gamemode: "<gold>⚠ <white>{player}</white> <gray>got <white>{mode}</white> <gray>· by <white>{by}</white>. Click for /check."
@@ -2345,3 +2352,62 @@ lumio:
     baltop: "Richest"
   ticket-title: "New ticket #{id}"
   ticket-text: "{player}: {text}"
+
+jammer:
+  usage: "<gray><white>/jammer</white> opens the menu. <white>/jammer <player> <1|2|3> [time]</white> cuts off, <white>/jammer out <player></white> brings back, <white>/jammer talk <player></white> talks with them, <white>/jammer list</white> shows everyone."
+  "on": "<dark_aqua>⛓ <white>{player}</white> <gray>is cut off: <white>{level}</white> (<white>{time}</white>). Nothing from <white>{player}</white> reaches anyone, and nothing reaches <white>{player}</white>. It does not show."
+  "off": "<green><white>{player}</white> is back to normal."
+  not-jammed: "<gray><white>{player}</white> is not cut off."
+  no-voice: "<gray>(Simple Voice Chat is not installed: the voice part does not apply.)"
+  forever: "unlimited"
+  list-empty: "<gray>Nobody is cut off."
+  list-head: "<dark_aqua>⛓ Cut off ({count}):"
+  list-line: "<gray>- <white>{player}</white> · {level} · by {by} · {time} left"
+  tag: "<dark_gray>[<dark_aqua>J</dark_aqua>]</dark_gray> "
+  tag-hover: "<gray><white>{player}</white> is cut off (/jammer):<newline><gray>only the team sees this."
+  talk-tag: "<dark_gray>[<green>→ {players}</green>]</dark_gray> "
+  talk-on: "<green>You now talk with <white>{player}</white>: you see and hear each other (also out of vanish, for <white>{player}</white> only), and what you write in chat only <white>{player}</white> reads. Click again or <white>/jammer talk {player}</white> to end it."
+  talk-off: "<gray>You no longer talk with <white>{player}</white>. Your chat goes to everyone again."
+  whisper: "<gray>{from} → {to}: <white>{text}"
+  me: "me"
+  level:
+    "1":
+      short: "level 1 · silent"
+      name: "<white><bold>Level 1 · Silent</bold>"
+      lore: ["<gray>Chat, private messages and voice chat", "<gray>reach nobody, and nothing reaches", "<gray>them. Their own messages look normal:", "<gray>they do not notice."]
+    "2":
+      short: "level 2 · frozen"
+      name: "<aqua><bold>Level 2 · Frozen</bold>"
+      lore: ["<gray>Like level 1, and every other player", "<gray>stands still for them, as if everybody", "<gray>had left. Only they move. Nobody can", "<gray>hit anybody."]
+    "3":
+      short: "level 3 · ghost town"
+      name: "<dark_red><bold>Level 3 · Ghost town</bold>"
+      lore: ["<gray>Like level 1, and all players, animals", "<gray>and monsters are gone for them.", "<gray>An empty world until you bring them back."]
+  menu:
+    title: "<dark_gray>Jammer"
+    player-title: "<dark_gray>Jammer: {player}"
+    info:
+      name: "<dark_aqua><bold>Jammer</bold> <gray>({count} cut off)"
+      lore: ["<gray>Cuts players off unnoticed:", "<white>1</white> <gray>silent, <white>2</white> <gray>frozen, <white>3</white> <gray>ghost town.", "", "<gray>Click a player: level, time,", "<gray>talk with them or bring them back."]
+    name: "<white>{player}"
+    name-jammed: "<dark_aqua>⛓ <white>{player}"
+    free: "<gray>Not cut off."
+    jammed: "<dark_aqua>{what}"
+    since: "<gray>by {by} · {time} left"
+    talking: "<green>You talk with {player}."
+    offline: "<dark_gray>(offline)"
+    click: "<#ffc371>Click: manage"
+    nobody: "<green>Nobody online"
+    active: "<green>▶ Active"
+    choose: "<#ffc371>Click: this level ({time})"
+    time: "<white>Time: <#ffc371>{time}"
+    time-lore: ["<gray>Click: unlimited, 10 minutes, 1 hour,", "<gray>1 day, 7 days. Applies to the next", "<gray>level you click."]
+    talk-on: "<green><bold>You talk with {player}</bold>"
+    talk-off: "<gray>Talk with {player}"
+    talk-lore: ["<gray>You see and hear each other, also", "<gray>while you are vanished (only they see", "<gray>you). Your chat then goes to them only.", "<#ffc371>Click: on or off"]
+    lift: "<green><bold>Bring {player} back</bold>"
+    lift-lore: ["<gray>Everything is normal again at once:", "<gray>chat, voice, players and animals."]
+    back: "<gray>Back"
+    prev: "<gray>Previous page"
+    next: "<gray>Next page"
+    close: "<red>Close"

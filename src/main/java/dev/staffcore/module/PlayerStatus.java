@@ -72,6 +72,11 @@ public final class PlayerStatus implements TabExecutor {
             out.add(new Restriction("points", Material.IRON_SWORD, String.format(java.util.Locale.ROOT, "%.1f/%.0f", ac.total(id), ac.limit()),
                     "staffcore.anticheat", () -> ac.reset(id)));
         }
+        if (plugin.jammer() != null && plugin.jammer().isJammed(id)) {
+            var j = plugin.jammer().entry(id);
+            out.add(new Restriction("jammed", Material.SCULK_SHRIEKER, j == null ? "" : j.by(), "staffcore.jammer",
+                    () -> plugin.jammer().lift(id, by)));
+        }
         if (plugin.punishments().isVanished(id) && online != null && !online.hasPermission("staffcore.vanish")) {
             out.add(new Restriction("vanished", Material.PHANTOM_MEMBRANE, "", "staffcore.vanish",
                     () -> plugin.punishments().setVanished(online, false)));

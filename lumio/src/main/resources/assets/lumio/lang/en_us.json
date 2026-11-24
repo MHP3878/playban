@@ -148,5 +148,6 @@
   "lumio.death.reached.title": "Death point reached",
   "lumio.death.reached.text": "You died here – your things should be close by.",
   "lumio.durability.title": "Nearly broken!",
-  "lumio.durability.text": "%s: only %s of %s durability left."
+  "lumio.durability.text": "%s: only %s of %s durability left.",
+  "lumio.menu.about.updates": "Look for updates when the game starts"
 }

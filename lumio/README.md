@@ -72,6 +72,21 @@ key: **Y** accepts, **N** denies. Notice cards slide in at the bottom, away from
 next to its name and a bar of how full it is. It puts this as an invisible part into its description,
 so everyone else sees the usual list.
 
+## Updates
+
+When the game starts, Lumio asks the project's GitHub whether a newer version is out (at most three seconds;
+without internet the game simply starts). If there is one, a small window of its own opens before the game:
+**Update now**, **Later** or **Skip this version**. "Update now" downloads the new Lumio for this Minecraft
+version, checks its SHA-256 fingerprint and that the file really is Lumio in that version, closes Minecraft,
+replaces the old Lumio file in the mods folder and starts Minecraft again the way it was started (official
+launcher, Prism, Modrinth app ...). If a launcher cannot be started again, the window says so and the new
+version is already in place. Updates only come from GitHub over HTTPS. The check can be switched off in the
+menu (About → "Look for updates when the game starts") or in `config/lumio-update.json`.
+
+Publishing an update: raise `mod_version`, write the news into `changes.json`, run
+`./gradlew build updateManifest`, copy the jars from `lumio/dist` into the repository's `dist` folder and
+commit them together with `lumio/update.json`.
+
 ## On servers with StaffCore and ModCheck
 
 - Teleport requests, announcements and (for the team) new tickets come as cards.

@@ -148,5 +148,6 @@
   "lumio.death.reached.title": "Todespunkt erreicht",
   "lumio.death.reached.text": "Hier bist du gestorben – deine Sachen sollten in der Nähe liegen.",
   "lumio.durability.title": "Gleich kaputt!",
-  "lumio.durability.text": "%s: nur noch %s von %s Haltbarkeit."
+  "lumio.durability.text": "%s: nur noch %s von %s Haltbarkeit.",
+  "lumio.menu.about.updates": "Beim Start nach Updates suchen"
 }

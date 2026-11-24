@@ -11,6 +11,9 @@
   "icon": "assets/lumio/icon.png",
   "environment": "client",
   "entrypoints": {
+    "preLaunch": [
+      "dev.lumio.update.UpdateCheck"
+    ],
     "client": [
       "dev.lumio.LumioClient"
     ]

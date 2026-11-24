@@ -61,3 +61,25 @@ subprojects {
     // every version's jar also lands in lumio/dist
     tasks.named("remapJar") { doLast { copy { from archiveFile; into rootProject.file("dist") } } }
 }
+
+// update.json: the newest Lumio, and for each Minecraft version where its file is and its fingerprint.
+// Lumio looks at it when the game starts (the update window). The jars are served from the repository's dist folder.
+tasks.register("updateManifest") {
+    dependsOn subprojects.collect { it.tasks.named("remapJar") }
+    doLast {
+        def version = rootProject.property("mod_version")
+        def files = [:]
+        subprojects.each { p ->
+            def mc = p.property("minecraft_version")
+            def built = p.tasks.named("remapJar").get().archiveFile.get().asFile
+            def jar = rootProject.file("dist/lumio-${version}+${mc}.jar")
+            jar.parentFile.mkdirs()
+            java.nio.file.Files.copy(built.toPath(), jar.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            def sha = java.security.MessageDigest.getInstance("SHA-256").digest(jar.bytes).encodeHex().toString()
+            files[mc] = [url: "https://raw.githubusercontent.com/MHP3878/playban/HEAD/dist/lumio-${version}+${mc}.jar", sha256: sha]
+        }
+        def notes = rootProject.file("changes.json")
+        def changes = notes.exists() ? new groovy.json.JsonSlurper().parse(notes) : [:]
+        rootProject.file("update.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([version: version, changes: changes, files: files])) + "\n"
+    }
+}

@@ -222,7 +222,7 @@ public class SettingsScreen extends BaseScreen {
         int top = cy + HEAD;
         switch (tab) {
             case GENERAL -> general(g, mx, my, cx, top, cw, ca);
-            case ABOUT -> about(g, cx, top, cw, ca);
+            case ABOUT -> about(g, mx, my, cx, top, cw, ca);
             case CHAT -> chat(g, mx, my, cx, top, cw, ca);
             default -> content(g, mx, my, cx, top, cw, py + ph - 12 - top, ca);
         }
@@ -396,7 +396,9 @@ public class SettingsScreen extends BaseScreen {
         paragraph(g, Component.translatable("lumio.menu.chat.text"), x + 10, ky + 52, w - 20, a);
     }
 
-    private void about(GuiGraphics g, int x, int y, int w, float a) {
+    private dev.lumio.update.UpdateCheck.Settings updates;
+
+    private void about(GuiGraphics g, int mx, int my, int x, int y, int w, float a) {
         card(g, x, y, w, 48, a);
         Draw.text(g, Draw.inter(Component.translatable("lumio.menu.about.version", LumioClient.version())), x + 10, y + 10, Draw.fade(Draw.TEXT, a));
         boolean on = Protocol.onLumioServer();
@@ -408,6 +410,15 @@ public class SettingsScreen extends BaseScreen {
         card(g, x, fy, w, 120, a);
         Draw.text(g, Draw.bold(Component.translatable("lumio.menu.about.fair")), x + 10, fy + 8, Draw.fade(Draw.TEXT, a));
         paragraph(g, Component.translatable("lumio.menu.about.fair.text"), x + 10, fy + 22, w - 20, a);
+        // updates: asked when the game starts, in a small window of its own
+        if (updates == null) updates = dev.lumio.update.UpdateCheck.Settings.load();
+        int uy = fy + 128;
+        card(g, x, uy, w, 30, a);
+        rowLabel(g, mx, my, x, uy + 3, w, 24, "lumio.menu.about.updates", a);
+        toggle(g, mx, my, x + w - 36, uy + 9, updates.auto, "updates", a, () -> {
+            updates.auto = !updates.auto;
+            updates.save();
+        });
     }
 
     // ---------------------------------------------------------------- building blocks
